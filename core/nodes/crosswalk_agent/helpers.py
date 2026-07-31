@@ -231,29 +231,7 @@ def detect_separator(values: list[str], llm: Optional[ChatGroq] = None) -> dict[
         return {"type": options[1]["type"], "value": options[1]["value"]}
 
     # 3. Supervisión con el LLM (Multiple Choice con Few-Shot y Chain-of-Thought)
-    prompt = (
-        "Sos un experto en metadatos bibliográficos. Tu tarea es analizar cómo se separa un string de autores o materias concatenadas.\n"
-        "Se te presentará el string ORIGINAL y varias OPCIONES que muestran el resultado de aplicar diferentes separadores (literales o regex).\n"
-        "Debes analizar semánticamente las opciones y elegir la única que divida correctamente el string en entidades válidas (ej: nombres de autores completos e independientes).\n\n"
-        "Si NINGUNA opción es correcta (porque fragmentan los nombres o no los separan en absoluto), debes elegir NINGUNA.\n\n"
-        "Ejemplo 1:\n"
-        "Original: 'G. AadE. AakvaagB. Abbott'\n"
-        "OPCION 1: ['G.', 'AadE.', 'AakvaagB.', 'Abbott']\n"
-        "OPCION 2: ['G. Aad', 'E. Aakvaag', 'B. Abbott']\n"
-        "<thought>\n"
-        "La OPCION 1 separa por cada punto, dejando fragmentos inválidos como 'AadE.'. La OPCION 2 separa por mayúsculas pegadas a minúsculas, resultando en nombres de autores correctos ('G. Aad', 'E. Aakvaag', 'B. Abbott').\n"
-        "</thought>\n"
-        "<answer>2</answer>\n\n"
-        "Ejemplo 2:\n"
-        "Original: 'Doe, J., Smith, A., Williams, R.'\n"
-        "OPCION 1: ['Doe', 'J.', 'Smith', 'A.', 'Williams', 'R.']\n"
-        "<thought>\n"
-        "La OPCION 1 separa por la coma, lo que divide el apellido de la inicial (ej. 'Doe' y 'J.'). Esto destruye el nombre del autor original. No hay más opciones buenas.\n"
-        "</thought>\n"
-        "<answer>NINGUNA</answer>\n\n"
-        "--- TAREA ACTUAL ---\n"
-        f"Original: '{sample}'\n"
-    )
+    prompt = load_agent_prompt('separator_selector', sample=sample)
     for opt_num, opt_data in options.items():
         prompt += f"OPCION {opt_num}: {opt_data['tokens']}\n"
         
