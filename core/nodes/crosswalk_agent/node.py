@@ -30,6 +30,9 @@ import os
 import json
 from typing import Any, Optional
 
+from pydantic import BaseModel
+from pydantic import Field as PydanticField
+
 from langchain_core.messages import SystemMessage, ToolMessage
 from langchain_core.tools import tool
 from langchain_groq import ChatGroq
@@ -48,6 +51,36 @@ from core.nodes.crosswalk_agent.helpers import (
 from core.utils.get_local_model import get_model
 # Set to True to use local Ollama model, False to use remote OpenAI model
 USE_LOCAL_MODEL = False
+
+# ---------------------------------------------------------------------------
+# Esquema Pydantic para el tool call de Fase 1
+# ---------------------------------------------------------------------------
+
+class ColumnMapping(BaseModel):
+    """Mapeo de una columna CSV origen a un campo destino genérico."""
+
+    left: str = PydanticField(
+        description=(
+            "Nombre exacto de la cabecera CSV origen. "
+            "Soporta concatenación ('ColA+ColB') y wildcard ('author*')."
+        )
+    )
+    replace: str = PydanticField(
+        description="Nombre del campo destino genérico (ej: 'title', 'author', 'date')."
+    )
+    required: bool = PydanticField(
+        default=False,
+        description="True descarta la fila completa si este campo está vacío.",
+    )
+    default: Optional[str] = PydanticField(
+        default=None,
+        description="Valor por defecto cuando el campo está vacío. null si no aplica.",
+    )
+    filter: str = PydanticField(
+        default="trim",
+        description="Filtro a aplicar al valor: 'trim', 'lowercase', 'trim|lowercase' o ''.",
+    )
+
 
 # ---------------------------------------------------------------------------
 # Utilidades internas
@@ -293,23 +326,25 @@ def generate_source_crosswalk_config(state: dict) -> dict[str, Any]:
         mappings_draft: list[dict] = []
 
         @tool
-        def save_column_mappings(mappings: list[dict]) -> str:
+        def save_column_mappings(mappings: list[ColumnMapping]) -> str:
             """
             Guarda el borrador de mapeos de columnas propuesto.
 
-            Llamar con el array completo de mapeos. Cada elemento debe tener
-            los campos: left, replace, default, required, filter.
+            Llamar con el array completo de mapeos.
             NO incluir información de separadores.
+            Los campos 'required', 'default' y 'filter' son opcionales:
+            si no se indican, usan sus valores por defecto (false, null y 'trim').
 
             Args:
-                mappings: Array de objetos de mapeo con left, replace, default,
-                          required y filter.
+                mappings: Array de objetos ColumnMapping con left y replace
+                          como campos obligatorios.
 
             Returns:
                 Confirmación con la cantidad de mapeos guardados.
             """
             nonlocal mappings_draft
-            mappings_draft = mappings
+            # Convertir a dict para mantener compatibilidad con el resto del pipeline
+            mappings_draft = [m.model_dump() for m in mappings]
             return f"OK: {len(mappings)} mapeos guardados."
 
         generic_desc = _build_generic_columns_description()
