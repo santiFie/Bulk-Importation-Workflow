@@ -30,6 +30,7 @@ import csv
 import io
 import json
 import os
+import subprocess
 import sys
 import shutil
 import tempfile
@@ -101,6 +102,7 @@ from core.graph import (  # noqa: E402
     get_step_label,
     PIPELINE_STEPS,
 )
+from core.utils.config import config  # noqa: E402
 
 # Restaurar shutil después de importar
 shutil.copy = _original_copy
@@ -133,9 +135,54 @@ TEST_CASES: list[dict] = [
 # Ejemplos: "GenerateSourceCrosswalkConfig", "Deduplicate", "MetadataCorrections"
 STOP_AFTER_STEP = "MetadataCorrections"
 
+# ---------------------------------------------------------------------------
+# Helpers para metadata del experimento
+# ---------------------------------------------------------------------------
+
+def _git_hash(relative_path: str) -> str:
+    """
+    Devuelve el hash corto del último commit que modificó el archivo indicado.
+    Si el archivo tiene cambios sin commitear devuelve "uncommitted".
+    Útil para registrar con precisión qué versión del prompt se usó.
+    """
+    try:
+        # Verificar si hay cambios sin commitear en el archivo
+        dirty = subprocess.run(
+            ["git", "status", "--porcelain", relative_path],
+            capture_output=True, text=True, cwd=PROJECT_ROOT,
+        ).stdout.strip()
+        if dirty:
+            return "uncommitted"
+        result = subprocess.run(
+            ["git", "log", "-1", "--format=%h", "--", relative_path],
+            capture_output=True, text=True, cwd=PROJECT_ROOT,
+        )
+        return result.stdout.strip() or "no-commits"
+    except Exception:
+        return "unknown"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# CONFIGURACIÓN DEL EXPERIMENTO — editar antes de cada corrida
+# ═══════════════════════════════════════════════════════════════════════════
+
 # Nombre del dataset y prefijo del experimento en LangSmith
-DATASET_NAME = "Pipeline_Integration_Tests"
-EXPERIMENT_PREFIX = "pipeline-eval-iter1"
+DATASET_NAME      = "Pipeline_Integration_Tests"
+EXPERIMENT_PREFIX = "pipeline-eval"
+
+# Metadata adjunta al experimento en LangSmith.
+# Aparece en la cabecera de cada corrida y permite comparar experimentos
+# con distintos modelos o prompts en la tabla de la UI.
+# Actualizar 'notes' con una descripción breve del cambio antes de cada corrida.
+EXPERIMENT_METADATA: dict = {
+    # Modelo que usa el nodo de crosswalk (leído directamente de config.py)
+    "crosswalk_model": config.CROSSWALK_MODEL,
+    # Hash git del .md del prompt — se calcula automáticamente
+    "prompt_crosswalk_agent": _git_hash("agent_prompts/crosswalk_agent.md"),
+    "prompt_separator_validator": _git_hash("agent_prompts/separator_validator.md"),
+    # Observaciones libres sobre esta corrida (modificar antes de ejecutar)
+    "notes": "",
+}
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -575,6 +622,12 @@ def run_evaluation():
     print(f"  Evaluadores:      8")
     print(f"{'═' * 60}\n")
 
+    # Mostrar metadata del experimento antes de ejecutar
+    print("  Metadata del experimento:")
+    for k, v in EXPERIMENT_METADATA.items():
+        print(f"    {k}: {v}")
+    print(f"{'═' * 60}\n")
+
     # Ejecutar evaluación
     evaluate(
         predict_pipeline,
@@ -590,6 +643,7 @@ def run_evaluation():
             data_integrity_evaluator,
         ],
         experiment_prefix=EXPERIMENT_PREFIX,
+        metadata=EXPERIMENT_METADATA,
     )
 
 
