@@ -1,0 +1,13 @@
+services:
+  dspace-mcp:
+    build: .
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    # Allows the container to reach localhost:8080 on the host machine.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    volumes:
+      - "/home/santi/Documentos/LangGraph/Modulo-Marta/mcps/dspace_mcp/data:/app/data"

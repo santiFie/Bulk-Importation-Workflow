@@ -1,0 +1,177 @@
+[
+    [
+        {
+            "left":"record - dc.title.es",
+            "replace":"dc.title[es]",
+            "default":"",
+            "required":true
+        },
+        {
+            "left":"record - dc.type",
+            "replace":"dc.type[es]",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - filenames",
+            "replace":"files",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.relation.alternativeid",
+            "replace":"alternativoID",
+            "default":"",
+            "required":""
+        },
+        {
+            "left":"record - dc.identifier.uri",
+            "replace":"sedici.identifier.uri",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.date.accessioned",
+            "replace":"dc.date.accesioned",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.conicet.produccionid+record - dc.relation.isreferencedin",
+            "replace":"sedici.identifier.other",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.format.es",
+            "replace":"dc.format[es]",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.language.iso.es",
+            "replace":"dc.language[es]",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.description.abstract.es",
+            "replace":"dc.description.abstract[es]",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.subject.es",
+            "replace":"dc.subject[es]",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.contributor.author+record - dc.contributor.author.es+record - dc.contributor",
+            "replace":"sedici.creator.person",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.rights.es",
+            "replace":"sedici.rights.license[es]",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.publisher.es",
+            "replace":"dc.publisher[es]",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.journal.title.es",
+            "replace":"sedici.relation.journalTitle[es]",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.journal.volume.es+record - dc.journal.number.es",
+            "replace":"sedici.relation.journalVolumeAndIssue[es]",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.rights.uri+record - dc.rights.uri.es",
+            "replace":"sedici.rights.uri",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.identifier.issn.es+record - dc.identifier.eissn.es+record - dc.identifier.issn+record - dc.identifier.eissn",
+            "replace":"sedici.identifier.issn",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.date.issued.es+record - dc.date.issued",
+            "replace":"dc.date.issued[es]",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.identifier.isbn.es+record - dc.identifier.isbn",
+            "replace":"sedici.identifier.isbn[es]",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.conicet.paginas.es+record - dc.journal.pagination.es",
+            "replace":"dc.format.extent[es]",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.description.fil+record - dc.conicet.comentarios.es",
+            "replace":"sedici.description.note",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.source.titulo.es",
+            "replace":"sedici.relation.bookTitle",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.conicet.organizacion",
+            "replace":"MODS-ORIGIN-REVISAR",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.conicet.otorgante.es",
+            "replace":"thesis.degree.grantor",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.conicet.rol",
+            "replace":"ROL",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.conicet.titulo.es",
+            "replace":"thesis.degree.name",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.subject.classification.es",
+            "replace":"sedici.subject.materias",
+            "default":"",
+            "required":false
+        }
+    ],
+    {
+        "original_separator":"||",
+        "replace_separator":"||",
+        "file_delimiter":","   
+    }
+]

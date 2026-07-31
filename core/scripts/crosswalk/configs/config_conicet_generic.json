@@ -1,0 +1,63 @@
+[
+    [
+        {
+            "left":"record - dc.title.es",
+            "replace":"title",
+            "default":"",
+            "required":true
+        },
+        {
+            "left":"record - dc.identifier.uri",
+            "replace":"id",
+            "default":"",
+            "required":true
+        },
+        {
+            "left":"record - dc.type",
+            "replace":"type",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.subject.es",
+            "replace":"subject",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.contributor.author+record - dc.contributor.author.es",
+            "replace":"author",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.identifier.issn.es+record - dc.identifier.eissn.es+record - dc.identifier.issn+record - dc.identifier.eissn",
+            "replace":"issn",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.date.issued.es+record - dc.date.issued",
+            "replace":"date",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.identifier.isbn.es+record - dc.identifier.isbn",
+            "replace":"isbn",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"record - dc.relation.isreferencedin",
+            "replace": "doi",
+            "default": "",
+            "required": false
+        }
+    ],
+    {
+        "original_separator":"||",
+        "replace_separator":"|",
+        "file_delimiter":","   
+    }
+]

@@ -1,0 +1,79 @@
+[
+  [
+    {
+      "left": "Item Title",
+      "replace": "Item Title",
+      "default": "",
+      "required": false,
+      "filter": "trim"
+    },
+    {
+      "left": "Publication Title",
+      "replace": "Publication Title",
+      "default": "",
+      "required": false,
+      "filter": "trim"
+    },
+    {
+      "left": "Book Series Title",
+      "replace": "Book Series Title",
+      "default": "",
+      "required": false,
+      "filter": "trim"
+    },
+    {
+      "left": "Journal Volume",
+      "replace": "Journal Volume",
+      "default": "",
+      "required": false,
+      "filter": "trim"
+    },
+    {
+      "left": "Journal Issue",
+      "replace": "Journal Issue",
+      "default": "",
+      "required": false,
+      "filter": "trim"
+    },
+    {
+      "left": "Item DOI",
+      "replace": "Item DOI",
+      "default": "",
+      "required": false,
+      "filter": "trim"
+    },
+    {
+      "left": "Authors",
+      "replace": "Authors",
+      "default": "",
+      "required": false,
+      "filter": "trim"
+    },
+    {
+      "left": "Publication Year",
+      "replace": "Publication Year",
+      "default": "",
+      "required": false,
+      "filter": "trim"
+    },
+    {
+      "left": "URL",
+      "replace": "URL",
+      "default": "",
+      "required": false,
+      "filter": "trim"
+    },
+    {
+      "left": "Content Type",
+      "replace": "Content Type",
+      "default": "",
+      "required": false,
+      "filter": "trim"
+    }
+  ],
+  {
+    "original_separator": "||",
+    "replace_separator": "|",
+    "file_delimiter": ","
+  }
+]

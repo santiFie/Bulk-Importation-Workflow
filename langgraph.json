@@ -1,0 +1,21 @@
+{
+  "dependencies": [
+    "."
+  ],
+  "graphs": {
+    "supervisor": "core.graph:graph"
+  },
+  "env": ".env",
+  "http": {
+    "cors": {
+      "allow_origins": [
+        "https://smith.langchain.com",
+        "https://eu.smith.langchain.com"
+      ],
+      "allow_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      "allow_headers": ["*"],
+      "allow_credentials": true
+    }
+  },
+  "startup_timeout": 30
+}

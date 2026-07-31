@@ -1,0 +1,15 @@
+services:
+  minio:
+    image: quay.io/minio/minio:latest
+    ports:
+      - "9003:9000"
+      - "9004:9004"
+    command: [ "server", "--console-address", ":9004", "/data" ]
+    volumes:
+      - data-minio:/data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+
+volumes:
+  data-minio:

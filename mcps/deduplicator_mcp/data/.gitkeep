@@ -1,0 +1,2 @@
+# This directory is bind-mounted into the Deduplicator MCP container at /app/data.
+# Output CSV files (duplicados.csv, coincidencias_autores.csv) will be written here.

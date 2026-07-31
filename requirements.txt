@@ -1,0 +1,42 @@
+# Generated from /home/santi/Documentos/LangGraph/.venv (pip freeze)
+
+# Core
+langchain==1.2.17
+langchain-community==0.4.1
+langgraph==1.1.10
+langgraph-checkpoint-sqlite
+langgraph_supervisor
+sentence-transformers
+
+# Providers
+langchain-openai==1.2.1
+langchain-groq==1.1.2
+langchain-google-genai==4.2.2
+
+# MCP
+langchain-mcp-adapters==0.2.2
+mcp==1.27.0
+
+# RAG
+langchain-chroma==1.1.0
+langchain-huggingface==1.2.2
+langchain-text-splitters==1.1.2
+PyMuPDF==1.27.2.3
+faiss-cpu
+
+# Search
+tavily-python==0.7.24
+
+# API
+pydantic==2.13.3
+pydantic-settings==2.14.0
+
+# Database
+SQLAlchemy==2.0.49
+
+# Utilities
+python-dotenv==1.2.2
+httpx==0.28.1
+PyYAML==6.0.3
+pandas
+langgraph-cli

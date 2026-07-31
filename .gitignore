@@ -1,0 +1,12 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+.langgraph/
+GEMINI.md
+agents.md
+.agents/
+.langgraph_api/
+.opencode/
+.vscode/

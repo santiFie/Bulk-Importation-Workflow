@@ -1,0 +1,94 @@
+[
+    [
+        {
+            "left":"Title",
+            "replace":"dc.title",
+            "default":"",
+            "required":true
+        },
+        {
+            "left":"Year",
+            "replace":"dc.date.issued",
+            "default":"",
+            "required":true
+        },
+        {
+            "left":"Source title",
+            "replace":"sedici.relation.journalTitle",
+            "default":null,
+            "required":false
+        },
+        {
+            "left":"DOI+EID",
+            "replace":"sedici.identifier.other",
+            "default":null,
+            "required":false
+        },
+        {
+            "left":"Abstract",
+            "replace":"dc.description.abstract",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"Volume+Issue",
+            "replace":"sedici.relation.journalVolumeAndIssue",
+            "default":null,
+            "required":false
+        },
+        {
+            "left":"Link",
+            "replace":"sedici.identifier.uri",
+            "default":null,
+            "required":false
+        },
+        {
+            "left":"Document Type",
+            "replace":"dc.type",
+            "default":null,
+            "required":false
+        },
+        {
+            "left":"Page start+Page end",
+            "replace":"dc.format.extent",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"Author Keywords",
+            "replace":"dc.subject",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"Conference name",
+            "replace":"sedici.relation.event",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"ISSN",
+            "replace":"sedici.identifier.issn",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"ISBN",
+            "replace":"sedici.identifier.isbn",
+            "default":"",
+            "required":false
+        },
+        {
+            "left":"Language of Original Document",
+            "replace":"dc.language",
+            "default":"",
+            "required":false
+        }
+        
+    ],
+    {
+        "original_separator":"|||",
+        "replace_separator":"|",
+        "file_delimiter":","
+    }
+]

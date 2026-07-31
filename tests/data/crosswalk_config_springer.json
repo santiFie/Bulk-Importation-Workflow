@@ -1,0 +1,38 @@
+[
+  [
+    {
+      "default": null,
+      "filter": "",
+      "left": "Item DOI",
+      "replace": "doi",
+      "required": true
+    },
+    {
+      "default": null,
+      "filter": "",
+      "left": "Publication Title",
+      "replace": "title",
+      "required": true
+    },
+    {
+      "default": null,
+      "filter": "trim",
+      "left": "Authors",
+      "replace": "author",
+      "required": true
+    },
+    {
+      "default": null,
+      "filter": "",
+      "left": "Publication Year",
+      "replace": "date",
+      "required": true
+    }
+  ],
+  {
+    "replace_separator": "|",
+    "file_delimiter": ",",
+    "original_separator": "||",
+    "separator_regex": "(?<=[a-z])(?=[A-Z])"
+  }
+]

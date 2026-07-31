@@ -1,0 +1,80 @@
+services:
+
+  # ─────────────────────────────────────────
+  # DSpace MCP  →  http://localhost:5000/sse
+  # ─────────────────────────────────────────
+  dspace-mcp:
+    build:
+      context: ./mcps/dspace_mcp
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    environment:
+      DSPACE_BASE_URL: ${DSPACE_BASE_URL:-http://host.docker.internal:8080/server}
+      DSPACE_EMAIL: ${DSPACE_EMAIL}
+      DSPACE_PASSWORD: ${DSPACE_PASSWORD}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    volumes:
+      - ./mcps/dspace_mcp/data:/app/data
+
+  # ─────────────────────────────────────────
+  # MinIO MCP   →  API: 9003 | Console: 9004
+  # ─────────────────────────────────────────
+  # minio-mcp:
+  #   build:
+  #     context: ./mcps/minio_mcp
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "9003:9000"
+  #     - "9004:9004"
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+  #     MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+  #   volumes:
+  #     - data-minio:/data
+  #   restart: unless-stopped
+
+  # ─────────────────────────────────────────────────
+  # Deduplicator MCP  →  http://localhost:5100/sse
+  # ─────────────────────────────────────────────────
+  deduplicator-mcp:
+    build:
+      context: ./mcps/deduplicator_mcp
+      dockerfile: Dockerfile
+    ports:
+      - "5100:5100"
+    env_file:
+      - .env
+    environment:
+      DEDUPLICATOR_BASE_URL: ${DEDUPLICATOR_BASE_URL:-http://host.docker.internal:9010}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    volumes:
+      - ./mcps/deduplicator_mcp/data:/app/data
+
+  # ─────────────────────────────────────────────────
+  # Springer MCP  →  http://localhost:5200/sse
+  # ─────────────────────────────────────────────────
+  springer-mcp:
+    build:
+      context: ./mcps/springer_mcp
+      dockerfile: Dockerfile
+    ports:
+      - "5200:5200"
+    env_file:
+      - .env
+    environment:
+      SPRINGER_API_KEY: ${SPRINGER_API_KEY}
+    restart: unless-stopped
+    volumes:
+      - ./mcps/springer_mcp/data:/app/data
+
+volumes:
+  data-minio:

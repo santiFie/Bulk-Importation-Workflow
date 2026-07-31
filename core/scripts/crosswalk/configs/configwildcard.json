@@ -1,0 +1,26 @@
+[
+    [{
+        "left":"dc.description.abstract*",
+        "replace":"description",
+        "default":"",
+        "required":false
+    },
+    {
+        "left":"dc.title*+sedici.subtitle*",
+        "replace":"title",
+        "default":"",
+        "required":false
+    },
+    {
+        "left":"dc.date*",
+        "replace":"date",
+        "default":"",
+        "required":false
+    }
+    ],
+    {
+        "original_separator":"||",
+        "replace_separator":"|",
+        "file_delimiter":","
+    }
+]

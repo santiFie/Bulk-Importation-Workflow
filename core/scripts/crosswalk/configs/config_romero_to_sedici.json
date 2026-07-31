@@ -1,0 +1,99 @@
+[
+    [
+        {
+            "left": "dc.title[es]",
+            "replace": "dc.title[es]",
+            "default": "",
+            "required": true
+        },
+        {
+            "left": "sedici.creator.person[es]",
+            "replace": "sedici.creator.person[es]",
+            "default": "",
+            "required": false
+        },
+        {
+            "left": "dc.date.issued",
+            "replace": "dc.date.issued",
+            "default": "",
+            "required": false
+        },
+        {
+            "left": "dc.description.abstract[es]",
+            "replace": "dc.description.abstract[es]",
+            "default": "",
+            "required": false
+        },
+        {
+            "left": "sedici.identifier.other",
+            "replace": "sedici.identifier.other",
+            "default": "",
+            "required": false
+        },
+        {
+            "left": "dc.language[es]",
+            "replace": "dc.language[es]",
+            "default": "",
+            "required": false
+        },
+        {
+            "left": "mods.originInfo.place[es]",
+            "replace": "mods.originInfo.place[es]",
+            "default": "",
+            "required": false
+        },
+        {
+            "left": "sedici.description.fulltext",
+            "replace": "sedici.description.fulltext",
+            "default": "",
+            "required": false
+        },
+        {
+            "left": "sedici.subject.materias[es]",
+            "replace": "sedici.subject.materias[es]",
+            "default": "",
+            "required": false
+        },
+        {
+            "left": "files",
+            "replace": "files",
+            "default": "",
+            "required": false
+        },
+        {
+            "left": "dc.type",
+            "replace": "dc.type",
+            "default": "",
+            "required": false
+        },
+        {
+            "left": "sedici.subtype[es]",
+            "replace": "sedici.subtype[es]",
+            "default": "",
+            "required": false
+        },
+        {
+            "left": "sedici.relation.journalTitle[es]",
+            "replace": "sedici.relation.journalTitle[es]",
+            "default": "",
+            "required": false
+        },
+        {
+            "left": "sedici.relation.journalVolumeAndIssue[es]",
+            "replace": "sedici.relation.journalVolumeAndIssue[es]",
+            "default": "",
+            "required": false
+        },
+        {
+            "left": "sedici.description.peerReview",
+            "replace": "sedici.description.peerReview",
+            "default": "",
+            "required": false
+        }
+    ],
+    {
+        "original_separator": "||",
+        "replace_separator": "||",
+        "file_delimiter": ","
+    }
+]
