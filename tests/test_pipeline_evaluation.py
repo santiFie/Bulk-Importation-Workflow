@@ -96,6 +96,41 @@ _original_copyfile = shutil.copyfile
 shutil.copy = lambda src, dst, **kw: None  # type: ignore
 shutil.copyfile = lambda src, dst, **kw: None  # type: ignore
 
+# ---------------------------------------------------------------------------
+# Mock del HITL (langgraph.types.interrupt)
+# ---------------------------------------------------------------------------
+# Este mock reemplaza `interrupt` en `langgraph.types` ANTES de que
+# `core.graph` (y transitivamente `node.py`) sea importado, de modo que
+# cuando `node.py` ejecuta `from langgraph.types import interrupt` obtiene
+# directamente nuestra función simulada.
+#
+# HITL_AUTO_RESPONSE controla el comportamiento durante los tests:
+#   "accept"  → acepta el regex propuesto por el agente ReAct sin cambios.
+#   "reject"  → rechaza el regex; el nodo usará el separador fallback '||'.
+import langgraph.types as _lg_types
+
+_original_interrupt = _lg_types.interrupt
+
+
+def _mock_interrupt(payload: dict) -> dict:
+    """
+    Simula la respuesta humana al HITL de validación de regex.
+    Devuelve automáticamente según HITL_AUTO_RESPONSE para no bloquear
+    la ejecución del pipeline durante la evaluación automatizada.
+    """
+    proposed = payload.get("proposed_regex", "")
+    column = payload.get("column", "")
+    print(
+        f"[TEST-HITL] Interceptando pausa HITL para columna '{column}'. "
+        f"Regex propuesto: {proposed!r} → respuesta automática: '{HITL_AUTO_RESPONSE}'"
+    )
+    if HITL_AUTO_RESPONSE == "accept":
+        return {"status": "accepted", "regex": proposed}
+    return {"status": "rejected"}
+
+
+_lg_types.interrupt = _mock_interrupt  # type: ignore
+
 from core.graph import (  # noqa: E402
     run_pipeline_until_step,
     get_step_node_names,
@@ -112,6 +147,11 @@ shutil.copyfile = _original_copyfile
 # ═══════════════════════════════════════════════════════════════════════════
 # CONFIGURACIÓN — EDITAR ESTAS CONSTANTES SEGÚN EL CASO DE PRUEBA
 # ═══════════════════════════════════════════════════════════════════════════
+
+# Comportamiento del mock HITL durante los tests.
+# "accept" → acepta el regex propuesto (el pipeline lo usa tal cual).
+# "reject" → rechaza el regex (el pipeline usa el separador fallback '||').
+HITL_AUTO_RESPONSE: str = "accept"
 
 # Lista de CSVs a evaluar. Cada entrada es un dict con los datos del caso.
 # Agregar más entradas para realizar pruebas sucesivas con distintos CSVs.

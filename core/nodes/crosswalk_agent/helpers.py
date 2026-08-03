@@ -19,6 +19,7 @@ import re
 import sys
 import json
 import tempfile
+from pathlib import Path
 from typing import Any, Optional
 
 from langchain_groq import ChatGroq
@@ -185,6 +186,46 @@ _REGEX_STRATEGIES: list[tuple] = [
 ]
 _LITERAL_CANDIDATES: list[str] = ["||", "|", ";;", ";", ",,"]
 
+CUSTOM_REGEX_FILE = Path(__file__).parent / "custom_regexes.json"
+
+def get_all_regex_strategies() -> list[tuple]:
+    """Combina los regex hardcodeados con los aprobados dinámicamente por humanos."""
+    strategies = list(_REGEX_STRATEGIES)
+    
+    if CUSTOM_REGEX_FILE.exists():
+        try:
+            with open(CUSTOM_REGEX_FILE, "r", encoding="utf-8") as f:
+                customs = json.load(f)
+                for c in customs:
+                    strategies.append((re.compile(c["pattern"]), "regex", c["pattern"]))
+        except Exception as e:
+            print(f"Error cargando custom regexes: {e}")
+            
+    return strategies
+
+def is_known_regex(pattern: str) -> bool:
+    """Verifica si un patrón ya está en nuestra base de conocimientos."""
+    strategies = get_all_regex_strategies()
+    return any(pattern == s[2] for s in strategies)
+
+def save_custom_regex(pattern: str) -> None:
+    """Guarda un regex aprobado por el humano para aprendizaje global."""
+    if is_known_regex(pattern):
+        return
+        
+    customs = []
+    if CUSTOM_REGEX_FILE.exists():
+        try:
+            with open(CUSTOM_REGEX_FILE, "r", encoding="utf-8") as f:
+                customs = json.load(f)
+        except Exception:
+            pass
+            
+    customs.append({"pattern": pattern})
+    
+    with open(CUSTOM_REGEX_FILE, "w", encoding="utf-8") as f:
+        json.dump(customs, f, indent=2, ensure_ascii=False)
+
 
 def detect_separator(values: list[str], llm: Optional[ChatGroq] = None) -> dict[str, str]:
     """
@@ -216,7 +257,7 @@ def detect_separator(values: list[str], llm: Optional[ChatGroq] = None) -> dict[
             option_counter += 1
             
     # 2. Recolectar opciones de Regex
-    for compiled, kind, canonical in _REGEX_STRATEGIES:
+    for compiled, kind, canonical in get_all_regex_strategies():
         tokens = [t.strip() for t in compiled.split(sample) if t.strip()]
         if len(tokens) > 1:
             options[option_counter] = {"type": kind, "value": canonical, "tokens": tokens}

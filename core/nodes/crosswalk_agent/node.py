@@ -36,7 +36,10 @@ from pydantic import Field as PydanticField
 from langchain_core.messages import SystemMessage, ToolMessage
 from langchain_core.tools import tool
 from langchain_groq import ChatGroq
+from langchain_nvidia_ai_endpoints import ChatNVIDIA
+from langchain_openai import ChatOpenAI
 from langsmith import traceable
+from langgraph.types import interrupt
 
 from core.utils.config import config
 from core.utils.prompt_loader import load_agent_prompt
@@ -147,7 +150,7 @@ def _save_config_file(
 # ---------------------------------------------------------------------------
 
 def _phase2b_react_regex(
-    llm: ChatGroq,
+    llm: ChatGroq | ChatOpenAI | ChatNVIDIA,
     csv_path: str,
     column: str,
     head_rows: list[dict],
@@ -235,17 +238,8 @@ def _phase2b_react_regex(
         return "\n".join(lines)
 
     sub_llm = llm.bind_tools([test_regex_on_samples])
-    sub_messages: list = [
-        SystemMessage(
-            f"Rol: Sos un experto en expresiones regulares Python.\n"
-            f"Tarea: Diseñar un regex para separar los valores concatenados de la columna '{column}'.\n"
-            f"Herramienta obligatoria: Usá 'test_regex_on_samples' para verificar tu patrón.\n"
-            f"El motor de crosswalk aplica re.sub(pattern, '|', value); usá zero-width assertions "
-            f"(lookbehind/lookahead) para no consumir caracteres.\n"
-            f"Respuesta final: Cuando el test muestre >50% de filas con múltiples tokens, "
-            f"devolvé ÚNICAMENTE el regex como texto plano, sin explicaciones ni markdown."
-        )
-    ]
+    react_prompt = load_agent_prompt("regex_react_agent", column=column)
+    sub_messages: list = [SystemMessage(react_prompt)]
 
     for _ in range(5):
         response = sub_llm.invoke(sub_messages)
@@ -427,9 +421,47 @@ def generate_source_crosswalk_config(state: dict) -> dict[str, Any]:
             column=multi_value_cols[0],
             head_rows=head_rows,
         )
+        
         if detected_regex:
-            separator_info = {"type": "regex", "value": detected_regex}
-            print(f"[Fase 2b] Regex aprobado: {detected_regex!r}")
+            from core.nodes.crosswalk_agent.helpers import is_known_regex, save_custom_regex
+            import re
+            
+            # Solo iteramos al humano si el regex NO está en el conocimiento global
+            if not is_known_regex(detected_regex):
+                
+                # Armar el reporte visual para el humano
+                compiled = re.compile(detected_regex)
+                samples_report = []
+                for row in head_rows:
+                    val = row.get(_find_column(multi_value_cols[0], row) or multi_value_cols[0], "").strip()
+                    if val:
+                        tokens = [t.strip() for t in compiled.split(val) if t.strip()]
+                        samples_report.append({"original": val, "tokens": tokens})
+                
+                print("[HITL] Regex desconocido detectado. Pausando para validación humana...")
+                
+                # Pausamos la ejecución. El sistema orquestador (UI/CLI) atrapará esta interrupción.
+                # Al reanudarse, 'human_response' contendrá el payload inyectado por el usuario.
+                human_response = interrupt({
+                    "action_required": "validate_regex",
+                    "proposed_regex": detected_regex,
+                    "column": multi_value_cols[0],
+                    "samples": samples_report
+                })
+                
+                if human_response.get("status") == "accepted":
+                    final_regex = human_response.get("regex", detected_regex)
+                    separator_info = {"type": "regex", "value": final_regex}
+                    print(f"[Fase 2b] Regex final tras HITL: {final_regex!r}")
+                    save_custom_regex(final_regex) # ¡Aprendizaje global para el futuro!
+                else:
+                    separator_info = {"type": "literal", "value": "||"}
+                    print("[Fase 2b] Humano rechazó el regex; usando fallback '||'")
+            else:
+                # Es un regex generado por ReAct pero que ya es conocido, se acepta automáticamente.
+                separator_info = {"type": "regex", "value": detected_regex}
+                print(f"[Fase 2b] Regex aprobado (ya conocido): {detected_regex!r}")
+                
         else:
             separator_info = {"type": "literal", "value": "||"}
             print("[Fase 2b] Sin resultado; usando fallback '||'")
