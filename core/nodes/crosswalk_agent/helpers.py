@@ -37,6 +37,8 @@ def _read_csv_head(csv_path: str, n: int = 5) -> list[dict[str, str]]:
     """
     Lee las primeras n filas del CSV fuente y las devuelve
     como lista de dicts. Infiere el delimiter automáticamente.
+    Seleccionamos basándonos en la cantidad de caracteres, aplicándolo a columnas 
+    que probablemente sean de autores para evitar falsos positivos con títulos largos.
     """
     import csv as _csv
     try:
@@ -49,10 +51,45 @@ def _read_csv_head(csv_path: str, n: int = 5) -> list[dict[str, str]]:
                 dialect = _csv.excel()
             reader = _csv.DictReader(f, delimiter=dialect.delimiter)
             rows = []
-            for i, row in enumerate(reader):
-                if i >= n:
+            
+            # Heurística: seleccionar los que tengan más de N caracteres
+            # (con N aprox más de un autor) y leer los primeros X caracteres (a lo sumo 5 autores).
+            MIN_CHARS = 35
+            MAX_CHARS = 100
+            
+            fallback_rows = []
+            for row in reader:
+                if len(rows) >= n:
                     break
-                rows.append(dict(row))
+                
+                has_long_author = False
+                processed_row = {}
+                for k, v in row.items():
+                    if v:
+                        # Buscamos columnas que puedan ser autores para aplicar el criterio de longitud
+                        is_author_col = k and any(x in k.lower() for x in ["author", "autor", "creator", "person"])
+                        if is_author_col and len(v) >= MIN_CHARS:
+                            has_long_author = True
+                        
+                        # Truncamos los primeros X caracteres
+                        processed_row[k] = v[:MAX_CHARS]
+                    else:
+                        processed_row[k] = v
+                
+                if len(fallback_rows) < n:
+                    fallback_rows.append(processed_row)
+                    
+                if has_long_author:
+                    rows.append(processed_row)
+            
+            # Si no hay suficientes filas que cumplan la condición, rellenamos
+            if len(rows) < n:
+                for row in fallback_rows:
+                    if len(rows) >= n:
+                        break
+                    if row not in rows:
+                        rows.append(row)
+                        
         return rows
     except Exception as exc:
         print(f"[_read_csv_head] Error: {repr(exc)}")
@@ -330,7 +367,7 @@ def _validate_config_deterministic(
           - "separator_ok": bool — True si el campo 'author' tiene separadores '|'.
           - "message": str — resumen legible del resultado.
     """
-    CRITICAL = ["id", "title", "author", "date"]
+    CRITICAL = ["id", "title", "author", "date", "type"]
 
     result = _create_validation_sample(csv_path, config_path, n=n)
     if not result:
@@ -353,9 +390,6 @@ def _validate_config_deterministic(
     separator_ok = True
     separation_issues = []
     
-    # Cantidades esperadas de autores para las primeras 3 filas de SearchResults.csv
-    expected_author_counts = [6, 6, 6]
-    
     for field in ["author", "subject"]:
         if field in cols:
             for i, row in enumerate(result):
@@ -363,24 +397,14 @@ def _validate_config_deterministic(
                 values = [v.strip() for v in row.get(field, "").split("|") if v.strip()]
                 count = len(values)
                 
-                # Validación determinista exacta para el CSV de prueba
-                if field == "author" and "SearchResults.csv" in csv_path:
-                    if i < len(expected_author_counts):
-                        expected = expected_author_counts[i]
-                        if count != expected:
-                            separator_ok = False
-                            separation_issues.append(
-                                f"Fila {i+1} ({field}): se esperaban {expected} valores, pero hay {count}."
-                            )
-                else:
-                    # Heurística general: si hay un string muy largo (ej. +40 chars) y no se separó en múltiples partes
-                    long_values = [v for v in values if len(v) > 40]
-                    # Solo consideramos error si es anormalmente largo y no hubo casi divisiones
-                    if long_values and count < 3:
-                        separator_ok = False
-                        separation_issues.append(
-                            f"Fila {i+1} ({field}): posible falla, valor muy largo sin separar ('{long_values[0][:30]}...')."
-                        )
+                # Heurística general: si hay un string muy largo (ej. +40 chars) y no se separó en múltiples partes
+                long_values = [v for v in values if len(v) > 40]
+                # Solo consideramos error si es anormalmente largo y no hubo casi divisiones
+                if long_values and count < 3:
+                    separator_ok = False
+                    separation_issues.append(
+                        f"Fila {i+1} ({field}): posible falla, valor muy largo sin separar ('{long_values[0][:30]}...')."
+                    )
 
     ok = not missing and separator_ok
     parts = [f"Columnas ({len(cols)}): {', '.join(cols)}"]
