@@ -52,43 +52,6 @@ for _path in (PROJECT_ROOT, CROSSWALK_MODULE_PATH):
     if _path not in sys.path:
         sys.path.insert(0, _path)
 
-# ---------------------------------------------------------------------------
-# Mock del DeduplicatorClient (evita dependencia de red)
-# ---------------------------------------------------------------------------
-
-
-class _FakeDeduplicatorClient:
-    """Genera CSV de deduplicación sintético con total=0 (sin duplicados)."""
-
-    def __init__(self, source_csv_path: str = ""):
-        self._source_csv_path = source_csv_path
-
-    def detect_duplicates(self, csv_file1_path, csv_file2_path, source_name):
-        try:
-            with open(csv_file2_path, newline="", encoding="utf-8") as f:
-                rows = list(csv.DictReader(f))
-        except Exception:
-            rows = []
-
-        output = io.StringIO()
-        writer = csv.DictWriter(
-            output, fieldnames=["id", "title", "match_id", "match_title", "total"]
-        )
-        writer.writeheader()
-        for i, row in enumerate(rows):
-            writer.writerow({
-                "id": row.get("id", str(i)),
-                "title": row.get("title", ""),
-                "match_id": "",
-                "match_title": "",
-                "total": 0,
-            })
-        return output.getvalue().encode("utf-8")
-
-
-_fake_mod = types.ModuleType("deduplicator_client")
-_fake_mod.DeduplicatorClient = _FakeDeduplicatorClient  # type: ignore
-sys.modules["deduplicator_client"] = _fake_mod
 
 # Mock de shutil.copy para evitar FileNotFoundError con PDFs
 _original_copy = shutil.copy
@@ -156,17 +119,25 @@ HITL_AUTO_RESPONSE: str = "accept"
 # Lista de CSVs a evaluar. Cada entrada es un dict con los datos del caso.
 # Agregar más entradas para realizar pruebas sucesivas con distintos CSVs.
 TEST_CASES: list[dict] = [
+    # {
+    #     "source_csv_path": os.path.join(DATA_DIR, "SearchResults.csv"),
+    #     "source_name": "springer",
+    #     "repository_csv_path": os.path.join(DATA_DIR, "export_10915_all.csv"),
+    #     # Columnas esperadas en el CSV genérico (para métricas del Paso 2a)
+    #     "expected_generic_columns": ["id", "title", "author", "date", "doi", "citation", "type"],
+    #     # Columnas esperadas en el CSV SEDICI-ready (para métricas del Paso 5)
+    #     "expected_sedici_columns": ["dc.title[es]", "sedici.creator.person[es]"],
+    #     # Cantidad exacta de autores esperados por fila tras la separación multivalor.
+    #     # Cada valor corresponde a una fila del CSV genérico (en orden).
+    #     "expected_author_counts": [6, 6, 6, 6, 6],
+    # },
     {
-        "source_csv_path": os.path.join(DATA_DIR, "SearchResults.csv"),
-        "source_name": "springer",
+        "source_csv_path": os.path.join(DATA_DIR, "articulos_unlp_doaj_v2.csv"),
+        "source_name": "unlp_doaj",
         "repository_csv_path": os.path.join(DATA_DIR, "export_10915_all.csv"),
-        # Columnas esperadas en el CSV genérico (para métricas del Paso 2a)
-        "expected_generic_columns": ["title", "author", "date", "doi"],
-        # Columnas esperadas en el CSV SEDICI-ready (para métricas del Paso 5)
+        "expected_generic_columns": ["id", "title", "author", "date", "doi", "citation", "type"],
         "expected_sedici_columns": ["dc.title[es]", "sedici.creator.person[es]"],
-        # Cantidad exacta de autores esperados por fila tras la separación multivalor.
-        # Cada valor corresponde a una fila del CSV genérico (en orden).
-        "expected_author_counts": [6, 6, 6],
+        "expected_author_counts": [2, 2, 4, 5, 3],
     },
 ]
 
@@ -257,7 +228,7 @@ def predict_pipeline(inputs: dict) -> dict:
             "source_name": inputs.get("source_name", "test_source"),
             "repository_csv_path": tmp_repo,
             "source_crosswalk_config": "",
-            "sedici_crosswalk_config": os.path.join(CONFIGS_DIR, "sedicicrosswalkconfig.json"),
+            "sedici_crosswalk_config": os.path.join(CONFIGS_DIR, "export_10915_crosswalkconfig.json"),
             "generic_source_csv_path": os.path.join(tmp_dir, "generic_source.csv"),
             "generic_sedici_csv_path": os.path.join(tmp_dir, "generic_sedici.csv"),
             "dedup_output_csv_path": os.path.join(tmp_dir, "dedup_output.csv"),
