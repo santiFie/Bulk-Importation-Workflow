@@ -21,6 +21,7 @@ import os
 import sys
 import tempfile
 from typing import Any
+from langsmith import traceable
 
 from core.clients.crosswalk_client import CrosswalkClient, CrosswalkApiError
 
@@ -80,7 +81,7 @@ def _save_csv(csv_bytes: bytes, output_path: str) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Paso 2a (crosswalk) — map_source_to_generic
 # ---------------------------------------------------------------------------
-
+@traceable(name="MapSourceToGeneric", run_type="chain")
 def map_source_to_generic(state: dict) -> dict[str, Any]:
     """
     Paso 2a (crosswalk) — Aplica el crosswalk config (generado por el
@@ -99,7 +100,7 @@ def map_source_to_generic(state: dict) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Paso 2b — map_sedici_to_generic
 # ---------------------------------------------------------------------------
-
+@traceable(name="MapSediciToGeneric", run_type="chain")
 def map_sedici_to_generic(state: dict) -> dict[str, Any]:
     """
     Paso 2b — Mapea el CSV exportado de SEDICI al formato genérico
@@ -118,7 +119,7 @@ def map_sedici_to_generic(state: dict) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Paso 3 — deduplicate
 # ---------------------------------------------------------------------------
-
+@traceable(name="Deduplicate", run_type="chain")
 def deduplicate(state: dict) -> dict[str, Any]:
     """
     Paso 3 — Envía los dos CSVs en formato genérico al Deduplicador
@@ -128,6 +129,15 @@ def deduplicate(state: dict) -> dict[str, Any]:
     del repositorio origen y sus posibles duplicados en SEDICI, junto con
     un porcentaje de seguridad para cada detección.
     """
+    print(f"[deduplicate] Iniciando deduplicación para '{state.get('source_name', 'origen')}' usando DeduplicatorClient real...")
+
+    with open(state["generic_sedici_csv_path"], "r") as f:
+        reader = csv.DictReader(f)
+        print(f"[deduplicate] Columnas csv SEDICI: {reader.fieldnames}")
+    with open(state["generic_source_csv_path"], "r") as f:
+        reader = csv.DictReader(f)
+        print(f"[deduplicate] Columnas csv origen: {reader.fieldnames}")
+
     csv_bytes = deduplicator_client.detect_duplicates(
         csv_file1_path=state["generic_sedici_csv_path"],   # SEDICI en formato genérico
         csv_file2_path=state["generic_source_csv_path"],   # Origen en formato genérico
@@ -141,7 +151,7 @@ def deduplicate(state: dict) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Paso 4 — metadata_reconciliation
 # ---------------------------------------------------------------------------
-
+@traceable(name="MetadataReconciliation", run_type="chain")
 def metadata_reconciliation(state: dict) -> dict[str, Any]:
     """
     Paso 4 — Reconciliación de metadatos.
@@ -191,7 +201,7 @@ def metadata_reconciliation(state: dict) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Paso 5 — map_to_sedici_format
 # ---------------------------------------------------------------------------
-
+@traceable(name="MapToSediciFormat", run_type="chain")
 def map_to_sedici_format(state: dict) -> dict[str, Any]:
     """
     Paso 5 — Mapeo final al formato esperado por SEDICI.

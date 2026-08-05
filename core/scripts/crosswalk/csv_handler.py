@@ -6,7 +6,7 @@ class CsvHandler():
 
     def csv_to_list(self,csv_path,file_delimiter):
         doc_list = []
-        decoded_file = open(csv_path, 'r',encoding="utf-8")
+        decoded_file = open(csv_path, 'r', encoding="utf-8-sig")
         reader = csv.DictReader(decoded_file,delimiter=file_delimiter)
         for row in reader:
             doc_list.append(row)

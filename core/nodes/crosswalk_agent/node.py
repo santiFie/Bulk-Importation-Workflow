@@ -320,7 +320,7 @@ def generate_source_crosswalk_config(state: dict) -> dict[str, Any]:
         mappings_draft: list[dict] = []
 
         @tool
-        def save_column_mappings(mappings: list[ColumnMapping]) -> str:
+        def save_column_mappings(mappings: list[ColumnMapping], thought: str = "") -> str:
             """
             Guarda el borrador de mapeos de columnas propuesto.
 
@@ -332,11 +332,13 @@ def generate_source_crosswalk_config(state: dict) -> dict[str, Any]:
             Args:
                 mappings: Array de objetos ColumnMapping con left y replace
                           como campos obligatorios.
+                thought: Explicación de tu análisis o reflexión sobre errores. OBLIGATORIO usar este campo en lugar de escribir texto fuera de la herramienta.
 
             Returns:
                 Confirmación con la cantidad de mapeos guardados.
             """
             nonlocal mappings_draft
+            print(f"[Fase 1] LLM thought: {thought}")
             # Convertir a dict para mantener compatibilidad con el resto del pipeline
             mappings_draft = [m.model_dump() for m in mappings]
             return f"OK: {len(mappings)} mapeos guardados."
@@ -482,8 +484,12 @@ def generate_source_crosswalk_config(state: dict) -> dict[str, Any]:
     # FASE 4 — Validación determinista (sin LLM)
     # =========================================================================
     print("[generate_source_crosswalk_config] Fase 4: validación determinista")
-    validation = _validate_config_deterministic(csv_path, config_output_path)
-    print(f"[Fase 4] {validation['message']}")
+    try:
+        validation = _validate_config_deterministic(csv_path, config_output_path)
+        print(f"[Fase 4] {validation['message']}")
+    except Exception as e:
+        print(f"[Fase 4] Error en validación determinista: {repr(e)}")
+        validation = {"ok": False, "message": str(e), "missing": []}
 
     if not validation["ok"]:
         if validation.get("missing"):
@@ -495,8 +501,9 @@ def generate_source_crosswalk_config(state: dict) -> dict[str, Any]:
                 "1. CONFUSIÓN VALOR-CABECERA: Usaste un valor de celda de las muestras en lugar del NOMBRE EXACTO de la cabecera en el campo 'left'.\n"
                 "2. COLUMNA INEXISTENTE: Inventaste una columna o la escribiste mal. Verificá la lista de columnas proporcionada.\n"
                 "3. FILTRADO AGRESIVO: Configuraste 'required': true en una columna que a veces está vacía, provocando que toda la fila se elimine en la validación.\n\n"
-                "INSTRUCCIÓN CRÍTICA: Reflexioná paso a paso sobre el error. Luego, vuelve a invocar 'save_column_mappings' "
-                "con la lista COMPLETA de TODOS los mapeos corregidos. No devuelvas información parcial."
+                "INSTRUCCIÓN CRÍTICA: Analiza el error y coloca tu reflexión EXCLUSIVAMENTE en el parámetro 'thought' de la herramienta. "
+                "Luego, pasa la lista COMPLETA de TODOS los mapeos corregidos en el parámetro 'mappings'. "
+                "NO devuelvas texto explicativo fuera de la llamada a la herramienta."
             )
             print("[Fase 4] Reintentando Fase 1 con feedback")
             mappings = _run_phase1(feedback=feedback)
@@ -505,6 +512,8 @@ def generate_source_crosswalk_config(state: dict) -> dict[str, Any]:
             print(f"[Fase 4 reintento] {validation2['message']}")
         else:
             print("[Fase 4] La validación falló por problemas de separación, pero los mapeos de columnas son correctos. No se re-ejecuta Fase 1.")
+            
+    print("[generate_source_crosswalk_config] Fase 4: validación determinista completada")
 
     return {"source_crosswalk_config": config_output_path}
 

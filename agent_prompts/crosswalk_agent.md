@@ -25,8 +25,8 @@ Debes invocar la herramienta `save_column_mappings` enviando un array de objetos
 </csv_a_analizar>
 <instrucciones>
 1. Analizá el <csv_a_analizar> y pensá qué cabeceras corresponden al <formato_generico_destino>.
-2. Asegurate de cubrir las columnas críticas si existen: id, title, author, date.
+2. Asegurate de cubrir las columnas críticas si existen: id, title, author, date, type.
 3. Para "id": si no hay una URL o handle, usa el DOI.
-4. Escribe un bloque <thought> analizando brevemente cada columna destino y qué columna del CSV origen vas a usar.
-5. Inmediatamente después de tu <thought>, llama a la herramienta `save_column_mappings` con tu array JSON resultante.
+4. Escribe tu análisis y reflexión EXCLUSIVAMENTE dentro del parámetro `thought` de la herramienta. NO generes texto libre.
+5. Llama directamente a la herramienta `save_column_mappings` enviando tu array JSON resultante y tu `thought`.
 </instrucciones>

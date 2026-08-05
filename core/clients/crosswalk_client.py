@@ -161,7 +161,6 @@ class CrosswalkClient:
             self.login()
 
         job_id = self._submit_job(csv_path, config_path, description or {})
-        logger.info("[CrosswalkClient] Job %s iniciado, esperando resultado...", job_id)
 
         return self._wait_and_download(job_id)
 
@@ -247,18 +246,11 @@ class CrosswalkClient:
             response = self._session.get(url, params={"resource": "results"})
 
             if response.status_code == 200:
-                logger.info(
-                    "[CrosswalkClient] Job %s completado (%.1fs). Descargando resultado.",
-                    job_id, elapsed,
-                )
+                print(f"[CrosswalkClient] Job {job_id} completado ({elapsed:.1f}s). Descargando resultado.")
                 return response.content
 
             if response.status_code == 404:
                 # El thread del servidor aún no escribió el archivo resultado
-                logger.debug(
-                    "[CrosswalkClient] Job %s — resultado aún no disponible (%.1fs)",
-                    job_id, elapsed,
-                )
                 continue
 
             # Cualquier otro código de error es un fallo real
