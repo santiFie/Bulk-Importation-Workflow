@@ -45,6 +45,7 @@ from core.nodes.crosswalk_agent.helpers import (  # noqa: F401
 from core.nodes.pipeline_nodes import (  # noqa: F401
     _run_crosswalk,
     _save_csv,
+    setup_workspace,
     map_source_to_generic,
     map_sedici_to_generic,
     deduplicate,
@@ -55,6 +56,7 @@ from core.nodes.pipeline_nodes import (  # noqa: F401
     generate_saf_to_import,
     import_to_dspace,
 )
+
 
 
 # ---------------------------------------------------------------------------
@@ -85,6 +87,7 @@ async def dspace_agent_node(state: State) -> dict[str, Any]:
 
 PIPELINE_STEPS: list[tuple[str, str]] = [
     # (nombre_paso, nombre_nodo_en_el_grafo)
+    ("Paso 0 - SetupWorkspace",                "SetupWorkspace"),
     ("Paso 1 - GenerateSourceCrosswalkConfig", "GenerateSourceCrosswalkConfig"),
     ("Paso 2a - MapSourceToGeneric",           "MapSourceToGeneric"),
     ("Paso 2b - MapSediciToGeneric",           "MapSediciToGeneric"),
@@ -122,6 +125,7 @@ def get_step_label(node_name: str) -> str:
 # ---------------------------------------------------------------------------
 
 _NODE_FUNCTIONS: dict[str, Any] = {
+    "SetupWorkspace":                setup_workspace,
     "GenerateSourceCrosswalkConfig": generate_source_crosswalk_config,
     "MapSourceToGeneric":            map_source_to_generic,
     "MapSediciToGeneric":            map_sedici_to_generic,
@@ -197,6 +201,8 @@ async def create_graph(persistence_saver):
 
     Pasos:
       START
+        → setup_workspace
+          (Paso 0: crea la carpeta de lote y completa paths por defecto)
         → generate_source_crosswalk_config
           (Paso 1 agente: analiza CSV fuente y genera crosswalk config)
         → map_source_to_generic
@@ -208,14 +214,11 @@ async def create_graph(persistence_saver):
         → metadata_corrections    (Paso 6: correcciones programáticas por repositorio)
         → generate_saf_to_import  (Paso 8: generación del SAF)
       END
-
-    Nota: La conexión al MCP de DSpace se realiza de forma lazy dentro del
-    nodo DspaceAgent para evitar errores de resolución DNS durante la carga
-    del módulo cuando el servidor MCP no está disponible.
     """
     graph = StateGraph(State)
 
     # ── Nodos ──────────────────────────────────────────────────────────────────
+    graph.add_node("SetupWorkspace", setup_workspace)              # Paso 0 (inicialización)
     graph.add_node("DspaceAgent", dspace_agent_node)              # Lazy MCP connection
     graph.add_node("GenerateSourceCrosswalkConfig", generate_source_crosswalk_config)  # Paso 1 (agente opcional)
     graph.add_node("MapSourceToGeneric", map_source_to_generic)   # Paso 2a (crosswalk)
@@ -228,13 +231,11 @@ async def create_graph(persistence_saver):
     graph.add_node("ImportToDspace", import_to_dspace)           # Paso 8
 
     # ── Aristas ────────────────────────────────────────────────────────────────
-    # GenerateSourceCrosswalkConfig analiza el CSV fuente y genera el config JSON.
-    # MapSourceToGeneric depende del config generado, por eso va después.
-    graph.add_edge(START, "GenerateSourceCrosswalkConfig")
+    graph.add_edge(START, "SetupWorkspace")
+    graph.add_edge("SetupWorkspace", "GenerateSourceCrosswalkConfig")
+    graph.add_edge("SetupWorkspace", "MapSediciToGeneric")
     graph.add_edge("GenerateSourceCrosswalkConfig", "MapSourceToGeneric")
 
-    # MapSediciToGeneric es independiente y corre en paralelo con el agente
-    graph.add_edge(START, "MapSediciToGeneric")
 
     # Una vez que ambos CSVs genéricos están listos, se ejecuta la deduplicación
     graph.add_edge("MapSourceToGeneric", "Deduplicate")

@@ -176,13 +176,6 @@ def _phase2b_react_regex(
         """
         Testea un patrón regex contra una columna del CSV.
 
-        Usá esta herramienta para verificar que el regex divide correctamente
-        los campos multivaluados antes de dar tu respuesta final.
-        Usá preferentemente zero-width assertions (lookahead/lookbehind) para
-        no consumir caracteres del valor original.
-        Ejemplo canónico para autores concatenados ("G. AadE. AakvaagB. Abbott"):
-          r"(?<=[a-z])(?=[A-Z])"  <- divide donde minúscula va pegada a Mayúscula.
-
         Args:
             pattern: Patrón regex compatible con re.split() y re.sub().
             column:  Nombre exacto de la columna del CSV a probar.
@@ -232,7 +225,7 @@ def _phase2b_react_regex(
         lines.append(f"Resumen: {pct} filas no vacías produjeron más de 1 token.")
         if tested > 0 and rows_with_multiple / tested < 0.5:
             lines.append(
-                "⚠ ATENCIÓN: menos del 50% de filas se dividieron. "
+                "ATENCIÓN: menos del 50% de filas se dividieron. "
                 "El patrón puede ser demasiado restrictivo."
             )
         return "\n".join(lines)
@@ -455,7 +448,7 @@ def generate_source_crosswalk_config(state: dict) -> dict[str, Any]:
                     final_regex = human_response.get("regex", detected_regex)
                     separator_info = {"type": "regex", "value": final_regex}
                     print(f"[Fase 2b] Regex final tras HITL: {final_regex!r}")
-                    save_custom_regex(final_regex) # ¡Aprendizaje global para el futuro!
+                    save_custom_regex(final_regex) # Aprendizaje global para el futuro
                 else:
                     separator_info = {"type": "literal", "value": "||"}
                     print("[Fase 2b] Humano rechazó el regex; usando fallback '||'")
