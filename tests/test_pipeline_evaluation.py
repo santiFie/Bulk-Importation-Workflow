@@ -279,7 +279,7 @@ def predict_pipeline(inputs: dict) -> dict:
                         "exists": True,
                         "row_count": len(rows),
                         "columns": headers,
-                        "rows": rows[:10],
+                        "rows": rows,
                     }
                 except Exception:
                     # Puede ser JSON (config) u otro formato
@@ -427,13 +427,14 @@ def generic_columns_evaluator(run, example) -> EvaluationResult:
 def crosswalk_validation_evaluator(run, example) -> EvaluationResult:
     """
     Evalúa determinísticamente la calidad del crosswalk y la separación multivalor,
-    replicando las reglas de `_validate_config_deterministic` de `helpers.py`.
+    replicando el mismo criterio de selección de filas que `_read_csv_head` en `helpers.py`.
 
-    Verifica:
-    1. Presencia de columnas críticas: ["id", "title", "author", "date"].
+    Selecciona las primeras filas basándose en la cantidad de caracteres (>= 35) en columnas de autores
+    para priorizar entradas con múltiples autores, y verifica:
+    1. Presencia de columnas críticas: ["id", "title", "author", "date", "type"].
     2. Correcta separación de valores en campos multivalor ('author' y 'subject'):
        - Si el ejemplo define `expected_author_counts`, se verifica el conteo exacto
-         de autores para cada fila correspondiente del CSV genérico.
+         de autores para cada fila seleccionada del CSV genérico.
        - Si no hay conteos esperados, se aplica una heurística general:
          detección de valores muy largos (>40 caracteres) sin separación (<3 partes).
     """
@@ -456,22 +457,56 @@ def crosswalk_validation_evaluator(run, example) -> EvaluationResult:
         )
 
     cols = generic_info.get("columns", [])
-    rows = generic_info.get("rows", [])
+    all_rows = generic_info.get("rows", [])
 
-    # 1. Columnas críticas definidas en _validate_config_deterministic
-    CRITICAL = ["id", "title", "author", "date"]
+    CRITICAL = ["id", "title", "author", "date", "type"]
     missing = [c for c in CRITICAL if c not in cols]
 
-    # 2. Validación de separador en author y subject.
-    # Los conteos exactos se leen del ejemplo para que sea configurable por CSV.
+    
+    # 2. Seleccionamos basándonos en la cantidad de caracteres (>= 35), aplicándolo a columnas
+    # que probablemente sean de autores para priorizar las filas que tengan más de un autor.
     expected_author_counts: list[int] = example.outputs.get("expected_author_counts", [])
+    target_n = len(expected_author_counts) or 5
+    MIN_CHARS = 35
+
+    selected_rows = []
+    fallback_rows = []
+    for row in all_rows:
+        if len(selected_rows) >= target_n:
+            break
+
+        has_long_author = False
+        for k, v in row.items():
+            if v:
+                is_author_col = k and any(
+                    x in k.lower() for x in ["author", "autor", "creator", "person"]
+                )
+                if is_author_col and len(v) >= MIN_CHARS:
+                    has_long_author = True
+                    break
+
+        if len(fallback_rows) < target_n:
+            fallback_rows.append(row)
+
+        if has_long_author:
+            selected_rows.append(row)
+
+    # Si no hay suficientes filas que cumplan la condición, rellenamos con las de fallback
+    if len(selected_rows) < target_n:
+        for row in fallback_rows:
+            if len(selected_rows) >= target_n:
+                break
+            if row not in selected_rows:
+                selected_rows.append(row)
+
+    # 3. Validación de separador en author y subject sobre las filas seleccionadas
     separator_ok = True
     separation_issues = []
 
     for field in ["author", "subject"]:
         if field not in cols:
             continue
-        for i, row in enumerate(rows[:len(expected_author_counts) or 3]):
+        for i, row in enumerate(selected_rows):
             raw_val = row.get(field, "") or ""
             values = [v.strip() for v in raw_val.split("|") if v.strip()]
             count = len(values)
