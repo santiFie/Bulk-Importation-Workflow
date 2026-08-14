@@ -74,6 +74,12 @@ class Config:
 
     MINIO_MCP_URL = "http://localhost:9005/sse"
 
+    # Orchestrator MCP (proyecto externo dockerizado)
+    ORCHESTRATOR_MCP_URL: str = (
+        os.getenv("ORCHESTRATOR_MCP_URL")
+        or "http://localhost:8004/mcp"
+    )
+
     # ==================== ORCHESTRATOR ====================
     ORCHESTRATOR_API_KEY: str = os.getenv("ORCHESTRATOR_API_KEY", "")
     ORCHESTRATOR_BASE_URL: str = os.getenv("ORCHESTRATOR_BASE_URL", "")
@@ -105,6 +111,7 @@ class Config:
     OPENALEX_MODEL = "openai/gpt-oss-120b"
     CROSSWALK_MODEL = "openai/gpt-oss-20b"
     CROSSWALK_VALIDATOR_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free"
+    METADATA_EXTRACTOR_MODEL = "llama-3.3-70b-versatile"
     
     OPEN_ROUTER_API_KEY = os.getenv("OPEN_ROUTER_API_KEY")
     OPEN_ROUTER_BASE_URL = "https://openrouter.ai/api/v1"
