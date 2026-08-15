@@ -10,3 +10,5 @@ agents.md
 .langgraph_api/
 .opencode/
 .vscode/
+*.csv
+*.json
