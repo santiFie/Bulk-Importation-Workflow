@@ -128,7 +128,6 @@ TEST_CASES: list[dict] = [
     #     # Columnas esperadas en el CSV SEDICI-ready (para métricas del Paso 5)
     #     "expected_sedici_columns": ["dc.title[es]", "sedici.creator.person[es]"],
     #     # Cantidad exacta de autores esperados por fila tras la separación multivalor.
-    #     # Cada valor corresponde a una fila del CSV genérico (en orden).
     #     "expected_author_counts": [6, 6, 6, 6, 6],
     # },
     {
@@ -139,6 +138,15 @@ TEST_CASES: list[dict] = [
         "expected_sedici_columns": ["dc.title[es]", "sedici.creator.person[es]"],
         "expected_author_counts": [2, 2, 4, 5, 3],
     },
+    {
+        "source_csv_path": os.path.join(DATA_DIR, "openalex.csv"),
+        "source_name": "openalex",
+        "repository_csv_path": os.path.join(DATA_DIR, "export_10915_all.csv"),
+        "expected_generic_columns": ["id", "title", "author", "date", "doi", "citation", "type"],
+        "expected_sedici_columns": ["dc.title[es]", "sedici.creator.person[es]"],
+        "expected_author_counts": [6, 6, 6, 6, 6],
+    },
+    
 ]
 
 # Paso en el que se detiene la ejecución (inclusive).
