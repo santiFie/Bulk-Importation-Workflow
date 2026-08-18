@@ -39,4 +39,5 @@ python-dotenv==1.2.2
 httpx==0.28.1
 PyYAML==6.0.3
 pandas
+tenacity
 langgraph-cli

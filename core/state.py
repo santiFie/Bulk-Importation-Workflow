@@ -7,7 +7,7 @@ circulares entre los nodos del grafo y facilitar su reutilización.
 
 import os
 from datetime import datetime
-from typing import Annotated, Optional, TypedDict
+from typing import Annotated, Literal, Optional, TypedDict
 try:
     from typing import NotRequired
 except ImportError:
@@ -40,6 +40,19 @@ class State(TypedDict):
     source_name: str                  # Nombre del repositorio origen, ej. "unlp_doaj"
     dspace_collection: str            # Handle o ID de la colección destino en SEDICI (ej. "123456789/5")
     import_validate_only: bool        # Si es True, solo valida la importación sin efectuar cambios permanentes
+
+    # --- Fuente de Entrada ---
+    input_source_type: NotRequired[Literal["csv", "pdf_minio"]]  # Tipo de fuente: CSV directo o PDFs en MinIO
+    minio_bucket: NotRequired[str]    # Bucket de MinIO donde están los PDFs
+    minio_prefix: NotRequired[str]    # Prefijo (carpeta) dentro del bucket
+
+    # --- Enriquecimiento de Metadatos ---
+    enrichment_enabled: NotRequired[bool]         # Habilita el enriquecimiento post-deduplicación
+    enrichment_stats: NotRequired[dict]           # Estadísticas: {total, enriched, skipped, errors}
+
+    # --- Control del Pipeline ---
+    pipeline_status: NotRequired[Literal["running", "paused_for_review", "failed", "completed"]]
+    node_errors: NotRequired[dict[str, str]]      # {nombre_nodo: descripción_del_error}
 
     # --- Directorio de Ejecución (Workspace) ---
     workspace_dir: NotRequired[str]   # Ruta de la carpeta del lote: runs/{source_name}_{fecha}_{cant}
