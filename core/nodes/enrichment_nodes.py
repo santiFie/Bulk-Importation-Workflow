@@ -6,8 +6,8 @@ consultando fuentes académicas externas luego de la deduplicación.
 
 Estrategia de enriquecimiento por documento:
   1. Tiene DOI     → Crossref   (fuente más autoritativa)
-  2. Sin DOI, ISBN → OpenAlex   (búsqueda por ISBN)
-  3. Sin DOI ni ISBN, con título → OpenAlex (búsqueda por título)
+  2. Sin DOI, ISSN → OpenAlex   (búsqueda por ISSN)
+  3. Sin DOI ni ISSN, con título → OpenAlex (búsqueda por título)
   4. Sin información suficiente → se omite el enriquecimiento del ítem
 
 Los enriquecedores son clientes HTTP directos (no agentes LLM) para
@@ -58,8 +58,8 @@ def enrich_metadata_node(state: State) -> dict[str, Any]:
 
     La estrategia por fila es:
       - Tiene DOI:              consulta Crossref.
-      - Sin DOI, tiene ISBN:    consulta OpenAlex por ISBN.
-      - Sin DOI ni ISBN:        consulta OpenAlex por título (si hay título).
+      - Sin DOI, tiene ISSN:    consulta OpenAlex por ISSN.
+      - Sin DOI ni ISSN:        consulta OpenAlex por título (si hay título).
       - Sin ningún campo útil:  omite el ítem.
 
     Los campos enriquecidos se agregan al DataFrame como columnas adicionales
@@ -110,7 +110,7 @@ def enrich_metadata_node(state: State) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 _DOI_CANDIDATES  = ["doi", "dc.identifier.doi", "DOI"]
-_ISBN_CANDIDATES = ["isbn", "dc.identifier.isbn", "ISBN"]
+_ISSN_CANDIDATES = ["issn", "dc.identifier.issn", "ISSN"]
 _TITLE_CANDIDATES = ["title", "dc.title", "titulo", "Title"]
 
 
@@ -138,7 +138,7 @@ def _enrich_row(
         Diccionario con los campos enriquecidos (puede estar vacío si se omite).
     """
     doi   = _find_field(row, _DOI_CANDIDATES)
-    isbn  = _find_field(row, _ISBN_CANDIDATES)
+    issn  = _find_field(row, _ISSN_CANDIDATES)
     title = _find_field(row, _TITLE_CANDIDATES)
 
     try:
@@ -148,8 +148,8 @@ def _enrich_row(
                 stats["enriched_crossref"] += 1
                 return enriched
 
-        if isbn:
-            enriched = openalex.enrich_by_isbn(isbn)
+        if issn:
+            enriched = openalex.enrich_by_issn(issn)
             if enriched:
                 stats["enriched_openalex"] += 1
                 return enriched

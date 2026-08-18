@@ -21,7 +21,7 @@ Fuentes de entrada soportadas (via state["input_source_type"]):
 
 Enriquecimiento opcional (via state["enrichment_enabled"]):
   - False (default): el EnrichmentSubgraph pasa directamente a END.
-  - True:            consulta Crossref (por DOI) u OpenAlex (por ISBN/título).
+  - True:            consulta Crossref (por DOI) u OpenAlex (por ISSN/título).
 """
 
 import asyncio

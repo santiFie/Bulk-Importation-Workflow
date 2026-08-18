@@ -8,8 +8,8 @@ El enriquecimiento es opcional y se activa con state["enrichment_enabled"] = Tru
 
 Estrategia de enriquecimiento (árbol de decisión por ítem):
   Tiene DOI         → Crossref  (fuente autoritativa)
-  Sin DOI, ISBN     → OpenAlex  (por ISBN)
-  Sin DOI ni ISBN   → OpenAlex  (por título, baja confianza)
+  Sin DOI, ISSN     → OpenAlex  (por ISSN)
+  Sin DOI ni ISSN   → OpenAlex  (por título, baja confianza)
   Sin ningún campo  → omitir
 
 Los campos enriquecidos se escriben como columnas adicionales en el CSV

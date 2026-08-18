@@ -39,7 +39,7 @@ class CrossrefEnricher:
     Cliente para enriquecer metadatos de documentos académicos vía Crossref.
 
     Utiliza el endpoint /works/{doi} para recuperar metadatos autoritativos
-    como título, autores, fecha de publicación, ISSN/ISBN, editorial, etc.
+    como título, autores, fecha de publicación, ISSN, editorial, etc.
     """
 
     def __init__(self, email: Optional[str] = None) -> None:
@@ -77,7 +77,7 @@ class CrossrefEnricher:
         Returns:
             Diccionario con los metadatos enriquecidos, o vacío si no se
             encontró el DOI. Las claves relevantes incluyen:
-            - title, author, published, publisher, ISSN, ISBN, abstract, type
+            - title, author, published, publisher, ISSN, abstract, type
         """
         if not doi or not str(doi).strip():
             return {}
@@ -119,17 +119,12 @@ class CrossrefEnricher:
         issn_list = work.get("ISSN", [])
         issn = issn_list[0] if issn_list else ""
 
-        # ISBN
-        isbn_list = work.get("ISBN", [])
-        isbn = isbn_list[0] if isbn_list else ""
-
         return {
             "crossref_title":       title,
             "crossref_authors":     " || ".join(authors),
             "crossref_year":        year,
             "crossref_publisher":   work.get("publisher", ""),
             "crossref_issn":        issn,
-            "crossref_isbn":        isbn,
             "crossref_type":        work.get("type", ""),
             "crossref_abstract":    work.get("abstract", ""),
             "crossref_journal":     work.get("container-title", [""])[0] if work.get("container-title") else "",

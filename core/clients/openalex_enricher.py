@@ -2,14 +2,14 @@
 Cliente HTTP para la API pública de OpenAlex.
 
 Se usa como alternativa a Crossref cuando el documento no posee DOI.
-Permite buscar por título o ISBN a través del endpoint /works con filtros.
+Permite buscar por título o ISSN a través del endpoint /works con filtros.
 
 Documentación: https://docs.openalex.org/api-entities/works/filter-works
 
 Flujo típico:
   enricher = OpenAlexEnricher()
   metadata = enricher.enrich_by_title("Aprendizaje automático en repositorios")
-  metadata = enricher.enrich_by_isbn("978-3-16-148410-0")
+  metadata = enricher.enrich_by_issn("0028-0836")
 """
 
 import logging
@@ -40,7 +40,7 @@ class OpenAlexEnricher:
     Cliente para enriquecer metadatos de documentos académicos vía OpenAlex.
 
     Se utiliza cuando el documento no posee DOI. Permite buscar por título
-    (búsqueda semántica aproximada) o por ISBN.
+    (búsqueda semántica aproximada) o por ISSN.
     """
 
     def __init__(self, email: Optional[str] = None) -> None:
@@ -100,29 +100,29 @@ class OpenAlexEnricher:
 
         return self._extract_relevant_fields(results[0])
 
-    def enrich_by_isbn(self, isbn: str) -> dict:
+    def enrich_by_issn(self, issn: str) -> dict:
         """
-        Busca el trabajo académico por ISBN y retorna sus metadatos.
+        Busca el trabajo académico por ISSN y retorna sus metadatos.
 
         Args:
-            isbn: ISBN del documento (puede incluir guiones).
+            issn: ISSN de la revista (puede incluir guiones).
 
         Returns:
             Diccionario con metadatos enriquecidos o vacío si no se encontró.
         """
-        if not isbn or not str(isbn).strip():
+        if not issn or not str(issn).strip():
             return {}
 
-        isbn_clean = str(isbn).replace("-", "").strip()
+        issn_clean = str(issn).replace("-", "").strip()
 
         try:
             data = self._get("/works", params={
-                "filter": f"ids.openalex:https://openalex.org/works?filter=ids.isbn:{isbn_clean}",
+                "filter": f"ids.issn:{issn_clean}",
                 "per-page": 1,
                 "mailto": self._email,
             })
         except requests.RequestException as exc:
-            logger.warning("[OpenAlexEnricher] Error al buscar ISBN '%s': %s", isbn_clean, exc)
+            logger.warning("[OpenAlexEnricher] Error al buscar ISSN '%s': %s", issn_clean, exc)
             return {}
 
         results = data.get("results", [])
