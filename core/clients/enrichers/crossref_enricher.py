@@ -13,7 +13,7 @@ Flujo típico:
 """
 
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 import requests
 from tenacity import (
@@ -23,6 +23,7 @@ from tenacity import (
     wait_exponential,
 )
 
+from core.clients.enrichers.base_enricher import BaseEnricher, BaseEnricherError
 from core.utils.config import config
 
 logger = logging.getLogger(__name__)
@@ -30,11 +31,12 @@ logger = logging.getLogger(__name__)
 _CROSSREF_BASE_URL = "https://api.crossref.org"
 
 
-class CrossrefEnricherError(Exception):
+class CrossrefEnricherError(BaseEnricherError):
     """Excepción lanzada ante errores con la API de Crossref."""
     pass
 
-class CrossrefEnricher:
+
+class CrossrefEnricher(BaseEnricher):
     """
     Cliente para enriquecer metadatos de documentos académicos vía Crossref.
 
@@ -43,15 +45,19 @@ class CrossrefEnricher:
     """
 
     def __init__(self, email: Optional[str] = None) -> None:
+        super().__init__(base_url=_CROSSREF_BASE_URL)
         self._email = email or config.OPENALEX_EMAIL
-        self._session = requests.Session()
+        mailto = self._email.strip() if self._email else ""
         self._session.headers.update({
-            # Identifica la aplicación ante Crossref para el polite pool
-            "User-Agent": f"BulkImportPipeline/1.0 (mailto:{self._email})",
+            "User-Agent": f"BulkImportPipeline/1.0 (mailto:{mailto})" if mailto else "BulkImportPipeline/1.0",
         })
 
+    @property
+    def provider_name(self) -> str:
+        return "Crossref"
+
     def _url(self, path: str) -> str:
-        return f"{_CROSSREF_BASE_URL}{path}"
+        return f"{self.base_url}{path}"
 
     @retry(
         retry=retry_if_exception_type(requests.RequestException),
@@ -60,8 +66,8 @@ class CrossrefEnricher:
         reraise=True,
     )
     def _get(self, path: str) -> dict:
-        """Realiza una petición GET con reintentos exponenciales."""
-        response = self._session.get(self._url(path), timeout=15)
+        """GET con reintentos exponenciales. Devuelve JSON o {} en 404."""
+        response = self._session.get(self._url(path), timeout=self._timeout)
         if response.status_code == 404:
             return {}
         response.raise_for_status()
@@ -94,38 +100,54 @@ class CrossrefEnricher:
             return {}
 
         work = data.get("message", {})
-        return self._extract_relevant_fields(work)
+        parsed = self.parse_response(work)
+        return self.map_to_csv_columns(parsed)
 
-    def _extract_relevant_fields(self, work: dict) -> dict:
+    def parse_response(self, data: Any) -> dict:
         """
-        Normaliza la respuesta de Crossref extrayendo sólo los campos relevantes
-        para el proceso de enriquecimiento del pipeline.
+        Normaliza la respuesta de Crossref extrayendo un schema interno común.
+
+        Acepta el dict ``message`` de la respuesta de Crossref (no la envoltura
+        completa con ``status``).
         """
-        # Título: Crossref devuelve una lista
+        work = data if isinstance(data, dict) else {}
+
         title_list = work.get("title", [])
         title = title_list[0] if title_list else ""
 
-        # Autores: lista de {given, family, ...}
         authors = [
             f"{a.get('family', '')}, {a.get('given', '')}".strip(", ")
             for a in work.get("author", [])
         ]
 
-        # Fecha de publicación
         pub_date = work.get("published", {}).get("date-parts", [[]])[0]
         year = str(pub_date[0]) if pub_date else ""
 
-        # ISSN
         issn_list = work.get("ISSN", [])
         issn = issn_list[0] if issn_list else ""
 
         return {
-            "crossref_title":       title,
-            "crossref_authors":     " || ".join(authors),
-            "crossref_year":        year,
-            "crossref_publisher":   work.get("publisher", ""),
-            "crossref_issn":        issn,
-            "crossref_type":        work.get("type", ""),
-            "crossref_abstract":    work.get("abstract", ""),
-            "crossref_journal":     work.get("container-title", [""])[0] if work.get("container-title") else "",
+            "title": title,
+            "authors": " || ".join(authors),
+            "year": year,
+            "publisher": work.get("publisher", ""),
+            "issn": issn,
+            "type": work.get("type", ""),
+            "abstract": work.get("abstract", ""),
+            "journal": (
+                work.get("container-title", [""])[0]
+                if work.get("container-title")
+                else ""
+            ),
         }
+
+    def _extract_relevant_fields(self, work: dict) -> dict:
+        """
+        Normaliza la respuesta de Crossref extrayendo sólo los campos relevantes
+        para el proceso de enriquecimiento del pipeline.
+
+        Método legacy mantenido por compatibilidad con tests existentes.
+        Delega en parse_response + map_to_csv_columns.
+        """
+        parsed = self.parse_response(work)
+        return self.map_to_csv_columns(parsed)

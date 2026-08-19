@@ -13,7 +13,7 @@ Flujo típico:
 """
 
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 import requests
 from tenacity import (
@@ -23,6 +23,7 @@ from tenacity import (
     wait_exponential,
 )
 
+from core.clients.enrichers.base_enricher import BaseEnricher, BaseEnricherError
 from core.utils.config import config
 
 logger = logging.getLogger(__name__)
@@ -30,12 +31,12 @@ logger = logging.getLogger(__name__)
 _OPENALEX_BASE_URL = "https://api.openalex.org"
 
 
-class OpenAlexEnricherError(Exception):
+class OpenAlexEnricherError(BaseEnricherError):
     """Excepción lanzada ante errores con la API de OpenAlex."""
     pass
 
 
-class OpenAlexEnricher:
+class OpenAlexEnricher(BaseEnricher):
     """
     Cliente para enriquecer metadatos de documentos académicos vía OpenAlex.
 
@@ -44,15 +45,19 @@ class OpenAlexEnricher:
     """
 
     def __init__(self, email: Optional[str] = None) -> None:
+        super().__init__(base_url=_OPENALEX_BASE_URL)
         self._email = email or config.OPENALEX_EMAIL
-        self._session = requests.Session()
+        mailto = self._email.strip() if self._email else ""
         self._session.headers.update({
-            # Polite pool de OpenAlex: email en User-Agent mejora la tasa de peticiones
-            "User-Agent": f"BulkImportPipeline/1.0 (mailto:{self._email})",
+            "User-Agent": f"BulkImportPipeline/1.0 (mailto:{mailto})" if mailto else "BulkImportPipeline/1.0",
         })
 
+    @property
+    def provider_name(self) -> str:
+        return "OpenAlex"
+
     def _url(self, path: str) -> str:
-        return f"{_OPENALEX_BASE_URL}{path}"
+        return f"{self.base_url}{path}"
 
     @retry(
         retry=retry_if_exception_type(requests.RequestException),
@@ -61,8 +66,8 @@ class OpenAlexEnricher:
         reraise=True,
     )
     def _get(self, path: str, params: dict) -> dict:
-        """Realiza una petición GET con reintentos exponenciales."""
-        response = self._session.get(self._url(path), params=params, timeout=15)
+        """GET con reintentos exponenciales. Devuelve JSON o {} en 404."""
+        response = self._session.get(self._url(path), params=params, timeout=self._timeout)
         if response.status_code == 404:
             return {}
         response.raise_for_status()
@@ -98,7 +103,8 @@ class OpenAlexEnricher:
         if not results:
             return {}
 
-        return self._extract_relevant_fields(results[0])
+        parsed = self.parse_response(results[0])
+        return self.map_to_csv_columns(parsed)
 
     def enrich_by_issn(self, issn: str) -> dict:
         """
@@ -129,31 +135,42 @@ class OpenAlexEnricher:
         if not results:
             return {}
 
-        return self._extract_relevant_fields(results[0])
+        parsed = self.parse_response(results[0])
+        return self.map_to_csv_columns(parsed)
 
-    def _extract_relevant_fields(self, work: dict) -> dict:
+    def parse_response(self, data: Any) -> dict:
         """
-        Normaliza la respuesta de OpenAlex extrayendo los campos relevantes
-        para el proceso de enriquecimiento del pipeline.
+        Normaliza la respuesta de OpenAlex extrayendo un schema interno común.
         """
-        # Autores: lista de authorships
+        work = data if isinstance(data, dict) else {}
+
         authors = [
             a.get("author", {}).get("display_name", "")
             for a in work.get("authorships", [])
         ]
 
-        # Fuente (revista/conferencia)
         primary_location = work.get("primary_location") or {}
         source = primary_location.get("source") or {}
 
         return {
-            "openalex_title":       work.get("title", ""),
-            "openalex_authors":     " || ".join(filter(None, authors)),
-            "openalex_year":        str(work.get("publication_year", "")),
-            "openalex_doi":         work.get("doi", ""),
-            "openalex_type":        work.get("type", ""),
-            "openalex_journal":     source.get("display_name", ""),
-            "openalex_issn":        (source.get("issn_l") or ""),
-            "openalex_open_access": str(work.get("open_access", {}).get("is_oa", "")),
-            "openalex_citations":   str(work.get("cited_by_count", "")),
+            "title": work.get("title", ""),
+            "authors": " || ".join(filter(None, authors)),
+            "year": str(work.get("publication_year", "")),
+            "doi": work.get("doi", ""),
+            "type": work.get("type", ""),
+            "journal": source.get("display_name", ""),
+            "issn": (source.get("issn_l") or ""),
+            "open_access": str(work.get("open_access", {}).get("is_oa", "")),
+            "citations": str(work.get("cited_by_count", "")),
         }
+
+    def _extract_relevant_fields(self, work: dict) -> dict:
+        """
+        Normaliza la respuesta de OpenAlex extrayendo los campos relevantes
+        para el proceso de enriquecimiento del pipeline.
+
+        Método legacy mantenido por compatibilidad con tests existentes.
+        Delega en parse_response + map_to_csv_columns.
+        """
+        parsed = self.parse_response(work)
+        return self.map_to_csv_columns(parsed)

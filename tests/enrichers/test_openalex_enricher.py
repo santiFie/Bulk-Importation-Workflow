@@ -1,5 +1,5 @@
 """
-Tests para OpenAlexEnricher (core/clients/openalex_enricher.py).
+Tests para OpenAlexEnricher (core/clients/enrichers/openalex_enricher.py).
 
 Ejecutar tests unitarios (mock):
     pytest tests/enrichers/test_openalex_enricher.py -v
@@ -17,7 +17,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from core.clients.openalex_enricher import OpenAlexEnricher
+from core.clients.enrichers.openalex_enricher import OpenAlexEnricher
 
 
 # ---------------------------------------------------------------------------
@@ -72,7 +72,7 @@ def _mock_response(json_data, status_code=200):
 
 class TestEnrichByTitle:
 
-    @patch("core.clients.openalex_enricher.requests.Session")
+    @patch("core.clients.enrichers.openalex_enricher.requests.Session")
     def test_returns_metadata_when_result_found(self, MockSession):
         work = _make_openalex_work()
         mock_resp = _mock_response({"results": [work]})
@@ -92,7 +92,7 @@ class TestEnrichByTitle:
         assert result["openalex_open_access"] == "True"
         assert result["openalex_citations"] == "150"
 
-    @patch("core.clients.openalex_enricher.requests.Session")
+    @patch("core.clients.enrichers.openalex_enricher.requests.Session")
     def test_returns_empty_when_no_results(self, MockSession):
         mock_resp = _mock_response({"results": []})
         session_instance = MockSession.return_value
@@ -103,7 +103,7 @@ class TestEnrichByTitle:
 
         assert result == {}
 
-    @patch("core.clients.openalex_enricher.requests.Session")
+    @patch("core.clients.enrichers.openalex_enricher.requests.Session")
     def test_returns_empty_when_title_is_empty(self, MockSession):
         enricher = OpenAlexEnricher(email="test@example.com")
         result = enricher.enrich_by_title("")
@@ -112,14 +112,14 @@ class TestEnrichByTitle:
         session_instance = MockSession.return_value
         session_instance.get.assert_not_called()
 
-    @patch("core.clients.openalex_enricher.requests.Session")
+    @patch("core.clients.enrichers.openalex_enricher.requests.Session")
     def test_returns_empty_when_title_is_whitespace(self, MockSession):
         enricher = OpenAlexEnricher(email="test@example.com")
         result = enricher.enrich_by_title("   ")
 
         assert result == {}
 
-    @patch("core.clients.openalex_enricher.requests.Session")
+    @patch("core.clients.enrichers.openalex_enricher.requests.Session")
     def test_strips_title_whitespace(self, MockSession):
         mock_resp = _mock_response({"results": [_make_openalex_work()]})
         session_instance = MockSession.return_value
@@ -131,7 +131,7 @@ class TestEnrichByTitle:
         call_kwargs = session_instance.get.call_args
         assert call_kwargs[1]["params"]["search"] == "Deep Learning"
 
-    @patch("core.clients.openalex_enricher.requests.Session")
+    @patch("core.clients.enrichers.openalex_enricher.requests.Session")
     def test_handles_multiple_authors(self, MockSession):
         work = _make_openalex_work(authors=["Alice Smith", "Bob Jones", "Carol White"])
         mock_resp = _mock_response({"results": [work]})
@@ -143,7 +143,7 @@ class TestEnrichByTitle:
 
         assert result["openalex_authors"] == "Alice Smith || Bob Jones || Carol White"
 
-    @patch("core.clients.openalex_enricher.requests.Session")
+    @patch("core.clients.enrichers.openalex_enricher.requests.Session")
     def test_returns_empty_on_request_exception(self, MockSession):
         import requests as req_lib
         session_instance = MockSession.return_value
@@ -161,7 +161,7 @@ class TestEnrichByTitle:
 
 class TestEnrichByIssn:
 
-    @patch("core.clients.openalex_enricher.requests.Session")
+    @patch("core.clients.enrichers.openalex_enricher.requests.Session")
     def test_returns_metadata_when_issn_found(self, MockSession):
         work = _make_openalex_work(title="Journal Article", year=2021)
         mock_resp = _mock_response({"results": [work]})
@@ -174,7 +174,7 @@ class TestEnrichByIssn:
         assert result["openalex_title"] == "Journal Article"
         assert result["openalex_year"] == "2021"
 
-    @patch("core.clients.openalex_enricher.requests.Session")
+    @patch("core.clients.enrichers.openalex_enricher.requests.Session")
     def test_strips_dashes_from_issn(self, MockSession):
         mock_resp = _mock_response({"results": []})
         session_instance = MockSession.return_value
@@ -187,14 +187,14 @@ class TestEnrichByIssn:
         issn_param = call_kwargs[1]["params"]["filter"]
         assert "00280836" in issn_param
 
-    @patch("core.clients.openalex_enricher.requests.Session")
+    @patch("core.clients.enrichers.openalex_enricher.requests.Session")
     def test_returns_empty_when_issn_is_empty(self, MockSession):
         enricher = OpenAlexEnricher(email="test@example.com")
         result = enricher.enrich_by_issn("")
 
         assert result == {}
 
-    @patch("core.clients.openalex_enricher.requests.Session")
+    @patch("core.clients.enrichers.openalex_enricher.requests.Session")
     def test_returns_empty_when_no_results(self, MockSession):
         mock_resp = _mock_response({"results": []})
         session_instance = MockSession.return_value
@@ -266,7 +266,7 @@ class TestExtractRelevantFields:
 
 class TestGetAndRetry:
 
-    @patch("core.clients.openalex_enricher.requests.Session")
+    @patch("core.clients.enrichers.openalex_enricher.requests.Session")
     def test_returns_empty_dict_on_404(self, MockSession):
         mock_resp = _mock_response({}, status_code=404)
         session_instance = MockSession.return_value
@@ -277,7 +277,7 @@ class TestGetAndRetry:
 
         assert result == {}
 
-    @patch("core.clients.openalex_enricher.requests.Session")
+    @patch("core.clients.enrichers.openalex_enricher.requests.Session")
     def test_raises_on_500(self, MockSession):
         import requests as req_lib
         mock_resp = MagicMock()

@@ -1,5 +1,5 @@
 """
-Tests para CrossrefEnricher (core/clients/crossref_enricher.py).
+Tests para CrossrefEnricher (core/clients/enrichers/crossref_enricher.py).
 
 Ejecutar tests unitarios (mock):
     pytest tests/enrichers/test_crossref_enricher.py -v
@@ -17,7 +17,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from core.clients.crossref_enricher import CrossrefEnricher
+from core.clients.enrichers.crossref_enricher import CrossrefEnricher
 
 
 # ---------------------------------------------------------------------------
@@ -73,7 +73,7 @@ def _mock_response(json_data, status_code=200):
 
 class TestEnrichByDoi:
 
-    @patch("core.clients.crossref_enricher.requests.Session")
+    @patch("core.clients.enrichers.crossref_enricher.requests.Session")
     def test_returns_metadata_when_doi_found(self, MockSession):
         work = _make_crossref_work()
         resp_data = _make_crossref_response(work)
@@ -93,7 +93,7 @@ class TestEnrichByDoi:
         assert result["crossref_abstract"] == "This is an abstract."
         assert result["crossref_journal"] == "Nature Physics"
 
-    @patch("core.clients.crossref_enricher.requests.Session")
+    @patch("core.clients.enrichers.crossref_enricher.requests.Session")
     def test_strips_doi_url_prefix(self, MockSession):
         mock_resp = _mock_response(_make_crossref_response(_make_crossref_work()))
         session_instance = MockSession.return_value
@@ -106,7 +106,7 @@ class TestEnrichByDoi:
         assert "nature14539" in call_args
         assert "doi.org" not in call_args
 
-    @patch("core.clients.crossref_enricher.requests.Session")
+    @patch("core.clients.enrichers.crossref_enricher.requests.Session")
     def test_strips_dx_doi_prefix(self, MockSession):
         mock_resp = _mock_response(_make_crossref_response(_make_crossref_work()))
         session_instance = MockSession.return_value
@@ -119,7 +119,7 @@ class TestEnrichByDoi:
         assert "nature14539" in call_args
         assert "dx.doi.org" not in call_args
 
-    @patch("core.clients.crossref_enricher.requests.Session")
+    @patch("core.clients.enrichers.crossref_enricher.requests.Session")
     def test_returns_empty_when_doi_is_empty(self, MockSession):
         enricher = CrossrefEnricher(email="test@example.com")
         result = enricher.enrich_by_doi("")
@@ -128,7 +128,7 @@ class TestEnrichByDoi:
         session_instance = MockSession.return_value
         session_instance.get.assert_not_called()
 
-    @patch("core.clients.crossref_enricher.requests.Session")
+    @patch("core.clients.enrichers.crossref_enricher.requests.Session")
     def test_returns_empty_when_status_not_ok(self, MockSession):
         mock_resp = _mock_response({"status": "error"})
         session_instance = MockSession.return_value
@@ -139,7 +139,7 @@ class TestEnrichByDoi:
 
         assert result == {}
 
-    @patch("core.clients.crossref_enricher.requests.Session")
+    @patch("core.clients.enrichers.crossref_enricher.requests.Session")
     def test_returns_empty_fields_when_message_missing(self, MockSession):
         mock_resp = _mock_response({"status": "ok"})
         session_instance = MockSession.return_value
@@ -152,7 +152,7 @@ class TestEnrichByDoi:
         assert result["crossref_authors"] == ""
         assert result["crossref_year"] == ""
 
-    @patch("core.clients.crossref_enricher.requests.Session")
+    @patch("core.clients.enrichers.crossref_enricher.requests.Session")
     def test_returns_empty_on_request_exception(self, MockSession):
         import requests as req_lib
         session_instance = MockSession.return_value
@@ -163,7 +163,7 @@ class TestEnrichByDoi:
 
         assert result == {}
 
-    @patch("core.clients.crossref_enricher.requests.Session")
+    @patch("core.clients.enrichers.crossref_enricher.requests.Session")
     def test_handles_multiple_authors(self, MockSession):
         work = _make_crossref_work(authors=[
             {"given": "Alice", "family": "Smith"},
@@ -178,7 +178,7 @@ class TestEnrichByDoi:
 
         assert result["crossref_authors"] == "Smith, Alice || Jones, Bob"
 
-    @patch("core.clients.crossref_enricher.requests.Session")
+    @patch("core.clients.enrichers.crossref_enricher.requests.Session")
     def test_handles_empty_authors(self, MockSession):
         work = _make_crossref_work(authors=[])
         mock_resp = _mock_response(_make_crossref_response(work))
@@ -190,7 +190,7 @@ class TestEnrichByDoi:
 
         assert result["crossref_authors"] == ""
 
-    @patch("core.clients.crossref_enricher.requests.Session")
+    @patch("core.clients.enrichers.crossref_enricher.requests.Session")
     def test_handles_empty_container_title(self, MockSession):
         work = _make_crossref_work(container_title=[])
         mock_resp = _mock_response(_make_crossref_response(work))
@@ -247,7 +247,7 @@ class TestExtractRelevantFields:
 
 class TestGetAndRetry:
 
-    @patch("core.clients.crossref_enricher.requests.Session")
+    @patch("core.clients.enrichers.crossref_enricher.requests.Session")
     def test_returns_empty_dict_on_404(self, MockSession):
         mock_resp = _mock_response({}, status_code=404)
         session_instance = MockSession.return_value
@@ -258,7 +258,7 @@ class TestGetAndRetry:
 
         assert result == {}
 
-    @patch("core.clients.crossref_enricher.requests.Session")
+    @patch("core.clients.enrichers.crossref_enricher.requests.Session")
     def test_raises_on_500(self, MockSession):
         import requests as req_lib
         mock_resp = MagicMock()
