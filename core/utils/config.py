@@ -103,15 +103,15 @@ class Config:
     # ==================== AGENTS ====================
     SEARCHER_MODEL: str = "openai/gpt-oss-20b"
     GITHUB_MODEL: str =  "gemini-3.1-flash-lite-preview"
-    SUPERVISOR_MODEL: str = "llama-3.3-70b-versatile"
-    BOTS_MODEL: str = "llama-3.3-70b-versatile"
+    SUPERVISOR_MODEL: str = "llama-3.3-70b-openai/gpt-oss-120b"
+    BOTS_MODEL: str = "llama-3.3-70b-openai/gpt-oss-120b"
     DSPACE_MODEL = "google/gemma-4-31b-it"
     MINIO_MODEL = "openai/gpt-oss-120b"
     # OPENALEX_MODEL = "nvidia/nemotron-3-ultra-550b-a55b"
     OPENALEX_MODEL = "openai/gpt-oss-120b"
     CROSSWALK_MODEL = "openai/gpt-oss-20b"
     CROSSWALK_VALIDATOR_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free"
-    METADATA_EXTRACTOR_MODEL = "llama-3.3-70b-versatile"
+    METADATA_EXTRACTOR_MODEL = "llama-3.3-70b-openai/gpt-oss-120b"
     
     OPEN_ROUTER_API_KEY = os.getenv("OPEN_ROUTER_API_KEY")
     OPEN_ROUTER_BASE_URL = "https://openrouter.ai/api/v1"
