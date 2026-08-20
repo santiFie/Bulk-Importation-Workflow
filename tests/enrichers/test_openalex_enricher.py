@@ -82,15 +82,16 @@ class TestEnrichByTitle:
         enricher = OpenAlexEnricher(email="test@example.com")
         result = enricher.enrich_by_title("Deep Learning")
 
-        assert result["openalex_title"] == "Deep Learning"
-        assert result["openalex_authors"] == "Ian Goodfellow"
-        assert result["openalex_year"] == "2020"
-        assert result["openalex_doi"] == "https://doi.org/10.1000/test123"
-        assert result["openalex_type"] == "journal-article"
-        assert result["openalex_journal"] == "Nature"
-        assert result["openalex_issn"] == "0028-0836"
-        assert result["openalex_open_access"] == "True"
-        assert result["openalex_citations"] == "150"
+        assert result["dc.title"] == "Deep Learning"
+        assert result["sedici.creator.person"] == "Ian Goodfellow"
+        assert result["dc.date.issued"] == "2020"
+        assert result["sedici.identifier.other"] == "https://doi.org/10.1000/test123"
+        assert result["dc.type"] == "journal-article"
+        assert result["sedici.relation.journalTitle"] == "Nature"
+        assert result["sedici.identifier.issn"] == "0028-0836"
+        # open_access y citations se omiten intencionalmente del mapeo SEDICI
+        assert "open_access" not in result
+        assert "citations" not in result
 
     @patch("core.clients.enrichers.openalex_enricher.requests.Session")
     def test_returns_empty_when_no_results(self, MockSession):
@@ -141,7 +142,7 @@ class TestEnrichByTitle:
         enricher = OpenAlexEnricher(email="test@example.com")
         result = enricher.enrich_by_title("Multi Author Paper")
 
-        assert result["openalex_authors"] == "Alice Smith || Bob Jones || Carol White"
+        assert result["sedici.creator.person"] == "Alice Smith || Bob Jones || Carol White"
 
     @patch("core.clients.enrichers.openalex_enricher.requests.Session")
     def test_returns_empty_on_request_exception(self, MockSession):
@@ -171,8 +172,8 @@ class TestEnrichByIssn:
         enricher = OpenAlexEnricher(email="test@example.com")
         result = enricher.enrich_by_issn("0028-0836")
 
-        assert result["openalex_title"] == "Journal Article"
-        assert result["openalex_year"] == "2021"
+        assert result["dc.title"] == "Journal Article"
+        assert result["dc.date.issued"] == "2021"
 
     @patch("core.clients.enrichers.openalex_enricher.requests.Session")
     def test_strips_dashes_from_issn(self, MockSession):
@@ -217,11 +218,11 @@ class TestExtractRelevantFields:
         work = _make_openalex_work()
         result = enricher._extract_relevant_fields(work)
 
-        assert result["openalex_title"] == "Deep Learning"
-        assert result["openalex_authors"] == "Ian Goodfellow"
-        assert result["openalex_year"] == "2020"
-        assert result["openalex_journal"] == "Nature"
-        assert result["openalex_issn"] == "0028-0836"
+        assert result["dc.title"] == "Deep Learning"
+        assert result["sedici.creator.person"] == "Ian Goodfellow"
+        assert result["dc.date.issued"] == "2020"
+        assert result["sedici.relation.journalTitle"] == "Nature"
+        assert result["sedici.identifier.issn"] == "0028-0836"
 
     def test_handles_missing_primary_location(self):
         enricher = OpenAlexEnricher(email="test@example.com")
@@ -229,8 +230,8 @@ class TestExtractRelevantFields:
         work["primary_location"] = None
         result = enricher._extract_relevant_fields(work)
 
-        assert result["openalex_journal"] == ""
-        assert result["openalex_issn"] == ""
+        assert "sedici.relation.journalTitle" not in result
+        assert "sedici.identifier.issn" not in result
 
     def test_handles_missing_source(self):
         enricher = OpenAlexEnricher(email="test@example.com")
@@ -238,8 +239,8 @@ class TestExtractRelevantFields:
         work["primary_location"] = {"source": None}
         result = enricher._extract_relevant_fields(work)
 
-        assert result["openalex_journal"] == ""
-        assert result["openalex_issn"] == ""
+        assert "sedici.relation.journalTitle" not in result
+        assert "sedici.identifier.issn" not in result
 
     def test_handles_empty_authorships(self):
         enricher = OpenAlexEnricher(email="test@example.com")
@@ -247,17 +248,18 @@ class TestExtractRelevantFields:
         work["authorships"] = []
         result = enricher._extract_relevant_fields(work)
 
-        assert result["openalex_authors"] == ""
+        assert "sedici.creator.person" not in result
 
     def test_handles_missing_optional_fields(self):
         enricher = OpenAlexEnricher(email="test@example.com")
         work = {}
         result = enricher._extract_relevant_fields(work)
 
-        assert result["openalex_title"] == ""
-        assert result["openalex_year"] == ""
-        assert result["openalex_doi"] == ""
-        assert result["openalex_citations"] == ""
+        # work vacío: title, year, doi, citations son cadenas/números vacíos,
+        # se filtran; el resultado debe estar vacío
+        assert "dc.title" not in result
+        assert "dc.date.issued" not in result
+        assert "sedici.identifier.other" not in result
 
 
 # ===========================================================================
@@ -305,9 +307,9 @@ class TestOpenAlexIntegration:
 
         assert isinstance(result, dict)
         if result:
-            assert "openalex_title" in result
-            assert "openalex_authors" in result
-            assert result["openalex_title"] != ""
+            assert "dc.title" in result
+            assert "sedici.creator.person" in result
+            assert result["dc.title"] != ""
 
     def test_enrich_by_issn_real(self):
         """Test real contra la API de OpenAlex. Requiere conexión a internet."""

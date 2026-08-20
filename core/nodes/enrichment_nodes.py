@@ -98,8 +98,8 @@ def enrich_metadata_node(state: State) -> dict[str, Any]:
       - Sin ningún campo útil:  omite el ítem.
 
     Los campos enriquecidos se agregan al DataFrame como columnas adicionales
-    con prefijo `crossref_`, `openalex_`, `doi_negotiation_` o `openlibrary_`
-    según la fuente utilizada.
+    con nombres de metadatos SEDICI/Dublin Core (ej. ``dc.title``,
+    ``sedici.creator.person``) según la fuente utilizada.
     """
     reconciled_path = state["reconciled_csv_path"]
 

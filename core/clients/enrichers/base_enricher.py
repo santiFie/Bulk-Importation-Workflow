@@ -38,6 +38,30 @@ class BaseEnricher(ABC):
     vía ``parse_response`` + ``map_to_csv_columns``.
     """
 
+    # ------------------------------------------------------------------
+    # Mapeo de clave interna → nombre de columna SEDICI/Dublin Core.
+    # Las claves del schema interno (parse_response) que no aparezcan
+    # aquí se omiten silenciosamente del CSV resultante.
+    # ------------------------------------------------------------------
+    SEDICI_COLUMN_MAP: dict[str, str] = {
+        "title":            "dc.title",
+        "authors":          "sedici.creator.person",
+        "year":             "dc.date.issued",
+        "doi":              "sedici.identifier.other",
+        "type":             "dc.type",
+        "journal":          "sedici.relation.journalTitle",
+        "issn":             "sedici.identifier.issn",
+        "abstract_es":      "dc.abstract[es]",
+        "abstract_en":      "dc.abstract[en]",
+        "pages":            "dc.format.extent",
+        "language":         "dc.language",
+        "subjects":         "sedici.subject.materias",
+        "publisher":        "dc.publisher",
+        "volume_and_issue": "sedici.relation.journalVolumeAndIssue",
+        "isbn":             "sedici.identifier.isbn",
+        # open_access y citations: omitidos intencionalmente
+    }
+
     def __init__(self, base_url: str, timeout: int = 15) -> None:
         self.base_url = base_url
         self._timeout = timeout
@@ -93,14 +117,20 @@ class BaseEnricher(ABC):
 
     def map_to_csv_columns(self, parsed: dict) -> dict:
         """
-        Transforma el schema interno normalizado al formato de columnas CSV
-        con prefijo del proveedor (crossref_title, openalex_authors, etc.).
+        Transforma el schema interno normalizado al formato de columnas SEDICI.
 
-        Por defecto agrega el prefijo del provider_name. Las subclases
-        pueden sobrescribir para mapeos personalizados.
+        Utiliza ``SEDICI_COLUMN_MAP`` para traducir cada clave interna
+        (ej. ``authors``) al nombre de metadato SEDICI correspondiente
+        (ej. ``sedici.creator.person``). Las claves internas sin mapeo
+        (``open_access``, ``citations``, etc.) se omiten del resultado.
+        Los valores vacíos o nulos también se omiten para no generar
+        columnas vacías en el CSV.
         """
-        prefix = self.provider_name.lower()
-        return {f"{prefix}_{k}": v for k, v in parsed.items()}
+        return {
+            self.SEDICI_COLUMN_MAP[k]: v
+            for k, v in parsed.items()
+            if k in self.SEDICI_COLUMN_MAP and v not in (None, "")
+        }
 
     # ------------------------------------------------------------------
     # Health check

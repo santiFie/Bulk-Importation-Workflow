@@ -132,17 +132,26 @@ class DOINegotiationEnricher(BaseEnricher):
         if isinstance(container, list) and container:
             container = container[0]
 
+        # Combinar volumen y número en el formato esperado por SEDICI
+        vol = csl.get("volume")
+        issue = csl.get("issue")
+        partes_vol = []
+        if vol:
+            partes_vol.append(f"vol. {vol}")
+        if issue:
+            partes_vol.append(f"no. {issue}")
+        volume_and_issue = ", ".join(partes_vol) if partes_vol else None
+
         return {
-            "title": title,
-            "authors": " || ".join(authors),
-            "year": str(year) if year is not None else "",
-            "publisher": csl.get("publisher"),
-            "journal": container,
-            "volume": csl.get("volume"),
-            "issue": csl.get("issue"),
-            "pages": csl.get("page"),
-            "doi": csl.get("DOI"),
-            "type": csl.get("type"),
-            "language": csl.get("language"),
-            "abstract": csl.get("abstract"),
+            "title":            title,
+            "authors":          " || ".join(authors),
+            "year":             str(year) if year is not None else "",
+            "publisher":        csl.get("publisher"),
+            "journal":          container,
+            "volume_and_issue": volume_and_issue,
+            "pages":            csl.get("page"),
+            "doi":              csl.get("DOI"),
+            "type":             csl.get("type"),
+            "language":         csl.get("language"),
+            "abstract_en":      csl.get("abstract"),
         }

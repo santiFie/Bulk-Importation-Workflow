@@ -127,13 +127,13 @@ class CrossrefEnricher(BaseEnricher):
         issn = issn_list[0] if issn_list else ""
 
         return {
-            "title": title,
-            "authors": " || ".join(authors),
-            "year": year,
-            "publisher": work.get("publisher", ""),
-            "issn": issn,
-            "type": work.get("type", ""),
-            "abstract": work.get("abstract", ""),
+            "title":       title,
+            "authors":     " || ".join(authors),
+            "year":        year,
+            "publisher":   work.get("publisher", ""),
+            "issn":        issn,
+            "type":        work.get("type", ""),
+            "abstract_en": work.get("abstract", ""),
             "journal": (
                 work.get("container-title", [""])[0]
                 if work.get("container-title")

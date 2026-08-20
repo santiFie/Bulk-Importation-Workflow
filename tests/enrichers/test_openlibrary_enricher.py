@@ -101,13 +101,13 @@ class TestEnrichByIsbn:
         enricher = OpenLibraryEnricher()
         result = enricher.enrich_by_isbn(isbn)
 
-        assert result["openlibrary_title"] == "Clean Code: A Handbook of Agile Software Craftsmanship"
-        assert result["openlibrary_authors"] == "Robert C. Martin"
-        assert result["openlibrary_publisher"] == "Prentice Hall"
-        assert result["openlibrary_year"] == "2008"
-        assert result["openlibrary_pages"] == "464"
-        assert result["openlibrary_type"] == "Libro"
-        assert result["openlibrary_isbn"] == isbn
+        assert result["dc.title"] == "Clean Code: A Handbook of Agile Software Craftsmanship"
+        assert result["sedici.creator.person"] == "Robert C. Martin"
+        assert result["dc.publisher"] == "Prentice Hall"
+        assert result["dc.date.issued"] == "2008"
+        assert result["dc.format.extent"] == "464"
+        assert result["dc.type"] == "Libro"
+        assert result["sedici.identifier.isbn"] == isbn
 
     @patch("core.clients.enrichers.openlibrary_enricher.requests.Session")
     def test_strips_isbn_dashes_and_spaces(self, MockSession):
@@ -178,7 +178,7 @@ class TestEnrichByIsbn:
         enricher = OpenLibraryEnricher()
         result = enricher.enrich_by_isbn(isbn)
 
-        assert result["openlibrary_title"] == "Clean Code"
+        assert result["dc.title"] == "Clean Code"
 
     @patch("core.clients.enrichers.openlibrary_enricher.requests.Session")
     def test_handles_empty_authors(self, MockSession):
@@ -191,7 +191,8 @@ class TestEnrichByIsbn:
         enricher = OpenLibraryEnricher()
         result = enricher.enrich_by_isbn(isbn)
 
-        assert result["openlibrary_authors"] == ""
+        # authors vacío se filtra; no debe aparecer en el resultado
+        assert "sedici.creator.person" not in result
 
     @patch("core.clients.enrichers.openlibrary_enricher.requests.Session")
     def test_handles_empty_publishers(self, MockSession):
@@ -204,7 +205,8 @@ class TestEnrichByIsbn:
         enricher = OpenLibraryEnricher()
         result = enricher.enrich_by_isbn(isbn)
 
-        assert result.get("openlibrary_publisher") is None
+        # publisher None se filtra; no debe aparecer en el resultado
+        assert "dc.publisher" not in result
 
     @patch("core.clients.enrichers.openlibrary_enricher.requests.Session")
     def test_handles_no_pages(self, MockSession):
@@ -218,7 +220,8 @@ class TestEnrichByIsbn:
         enricher = OpenLibraryEnricher()
         result = enricher.enrich_by_isbn(isbn)
 
-        assert result.get("openlibrary_pages") is None
+        # pages None se filtra; no debe aparecer en el resultado
+        assert "dc.format.extent" not in result
 
     @patch("core.clients.enrichers.openlibrary_enricher.requests.Session")
     def test_handles_multiple_authors(self, MockSession):
@@ -234,7 +237,7 @@ class TestEnrichByIsbn:
         enricher = OpenLibraryEnricher()
         result = enricher.enrich_by_isbn(isbn)
 
-        assert result["openlibrary_authors"] == "Alice Smith || Bob Jones"
+        assert result["sedici.creator.person"] == "Alice Smith || Bob Jones"
 
     @patch("core.clients.enrichers.openlibrary_enricher.requests.Session")
     def test_limits_subjects_to_ten(self, MockSession):
@@ -248,7 +251,7 @@ class TestEnrichByIsbn:
         enricher = OpenLibraryEnricher()
         result = enricher.enrich_by_isbn(isbn)
 
-        subject_list = result["openlibrary_subjects"].split(", ")
+        subject_list = result["sedici.subject.materias"].split(", ")
         assert len(subject_list) == 10
 
 
@@ -355,8 +358,8 @@ class TestOpenLibraryIntegration:
 
         assert isinstance(result, dict)
         if result:
-            assert "openlibrary_title" in result
-            assert result["openlibrary_title"] != ""
+            assert "dc.title" in result
+            assert result["dc.title"] != ""
 
     def test_enrich_by_nonexistent_isbn_returns_valid_structure(self):
         """ISBN inventado: el resultado debe ser un dict válido (OpenLibrary

@@ -84,14 +84,14 @@ class TestEnrichByDoi:
         enricher = CrossrefEnricher(email="test@example.com")
         result = enricher.enrich_by_doi("10.1038/nature14539")
 
-        assert result["crossref_title"] == "Quantum Computing for Beginners"
-        assert result["crossref_authors"] == "Doe, John"
-        assert result["crossref_year"] == "2022"
-        assert result["crossref_publisher"] == "Nature Publishing Group"
-        assert result["crossref_issn"] == "0028-0836"
-        assert result["crossref_type"] == "journal-article"
-        assert result["crossref_abstract"] == "This is an abstract."
-        assert result["crossref_journal"] == "Nature Physics"
+        assert result["dc.title"] == "Quantum Computing for Beginners"
+        assert result["sedici.creator.person"] == "Doe, John"
+        assert result["dc.date.issued"] == "2022"
+        assert result["dc.publisher"] == "Nature Publishing Group"
+        assert result["sedici.identifier.issn"] == "0028-0836"
+        assert result["dc.type"] == "journal-article"
+        assert result["dc.abstract[en]"] == "This is an abstract."
+        assert result["sedici.relation.journalTitle"] == "Nature Physics"
 
     @patch("core.clients.enrichers.crossref_enricher.requests.Session")
     def test_strips_doi_url_prefix(self, MockSession):
@@ -148,9 +148,9 @@ class TestEnrichByDoi:
         enricher = CrossrefEnricher(email="test@example.com")
         result = enricher.enrich_by_doi("10.1000/fake-doi")
 
-        assert result["crossref_title"] == ""
-        assert result["crossref_authors"] == ""
-        assert result["crossref_year"] == ""
+        # El mensaje faltante produce un parse_response vacío, que map_to_csv_columns
+        # filtra (valores vacíos se omiten), por lo que el resultado debe ser vacío
+        assert result == {}
 
     @patch("core.clients.enrichers.crossref_enricher.requests.Session")
     def test_returns_empty_on_request_exception(self, MockSession):
@@ -176,7 +176,7 @@ class TestEnrichByDoi:
         enricher = CrossrefEnricher(email="test@example.com")
         result = enricher.enrich_by_doi("10.1000/multi-author")
 
-        assert result["crossref_authors"] == "Smith, Alice || Jones, Bob"
+        assert result["sedici.creator.person"] == "Smith, Alice || Jones, Bob"
 
     @patch("core.clients.enrichers.crossref_enricher.requests.Session")
     def test_handles_empty_authors(self, MockSession):
@@ -188,7 +188,8 @@ class TestEnrichByDoi:
         enricher = CrossrefEnricher(email="test@example.com")
         result = enricher.enrich_by_doi("10.1000/no-authors")
 
-        assert result["crossref_authors"] == ""
+        # authors vacío se filtra; el campo no debe aparecer en el resultado
+        assert "sedici.creator.person" not in result
 
     @patch("core.clients.enrichers.crossref_enricher.requests.Session")
     def test_handles_empty_container_title(self, MockSession):
@@ -200,7 +201,8 @@ class TestEnrichByDoi:
         enricher = CrossrefEnricher(email="test@example.com")
         result = enricher.enrich_by_doi("10.1000/no-journal")
 
-        assert result["crossref_journal"] == ""
+        # journal vacío se filtra; el campo no debe aparecer en el resultado
+        assert "sedici.relation.journalTitle" not in result
 
 
 # ===========================================================================
@@ -214,23 +216,19 @@ class TestExtractRelevantFields:
         work = _make_crossref_work()
         result = enricher._extract_relevant_fields(work)
 
-        assert result["crossref_title"] == "Quantum Computing for Beginners"
-        assert result["crossref_authors"] == "Doe, John"
-        assert result["crossref_year"] == "2022"
-        assert result["crossref_publisher"] == "Nature Publishing Group"
-        assert result["crossref_issn"] == "0028-0836"
-        assert result["crossref_journal"] == "Nature Physics"
+        assert result["dc.title"] == "Quantum Computing for Beginners"
+        assert result["sedici.creator.person"] == "Doe, John"
+        assert result["dc.date.issued"] == "2022"
+        assert result["dc.publisher"] == "Nature Publishing Group"
+        assert result["sedici.identifier.issn"] == "0028-0836"
+        assert result["sedici.relation.journalTitle"] == "Nature Physics"
 
     def test_handles_empty_work(self):
         enricher = CrossrefEnricher(email="test@example.com")
         result = enricher._extract_relevant_fields({})
 
-        assert result["crossref_title"] == ""
-        assert result["crossref_authors"] == ""
-        assert result["crossref_year"] == ""
-        assert result["crossref_publisher"] == ""
-        assert result["crossref_issn"] == ""
-        assert result["crossref_journal"] == ""
+        # Todos los campos vacíos se filtran; el resultado debe ser vacío
+        assert result == {}
 
     def test_handles_missing_author_field(self):
         enricher = CrossrefEnricher(email="test@example.com")
@@ -238,7 +236,7 @@ class TestExtractRelevantFields:
         del work["author"]
         result = enricher._extract_relevant_fields(work)
 
-        assert result["crossref_authors"] == ""
+        assert "sedici.creator.person" not in result
 
 
 # ===========================================================================
@@ -286,9 +284,9 @@ class TestCrossrefIntegration:
 
         assert isinstance(result, dict)
         if result:
-            assert "crossref_title" in result
-            assert "crossref_authors" in result
-            assert result["crossref_title"] != ""
+            assert "dc.title" in result
+            assert "sedici.creator.person" in result
+            assert result["dc.title"] != ""
 
     def test_enrich_by_nonexistent_doi_returns_empty(self):
         enricher = CrossrefEnricher(email="test@crossref.org")
