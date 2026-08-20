@@ -83,3 +83,4 @@ class State(TypedDict):
 
     # --- Paso 9: Importación a DSpace ---
     import_mapfile_path: NotRequired[str]           # Path local donde se guardará el mapfile generado por DSpace
+    import_exclude_bitstreams: NotRequired[bool]    # Si es True, excluye bitstreams del proceso de importación

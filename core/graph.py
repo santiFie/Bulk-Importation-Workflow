@@ -72,17 +72,41 @@ from core.nodes.pipeline_nodes import (  # noqa: F401
 # ---------------------------------------------------------------------------
 
 PIPELINE_STEPS: list[tuple[str, str]] = [
-    ("Fase 0 - SetupWorkspace",        "SetupWorkspace"),
-    ("Fase 1 - IngestSubgraph",        "IngestSubgraph"),
-    ("Fase 2 - CrosswalkDedupSubgraph","CrosswalkDedupSubgraph"),
-    ("Fase 3 - EnrichmentSubgraph",    "EnrichmentSubgraph"),
-    ("Fase 4 - ExportSubgraph",        "ExportSubgraph"),
+    ("Paso 0 - SetupWorkspace",                "SetupWorkspace"),
+    ("Paso 1 - GenerateSourceCrosswalkConfig", "GenerateSourceCrosswalkConfig"),
+    ("Paso 2a - MapSourceToGeneric",           "MapSourceToGeneric"),
+    ("Paso 2b - MapSediciToGeneric",           "MapSediciToGeneric"),
+    ("Paso 3 - Deduplicate",                   "Deduplicate"),
+    ("Paso 4 - MetadataReconciliation",        "MetadataReconciliation"),
+    ("Paso 5 - MapToSediciFormat",             "MapToSediciFormat"),
+    ("Paso 6 - MetadataCorrections",           "MetadataCorrections"),
+    ("Paso 7 - GenerateSafToImport",           "GenerateSafToImport"),
+    ("Paso 8 - ImportToDspace",                "ImportToDspace"),
 ]
 """
-Registro ordenado de las fases del pipeline con su nombre legible
-y el nombre del nodo correspondiente en el StateGraph.
-Se usa en tests y scripts de evaluación para ejecutar el pipeline
-hasta un punto determinado.
+Registro ordenado de los pasos individuales del pipeline con su nombre
+legible y el nombre del nodo. Se usa en tests y scripts de evaluación
+para ejecutar el pipeline hasta un punto determinado via
+``run_pipeline_until_step``.
+"""
+
+
+_NODE_FUNCTIONS: dict[str, callable] = {
+    "SetupWorkspace":                setup_workspace,
+    "GenerateSourceCrosswalkConfig": generate_source_crosswalk_config,
+    "MapSourceToGeneric":            map_source_to_generic,
+    "MapSediciToGeneric":            map_sedici_to_generic,
+    "Deduplicate":                   deduplicate,
+    "MetadataReconciliation":        metadata_reconciliation,
+    "MapToSediciFormat":             map_to_sedici_format,
+    "MetadataCorrections":           metadata_corrections,
+    "GenerateSafToImport":           generate_saf_to_import,
+    "ImportToDspace":                import_to_dspace,
+}
+"""
+Mapeo de nombre de nodo a la función que lo implementa.
+Se utiliza para la ejecución secuencial paso a paso en tests
+de evaluación.
 """
 
 
@@ -97,6 +121,52 @@ def get_step_label(node_name: str) -> str:
         if name == node_name:
             return label
     return node_name
+
+
+def run_pipeline_until_step(state: dict, stop_after: str) -> dict[str, dict]:
+    """
+    Ejecuta el pipeline secuencialmente hasta el paso indicado (inclusive).
+
+    A diferencia de compilar un subgrafo, esta función ejecuta las funciones
+    de los nodos directamente en orden, lo cual es más simple y predecible
+    para tests de evaluación.
+
+    Args:
+        state:      diccionario con el estado inicial del pipeline.
+        stop_after: nombre del nodo en el que se detiene (inclusive).
+                    Debe coincidir con una clave de PIPELINE_STEPS.
+
+    Returns:
+        Diccionario ``{nombre_nodo: resultado_dict}`` con el resultado
+        devuelto por cada nodo ejecutado. Si un nodo lanza una excepción,
+        se captura y se almacena en la clave ``"__error__"`` del resultado.
+
+    Raises:
+        ValueError: si *stop_after* no es un nombre de nodo válido.
+    """
+    ordered_nodes = get_step_node_names()
+    if stop_after not in ordered_nodes:
+        valid = ", ".join(ordered_nodes)
+        raise ValueError(
+            f"Paso '{stop_after}' no reconocido. Valores válidos: {valid}"
+        )
+
+    results: dict[str, dict] = {}
+    for node_name in ordered_nodes:
+        fn = _NODE_FUNCTIONS[node_name]
+        try:
+            result = fn(state)
+            results[node_name] = result if isinstance(result, dict) else {}
+            if isinstance(result, dict):
+                state.update(result)
+        except Exception as exc:
+            results[node_name] = {"__error__": repr(exc)}
+            break
+
+        if node_name == stop_after:
+            break
+
+    return results
 
 
 # ---------------------------------------------------------------------------

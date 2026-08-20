@@ -199,6 +199,9 @@ def main():
             "source_csv_path": tmp_csv,
             "source_name": SOURCE_NAME,
             "repository_csv_path": tmp_repo,
+            "input_source_type": "csv",
+            "workspace_dir": tmp_dir,
+            "enrichment_enabled": False,
             "source_crosswalk_config": "",
             "sedici_crosswalk_config": os.path.join(_CONFIGS_DIR, "sedicicrosswalkconfig.json"),
             "generic_source_csv_path": os.path.join(tmp_dir, "generic_source.csv"),
@@ -215,6 +218,7 @@ def main():
             "dspace_collection": "test-collection",
             "import_mapfile_path": os.path.join(tmp_dir, "mapfile"),
             "import_validate_only": True,
+            "import_exclude_bitstreams": True,
         }
 
         _print_header("Ejecución paso a paso")

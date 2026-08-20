@@ -235,6 +235,9 @@ def predict_pipeline(inputs: dict) -> dict:
             "source_csv_path": tmp_csv,
             "source_name": inputs.get("source_name", "test_source"),
             "repository_csv_path": tmp_repo,
+            "input_source_type": "csv",
+            "workspace_dir": tmp_dir,
+            "enrichment_enabled": False,
             "source_crosswalk_config": "",
             "sedici_crosswalk_config": os.path.join(CONFIGS_DIR, "export_10915_crosswalkconfig.json"),
             "generic_source_csv_path": os.path.join(tmp_dir, "generic_source.csv"),
@@ -251,6 +254,7 @@ def predict_pipeline(inputs: dict) -> dict:
             "dspace_collection": "test-collection",
             "import_mapfile_path": os.path.join(tmp_dir, "mapfile"),
             "import_validate_only": True,
+            "import_exclude_bitstreams": True,
         }
 
         # Mock shutil para SAF

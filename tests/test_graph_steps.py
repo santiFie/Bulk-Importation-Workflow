@@ -133,10 +133,15 @@ def build_state(tmp_path) -> dict:
     """Construye un State completo con rutas a archivos temporales."""
     return {
         "messages": [],
-        # Paso 1 — Inputs
+        # Paso 0 — Workspace
+        "workspace_dir": str(tmp_path),
+        # Inputs
         "repository_csv_path": SEDICI_CSV,
         "source_csv_path": SOURCE_CSV,
         "source_name": "Romero",
+        "input_source_type": "csv",
+        # Enriquecimiento
+        "enrichment_enabled": False,
         # Paso 2 — Crosswalk configs y outputs intermedios
         "source_crosswalk_config": SOURCE_CROSSWALK,
         "sedici_crosswalk_config": SEDICI_CROSSWALK,
