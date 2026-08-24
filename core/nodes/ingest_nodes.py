@@ -17,12 +17,11 @@ import logging
 import os
 from typing import Any
 
-from langchain_core.messages import HumanMessage
-from langchain_mcp_adapters.client import MultiServerMCPClient
+import httpx
+from minio import Minio
 
 from core.state import State
 from core.utils.config import config
-from core.agent.metadata_extractor_agent import build_metadata_extractor_workflow
 
 logger = logging.getLogger(__name__)
 
@@ -51,12 +50,12 @@ async def pdf_ingest_node(state: State) -> dict[str, Any]:
     Nodo PDFIngest — Descarga PDFs desde MinIO y extrae sus metadatos.
 
     Flujo interno:
-      1. Lista los objetos PDF en minio_bucket/minio_prefix vía el MCP de MinIO.
-      2. Para cada PDF, invoca el MetadataExtractorAgent vía el MCP del
-         Orchestrator para obtener metadatos estructurados.
-      3. Agrega todos los metadatos extraídos en un CSV y lo escribe en
+      1. Lista los objetos PDF en minio_bucket/minio_prefix vía MinIO SDK.
+      2. Para cada PDF, descarga el archivo en memoria.
+      3. Envía el PDF a la API del Orchestrator para extracción de metadatos.
+      4. Agrega todos los metadatos extraídos en un CSV y lo escribe en
          workspace_dir/source_from_pdfs.csv.
-      4. Actualiza state["source_csv_path"] con la ruta al CSV generado.
+      5. Actualiza state["source_csv_path"] con la ruta al CSV generado.
 
     Requiere en el estado:
       - workspace_dir:  directorio de trabajo del lote (creado por SetupWorkspace).
@@ -80,52 +79,28 @@ async def pdf_ingest_node(state: State) -> dict[str, Any]:
         minio_bucket, minio_prefix,
     )
 
-    # ── 1. Conectar al MetadataExtractor MCP ─────────────────────────────────
-    extractor_client = MultiServerMCPClient({
-        "OrchestratorMCP": {
-            "url": config.ORCHESTRATOR_MCP_URL,
-            "transport": "streamable_http",
-        }
-    })
-    extractor_tools = await extractor_client.get_tools(server_name="OrchestratorMCP")
-    extractor_graph = await build_metadata_extractor_workflow(extractor_tools)
-
-    # ── 2. Conectar al MinIO MCP para listar los PDFs ────────────────────────
-    minio_client = MultiServerMCPClient({
-        "aistor": {
-            "command": "docker",
-            "args": [
-                "run", "-i", "--rm", "--network=host",
-                "-v", f"{config.DOWNLOADS_DIR}:/Downloads",
-                "-e", "MINIO_ENDPOINT=localhost:9003",
-                "-e", f"MINIO_ACCESS_KEY={config.MINIO_ROOT_USER}",
-                "-e", f"MINIO_SECRET_KEY={config.MINIO_ROOT_PASSWORD}",
-                "-e", "MINIO_USE_SSL=false",
-                "quay.io/minio/aistor/mcp-server-aistor:latest",
-                "--allowed-directories", "/Downloads",
-                "--allow-write",
-            ],
-            "transport": "stdio",
-        }
-    })
-
-    minio_tools = await minio_client.get_tools(server_name="aistor")
-
-    # ── 3. Listar objetos PDF en el bucket ───────────────────────────────────
-    list_prompt = (
-        f"Lista todos los archivos PDF en el bucket '{minio_bucket}'"
-        + (f" con prefijo '{minio_prefix}'" if minio_prefix else "")
-        + ". Devuelve sólo los nombres (paths) de los objetos."
+    # ── 1. Configurar MinIO Client ───────────────────────────────────────────
+    minio_client = Minio(
+        "localhost:9003",
+        access_key=config.MINIO_ROOT_USER,
+        secret_key=config.MINIO_ROOT_PASSWORD,
+        secure=False
     )
 
+    # ── 2. Listar objetos PDF en el bucket ───────────────────────────────────
     logger.info("[PDFIngest] Listando PDFs en MinIO...")
-    list_response = await extractor_graph.ainvoke({
-        "messages": [HumanMessage(content=list_prompt)]
-    })
-    pdf_list_raw = list_response["messages"][-1].content
+    
+    try:
+        objects = minio_client.list_objects(minio_bucket, prefix=minio_prefix, recursive=True)
+        pdf_paths = [obj.object_name for obj in objects if obj.object_name.lower().endswith('.pdf')]
+    except Exception as exc:
+        logger.error("[PDFIngest] Error al listar objetos en MinIO: %s", exc)
+        _write_empty_csv(output_csv_path)
+        return {
+            "source_csv_path": output_csv_path,
+            "node_errors": {**state.get("node_errors", {}), "PDFIngest_errors": f"Error listando en MinIO: {exc}"},
+        }
 
-    # Parsear la lista de PDFs (el agente devuelve texto; extrae los paths)
-    pdf_paths = _parse_pdf_list(pdf_list_raw, minio_bucket, minio_prefix)
     logger.info("[PDFIngest] PDFs encontrados: %d", len(pdf_paths))
 
     if not pdf_paths:
@@ -133,28 +108,74 @@ async def pdf_ingest_node(state: State) -> dict[str, Any]:
         _write_empty_csv(output_csv_path)
         return {"source_csv_path": output_csv_path}
 
-    # ── 4. Extraer metadatos de cada PDF ────────────────────────────────────
+    # ── 3. Extraer metadatos de cada PDF vía API Client ──────────────────────
     all_metadata: list[dict] = []
     errors: list[str] = []
 
     for pdf_path in pdf_paths:
         logger.info("[PDFIngest] Procesando: %s", pdf_path)
         try:
-            extraction_prompt = (
-                f"Descarga el archivo '{pdf_path}' del bucket '{minio_bucket}' "
-                f"y extrae todos sus metadatos académicos (título, autores, "
-                f"año, DOI, ISBN, ISSN, resumen, palabras clave, editorial)."
+            # Obtener el archivo desde MinIO
+            response = minio_client.get_object(minio_bucket, pdf_path)
+            file_bytes = response.read()
+            response.close()
+            response.release_conn()
+
+            # Extraer el nombre de archivo
+            filename = os.path.basename(pdf_path)
+            if not filename:
+                filename = "document.pdf"
+
+            files = {"file": (filename, file_bytes)}
+            data = {
+                "normalization": "true",
+                "type": "None",
+                "deepanalyze": "false",
+                "ocr": "false"
+            }
+
+            headers = {}
+            if config.ORCHESTRATOR_LOCAL_API_KEY:
+                headers["Authorization"] = f"Bearer {config.ORCHESTRATOR_LOCAL_API_KEY}"
+            elif config.ORCHESTRATOR_API_KEY:
+                headers["Authorization"] = f"Bearer {config.ORCHESTRATOR_API_KEY}"
+
+            orchestrator_url = config.ORCHESTRATOR_BASE_URL_LOCAL or config.ORCHESTRATOR_BASE_URL
+            
+            # Enviar al orquestador backend
+            api_resp = httpx.post(
+                f"{orchestrator_url}/upload",
+                headers=headers,
+                files=files,
+                data=data,
+                timeout=120
             )
-            response = await extractor_graph.ainvoke({
-                "messages": [HumanMessage(content=extraction_prompt)]
-            })
-            metadata = _parse_metadata_response(response["messages"][-1].content, pdf_path)
-            all_metadata.append(metadata)
+            api_resp.raise_for_status()
+            metadata = api_resp.json()
+            
+            mapped_metadata = {
+                "id": pdf_path,
+                "title": metadata.get("title", ""),
+                "author": "|".join(metadata.get("creator", []) + metadata.get("director", [])),
+                "description": metadata.get("abstract", ""),
+                "date": metadata.get("date", ""),
+                "type": metadata.get("type", ""),
+                "subject": metadata.get("subject", ""),
+                "issn": metadata.get("issn", ""),
+                "isbn": metadata.get("isbn", ""),
+                "doi": metadata.get("doi", ""),
+                "citation": metadata.get("originPlaceInfo", ""),
+                "rights": metadata.get("rights", ""),
+                "rightsurl": metadata.get("rightsurl", ""),
+            }
+
+            all_metadata.append(mapped_metadata)
+
         except Exception as exc:
             logger.error("[PDFIngest] Error procesando '%s': %s", pdf_path, exc)
             errors.append(f"{pdf_path}: {exc}")
 
-    # ── 5. Escribir CSV de salida ────────────────────────────────────────────
+    # ── 4. Escribir CSV de salida ────────────────────────────────────────────
     _write_metadata_csv(all_metadata, output_csv_path)
 
     logger.info(
@@ -166,42 +187,6 @@ async def pdf_ingest_node(state: State) -> dict[str, Any]:
         "source_csv_path": output_csv_path,
         "node_errors": {**state.get("node_errors", {}), "PDFIngest_errors": "; ".join(errors)} if errors else state.get("node_errors", {}),
     }
-
-
-# ---------------------------------------------------------------------------
-# Helpers privados
-# ---------------------------------------------------------------------------
-
-def _parse_pdf_list(raw_text: str, bucket: str, prefix: str) -> list[str]:
-    """
-    Extrae los paths de PDFs de la respuesta en texto libre del agente.
-    Intenta parsear JSON si el agente lo devuelve; sino, línea por línea.
-    """
-    try:
-        data = json.loads(raw_text)
-        if isinstance(data, list):
-            return [str(p) for p in data if str(p).lower().endswith(".pdf")]
-    except (json.JSONDecodeError, TypeError):
-        pass
-
-    lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
-    return [line for line in lines if line.lower().endswith(".pdf")]
-
-
-def _parse_metadata_response(raw_text: str, pdf_path: str) -> dict:
-    """
-    Intenta parsear la respuesta de extracción de metadatos como JSON.
-    Si falla, devuelve un diccionario mínimo con el path del PDF.
-    """
-    try:
-        data = json.loads(raw_text)
-        if isinstance(data, dict):
-            data.setdefault("source_file", pdf_path)
-            return data
-    except (json.JSONDecodeError, TypeError):
-        pass
-
-    return {"source_file": pdf_path, "raw_extraction": raw_text[:500]}
 
 
 def _write_metadata_csv(records: list[dict], output_path: str) -> None:

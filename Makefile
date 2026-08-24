@@ -4,6 +4,7 @@ PROJECT_ROOT := $(shell pwd)
 COMPOSE := docker compose -f "$(PROJECT_ROOT)/docker-compose.yml"
 DEDUPLICATOR_COMPOSE := docker compose -f "/home/santi/Documentos/Prebi/Backend-Modulo-Nacho/docker-compose.yml"
 DSPACE_COMPOSE := docker compose -f "/home/santi/Documentos/Prebi/DSpace/docker/docker-compose.yml"
+ORCHESTRATOR_COMPOSE := docker compose -f "/home/santi/Documentos/Prebi/extraccion_metadatos/api/app/docker-compose.yml"
 
 # ─── Levantar todo ────────────────────────────────────────────────────────────
 up:
@@ -30,6 +31,11 @@ build-openalex:
 	@echo "▶  Building OpenAlex MCP image..."
 	docker build -t multi-servicesproject-openalex-mcp "$(PROJECT_ROOT)/mcps/openalex_mcp"
 
+# ─── Build solo ORCHESTRATOR MCP ──────────────────────────────────────────────
+up-orchestrator:
+	@echo "▶  Starting ORCHESTRATOR MCP..."
+	$(ORCHESTRATOR_COMPOSE) up -d
+
 # ─── Detener todo ─────────────────────────────────────────────────────────────
 down:
 	@echo "▶  Stopping MCPs "
@@ -38,6 +44,8 @@ down:
 	$(DEDUPLICATOR_COMPOSE) stop
 	@echo "▶  Stopping DSpace..."
 	$(DSPACE_COMPOSE) stop
+	@echo "▶  Stopping ORCHESTRATOR MCP..."
+	$(ORCHESTRATOR_COMPOSE) stop
 
 # ─── Logs en tiempo real ──────────────────────────────────────────────────────
 logs:

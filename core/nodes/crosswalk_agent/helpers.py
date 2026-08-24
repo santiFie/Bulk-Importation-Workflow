@@ -516,7 +516,7 @@ def _validate_separator_with_llm(csv_path: str, config_path: str) -> str:
             samples_text=samples_text,
         )
         validator_llm = ChatGroq(
-            model=getattr(config, "SEARCHER_MODEL", "llama-3.3-70b-openai/gpt-oss-120b"),
+            model=getattr(config, "SEARCHER_MODEL", "openai/gpt-oss-120b"),
             temperature=0,
         )
         response = validator_llm.invoke(prompt)

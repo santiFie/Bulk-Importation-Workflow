@@ -74,11 +74,9 @@ class Config:
 
     MINIO_MCP_URL = "http://localhost:9005/sse"
 
-    # Orchestrator MCP (proyecto externo dockerizado)
-    ORCHESTRATOR_MCP_URL: str = (
-        os.getenv("ORCHESTRATOR_MCP_URL")
-        or "http://localhost:8004/mcp"
-    )
+    # ==================== METADATA EXTRACTOR ====================
+    METADATA_EXTRACTOR_MCP_URL: str = os.getenv("METADATA_EXTRACTOR_MCP_URL", "")
+    METADATA_EXTRACTOR_MODEL = os.getenv("METADATA_EXTRACTOR_MODEL", "openai/gpt-oss-120b")
 
     # ==================== ORCHESTRATOR ====================
     ORCHESTRATOR_API_KEY: str = os.getenv("ORCHESTRATOR_API_KEY", "")
@@ -86,6 +84,9 @@ class Config:
     ORCHESTRATOR_PASSWORD: str = os.getenv("ORCHESTRATOR_PASSWORD", "")
     ORCHESTRATOR_LOCAL_API_KEY: str = os.getenv("ORCHESTRATOR_LOCAL_API_KEY", "")
     ORCHESTRATOR_BASE_URL_LOCAL: str = os.getenv("ORCHESTRATOR_BASE_URL_LOCAL", "")
+    ORCHESTRATOR_MCP_URL: str = (
+        os.getenv("ORCHESTRATOR_MCP_URL")
+    )
 
     # ==================== DATABASE ====================
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./checkpoint.db")
@@ -103,15 +104,15 @@ class Config:
     # ==================== AGENTS ====================
     SEARCHER_MODEL: str = "openai/gpt-oss-20b"
     GITHUB_MODEL: str =  "gemini-3.1-flash-lite-preview"
-    SUPERVISOR_MODEL: str = "llama-3.3-70b-openai/gpt-oss-120b"
-    BOTS_MODEL: str = "llama-3.3-70b-openai/gpt-oss-120b"
+    SUPERVISOR_MODEL: str = "openai/gpt-oss-120b"
+    BOTS_MODEL: str = "openai/gpt-oss-120b"
     DSPACE_MODEL = "google/gemma-4-31b-it"
     MINIO_MODEL = "openai/gpt-oss-120b"
     # OPENALEX_MODEL = "nvidia/nemotron-3-ultra-550b-a55b"
     OPENALEX_MODEL = "openai/gpt-oss-120b"
     CROSSWALK_MODEL = "openai/gpt-oss-20b"
     CROSSWALK_VALIDATOR_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free"
-    METADATA_EXTRACTOR_MODEL = "llama-3.3-70b-openai/gpt-oss-120b"
+    METADATA_EXTRACTOR_MODEL = "openai/gpt-oss-120b"
     
     OPEN_ROUTER_API_KEY = os.getenv("OPEN_ROUTER_API_KEY")
     OPEN_ROUTER_BASE_URL = "https://openrouter.ai/api/v1"
