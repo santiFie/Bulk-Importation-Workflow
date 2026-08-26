@@ -130,7 +130,7 @@ tests/
 | → `separators_evaluator` | Verifica `file_delimiter`, `replace_separator` y que haya un `separator_regex` válido (Springer usa regex porque los autores no tienen separador explícito). |
 | → `regex_splits_correctly_evaluator` | Aplica el regex generado contra 20 filas reales de `Authors`. Score 1.0 si ≥ 60% de filas se dividen en > 1 token. |
 | **Dependencias externas** | LangSmith API, Groq API, `SearchResults.csv` en `tests/data/`. |
-| **Veredicto** | ✅ **Conservar** — es el único evaluador formal del Paso 1 (agente LLM). Permite comparar experimentos entre modelos y prompts. Muy útil dado el cambio reciente de `llama-3.3-70b-openai/gpt-oss-120b` a `llama-3.1-8b-instant`. |
+| **Veredicto** | ✅ **Conservar** — es el único evaluador formal del Paso 1 (agente LLM). Permite comparar experimentos entre modelos y prompts. Muy útil dado el cambio reciente de `openai/gpt-oss-120b` a `llama-3.1-8b-instant`. |
 
 ---
 

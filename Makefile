@@ -4,7 +4,7 @@ PROJECT_ROOT := $(shell pwd)
 COMPOSE := docker compose -f "$(PROJECT_ROOT)/docker-compose.yml"
 DEDUPLICATOR_COMPOSE := docker compose -f "/home/santi/Documentos/Prebi/Backend-Modulo-Nacho/docker-compose.yml"
 DSPACE_COMPOSE := docker compose -f "/home/santi/Documentos/Prebi/DSpace/docker/docker-compose.yml"
-ORCHESTRATOR_COMPOSE := docker compose -f "/home/santi/Documentos/Prebi/extraccion_metadatos/api/app/docker-compose.yml"
+METADATA_EXTRACTOR_COMPOSE := docker compose -f "/home/santi/Documentos/Prebi/extraccion_metadatos/api/app/docker-compose.yml"
 
 # ─── Levantar todo ────────────────────────────────────────────────────────────
 up:
@@ -16,6 +16,8 @@ up:
 	$(COMPOSE) up -d
 	@echo "▶  Starting local LangGraph Platform..."
 	LANGGRAPH_STARTUP_TIMEOUT=30 langgraph dev --allow-blocking
+	@echo "▶  Starting Metadata Extractor..."
+	$(METADATA_EXTRACTOR_COMPOSE) up -d
 
 # ─── Build images ─────────────────────────────────────────────────────────────
 # NOTE: OpenAlex MCP uses stdio transport → not in docker-compose, built standalone.
@@ -32,9 +34,9 @@ build-openalex:
 	docker build -t multi-servicesproject-openalex-mcp "$(PROJECT_ROOT)/mcps/openalex_mcp"
 
 # ─── Build solo ORCHESTRATOR MCP ──────────────────────────────────────────────
-up-orchestrator:
-	@echo "▶  Starting ORCHESTRATOR MCP..."
-	$(ORCHESTRATOR_COMPOSE) up -d
+up-metadata-extractor:
+	@echo "▶  Starting Metadata Extractor..."
+	$(METADATA_EXTRACTOR_COMPOSE) up -d
 
 # ─── Detener todo ─────────────────────────────────────────────────────────────
 down:
@@ -45,7 +47,7 @@ down:
 	@echo "▶  Stopping DSpace..."
 	$(DSPACE_COMPOSE) stop
 	@echo "▶  Stopping ORCHESTRATOR MCP..."
-	$(ORCHESTRATOR_COMPOSE) stop
+	$(METADATA_EXTRACTOR_COMPOSE) stop
 
 # ─── Logs en tiempo real ──────────────────────────────────────────────────────
 logs:

@@ -75,8 +75,10 @@ class Config:
     MINIO_MCP_URL = "http://localhost:9005/sse"
 
     # ==================== METADATA EXTRACTOR ====================
+    METADATA_EXTRACTOR_API_URL: str = os.getenv("METADATA_EXTRACTOR_API_URL", "")
     METADATA_EXTRACTOR_MCP_URL: str = os.getenv("METADATA_EXTRACTOR_MCP_URL", "")
-    METADATA_EXTRACTOR_MODEL = os.getenv("METADATA_EXTRACTOR_MODEL", "openai/gpt-oss-120b")
+    METADATA_EXTRACTOR_MODEL: str = os.getenv("METADATA_EXTRACTOR_MODEL", "openai/gpt-oss-120b")
+    METADATA_EXTRACTOR_API_KEY: str = os.getenv("METADATA_EXTRACTOR_API_KEY", "")
 
     # ==================== ORCHESTRATOR ====================
     ORCHESTRATOR_API_KEY: str = os.getenv("ORCHESTRATOR_API_KEY", "")

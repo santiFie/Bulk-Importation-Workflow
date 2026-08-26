@@ -108,7 +108,7 @@ async def pdf_ingest_node(state: State) -> dict[str, Any]:
         _write_empty_csv(output_csv_path)
         return {"source_csv_path": output_csv_path}
 
-    # ── 3. Extraer metadatos de cada PDF vía API Client ──────────────────────
+    # ── 3. Extraer metadatos de cada PDF ──────────────────────
     all_metadata: list[dict] = []
     errors: list[str] = []
 
@@ -135,23 +135,20 @@ async def pdf_ingest_node(state: State) -> dict[str, Any]:
             }
 
             headers = {}
-            if config.ORCHESTRATOR_LOCAL_API_KEY:
-                headers["Authorization"] = f"Bearer {config.ORCHESTRATOR_LOCAL_API_KEY}"
-            elif config.ORCHESTRATOR_API_KEY:
-                headers["Authorization"] = f"Bearer {config.ORCHESTRATOR_API_KEY}"
+            headers["Authorization"] = f"Bearer {config.METADATA_EXTRACTOR_API_KEY}"
 
-            orchestrator_url = config.ORCHESTRATOR_BASE_URL_LOCAL or config.ORCHESTRATOR_BASE_URL
+            metadata_extractor_url = config.METADATA_EXTRACTOR_API_URL
             
             # Enviar al orquestador backend
             api_resp = httpx.post(
-                f"{orchestrator_url}/upload",
+                f"{metadata_extractor_url}/upload",
                 headers=headers,
                 files=files,
                 data=data,
                 timeout=120
             )
             api_resp.raise_for_status()
-            metadata = api_resp.json()
+            metadata = api_resp.json()["data"]
             
             mapped_metadata = {
                 "id": pdf_path,
@@ -175,7 +172,6 @@ async def pdf_ingest_node(state: State) -> dict[str, Any]:
             logger.error("[PDFIngest] Error procesando '%s': %s", pdf_path, exc)
             errors.append(f"{pdf_path}: {exc}")
 
-    # ── 4. Escribir CSV de salida ────────────────────────────────────────────
     _write_metadata_csv(all_metadata, output_csv_path)
 
     logger.info(
