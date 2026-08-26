@@ -40,15 +40,15 @@ class State(TypedDict):
     source_name: str                  # Nombre del repositorio origen, ej. "unlp_doaj"
     dspace_collection: str            # Handle o ID de la colección destino en SEDICI (ej. "123456789/5")
     import_validate_only: bool        # Si es True, solo valida la importación sin efectuar cambios permanentes
+    input_source_type: Literal["csv", "pdf_minio"]  # Tipo de fuente: CSV directo o PDFs en MinIO
 
-    # --- Fuente de Entrada ---
-    input_source_type: NotRequired[Literal["csv", "pdf_minio"]]  # Tipo de fuente: CSV directo o PDFs en MinIO
+    # --- MinIO ---
     minio_bucket: NotRequired[str]    # Bucket de MinIO donde están los PDFs
     minio_prefix: NotRequired[str]    # Prefijo (carpeta) dentro del bucket
 
     # --- Enriquecimiento de Metadatos ---
     enrichment_enabled: NotRequired[bool]         # Habilita el enriquecimiento post-deduplicación
-    enrichment_stats: NotRequired[dict]           # Estadísticas: {total, enriched, skipped, errors}
+    enrichment_stats: NotRequired[dict]           # Estadísticas: {total, enriched, skipped, errors} TODO: Revisar si esto es necesario
 
     # --- Control del Pipeline ---
     pipeline_status: NotRequired[Literal["running", "paused_for_review", "failed", "completed"]]

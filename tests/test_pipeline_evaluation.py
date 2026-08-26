@@ -119,21 +119,15 @@ HITL_AUTO_RESPONSE: str = "accept"
 # Lista de CSVs a evaluar. Cada entrada es un dict con los datos del caso.
 # Agregar más entradas para realizar pruebas sucesivas con distintos CSVs.
 TEST_CASES: list[dict] = [
-    # {
-    #     "source_csv_path": os.path.join(DATA_DIR, "SearchResults.csv"),
-    #     "source_name": "springer",
-    #     "repository_csv_path": os.path.join(DATA_DIR, "export_10915_all.csv"),
-    #     # Columnas esperadas en el CSV genérico (para métricas del Paso 2a)
-    #     "expected_generic_columns": ["id", "title", "author", "date", "doi", "citation", "type"],
-    #     # Columnas esperadas en el CSV SEDICI-ready (para métricas del Paso 5)
-    #     "expected_sedici_columns": ["dc.title[es]", "sedici.creator.person[es]"],
-    #     # Cantidad exacta de autores esperados por fila tras la separación multivalor.
-    #     "expected_author_counts": [6, 6, 6, 6, 6],
-    # },
     {
         "source_csv_path": os.path.join(DATA_DIR, "articulos_unlp_doaj_v2.csv"),
         "source_name": "unlp_doaj",
         "repository_csv_path": os.path.join(DATA_DIR, "export_10915_all.csv"),
+        "dspace_collection": "d0fb620b-6b5e-43d3-ba3f-d0183ed5b84f",
+        "import_validate_only": True,
+        "input_source_type": "csv",
+        "enrichment_enabled": True,
+        "import_exclude_bitstreams": True,
         "expected_generic_columns": ["id", "title", "author", "date", "doi", "citation", "type"],
         "expected_sedici_columns": ["dc.title[es]", "sedici.creator.person[es]"],
         "expected_author_counts": [2, 2, 4, 5, 3],
@@ -142,11 +136,30 @@ TEST_CASES: list[dict] = [
         "source_csv_path": os.path.join(DATA_DIR, "openalex.csv"),
         "source_name": "openalex",
         "repository_csv_path": os.path.join(DATA_DIR, "export_10915_all.csv"),
+        "dspace_collection": "d0fb620b-6b5e-43d3-ba3f-d0183ed5b84f",
+        "import_validate_only": True,
+        "input_source_type": "csv",
+        "enrichment_enabled": True,
+        "import_exclude_bitstreams": True,
         "expected_generic_columns": ["id", "title", "author", "date", "doi", "citation", "type"],
         "expected_sedici_columns": ["dc.title[es]", "sedici.creator.person[es]"],
         "expected_author_counts": [6, 6, 6, 6, 6],
     },
-    
+    {
+        "source_csv_path": "",
+        "source_name": "minio_dspace",
+        "minio_bucket": "importacion",
+        "minio_prefix": "",
+        "repository_csv_path": os.path.join(DATA_DIR, "export_10915_all.csv"),
+        "dspace_collection": "d0fb620b-6b5e-43d3-ba3f-d0183ed5b84f",
+        "import_validate_only": True,
+        "input_source_type": "pdf_minio",
+        "enrichment_enabled": True,
+        "import_exclude_bitstreams": True,
+        "expected_generic_columns": ["id", "title", "author", "date", "doi", "citation", "type"],
+        "expected_sedici_columns": ["dc.title[es]", "sedici.creator.person[es]"],
+        "expected_author_counts": [3, 3, 2, 3, 4],
+    },
 ]
 
 # Paso en el que se detiene la ejecución (inclusive).
@@ -182,7 +195,7 @@ def _git_hash(relative_path: str) -> str:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# CONFIGURACIÓN DEL EXPERIMENTO — editar antes de cada corrida
+# CONFIGURACIÓN DEL EXPERIMENTO
 # ═══════════════════════════════════════════════════════════════════════════
 
 # Nombre del dataset y prefijo del experimento en LangSmith
@@ -214,11 +227,13 @@ def predict_pipeline(inputs: dict) -> dict:
     detallada de cada paso para que los evaluadores la analicen.
     """
     with tempfile.TemporaryDirectory() as tmp_dir:
-        # Copiar CSV fuente a directorio temporal
-        src_csv = inputs["source_csv_path"]
-        tmp_csv = os.path.join(tmp_dir, os.path.basename(src_csv))
-        import shutil as _shutil
-        _shutil.copy(src_csv, tmp_csv)
+        # Copiar CSV fuente a directorio temporal si existe
+        src_csv = inputs.get("source_csv_path", "")
+        tmp_csv = ""
+        if src_csv and os.path.isfile(src_csv):
+            tmp_csv = os.path.join(tmp_dir, os.path.basename(src_csv))
+            import shutil as _shutil
+            _shutil.copy(src_csv, tmp_csv)
 
         # Copiar CSV de repositorio SEDICI
         repo_csv = inputs.get("repository_csv_path", "")
@@ -234,10 +249,14 @@ def predict_pipeline(inputs: dict) -> dict:
             "messages": [],
             "source_csv_path": tmp_csv,
             "source_name": inputs.get("source_name", "test_source"),
+            "minio_bucket": inputs.get("minio_bucket", ""),
+            "minio_prefix": inputs.get("minio_prefix", ""),
             "repository_csv_path": tmp_repo,
-            "input_source_type": "csv",
+            "dspace_collection": inputs.get("dspace_collection", "d0fb620b-6b5e-43d3-ba3f-d0183ed5b84f"),
+            "import_validate_only": inputs.get("import_validate_only", True),
+            "input_source_type": inputs.get("input_source_type", "csv"),
             "workspace_dir": tmp_dir,
-            "enrichment_enabled": False,
+            "enrichment_enabled": inputs.get("enrichment_enabled", True),
             "source_crosswalk_config": "",
             "sedici_crosswalk_config": os.path.join(CONFIGS_DIR, "export_10915_crosswalkconfig.json"),
             "generic_source_csv_path": os.path.join(tmp_dir, "generic_source.csv"),
@@ -251,10 +270,8 @@ def predict_pipeline(inputs: dict) -> dict:
             "umbral_seguro": 10,
             "umbral_revision": 30,
             "saf_output_path": os.path.join(tmp_dir, "saf_output"),
-            "dspace_collection": "test-collection",
             "import_mapfile_path": os.path.join(tmp_dir, "mapfile"),
-            "import_validate_only": True,
-            "import_exclude_bitstreams": True,
+            "import_exclude_bitstreams": inputs.get("import_exclude_bitstreams", True),
         }
 
         # Mock shutil para SAF
@@ -647,15 +664,22 @@ def run_evaluation():
 
     # Agregar cada caso de prueba al dataset
     for i, case in enumerate(TEST_CASES):
-        csv_path = case["source_csv_path"]
-        if not os.path.isfile(csv_path):
+        csv_path = case.get("source_csv_path", "")
+        if case.get("input_source_type") != "pdf_minio" and (not csv_path or not os.path.isfile(csv_path)):
             print(f"⚠️  Caso {i}: CSV no encontrado en {csv_path}. Saltando.")
             continue
 
         inputs = {
             "source_csv_path": csv_path,
             "source_name": case.get("source_name", "test_source"),
+            "minio_bucket": case.get("minio_bucket", ""),
+            "minio_prefix": case.get("minio_prefix", ""),
             "repository_csv_path": case.get("repository_csv_path", ""),
+            "dspace_collection": case.get("dspace_collection", "d0fb620b-6b5e-43d3-ba3f-d0183ed5b84f"),
+            "import_validate_only": case.get("import_validate_only", True),
+            "input_source_type": case.get("input_source_type", "csv"),
+            "enrichment_enabled": case.get("enrichment_enabled", True),
+            "import_exclude_bitstreams": case.get("import_exclude_bitstreams", True),
             "stop_after_step": STOP_AFTER_STEP,
         }
 
@@ -671,7 +695,8 @@ def run_evaluation():
             outputs=outputs,
             dataset_id=dataset.id,
         )
-        print(f"  📄 Caso {i} añadido: {os.path.basename(csv_path)} ({case.get('source_name')})")
+        display_name = os.path.basename(csv_path) if csv_path else f"minio:{case.get('minio_bucket')}"
+        print(f"  📄 Caso {i} añadido: {display_name} ({case.get('source_name')})")
 
     # Mostrar configuración
     print(f"\n{'═' * 60}")
