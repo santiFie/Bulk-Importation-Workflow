@@ -7,18 +7,23 @@ transparente.
 
 Flujos:
   - "csv":       state["source_csv_path"] ya existe → pasa directo (END).
-  - "pdf_minio": descarga PDFs desde MinIO y extrae metadatos → genera CSV.
+  - "pdf_minio": descarga PDFs desde MinIO, extrae metadatos y cura el CSV.
 
 Topología:
   START
     ├─ (csv)       → END
-    └─ (pdf_minio) → PDFIngest → END
+    └─ (pdf_minio) → PDFIngest → CurateMetadata → END
+
+La curación solo se aplica cuando los metadatos fueron generados
+automáticamente desde PDFs, ya que los CSV provistos por el usuario
+se asumen correctos.
 """
 
 from langgraph.graph import END, START, StateGraph
 
 from core.state import State
 from core.nodes.ingest_nodes import pdf_ingest_node, route_input_source
+from core.nodes.curation_nodes import curate_metadata_node
 
 
 async def build_ingest_subgraph():
@@ -31,6 +36,7 @@ async def build_ingest_subgraph():
     graph = StateGraph(State)
 
     graph.add_node("PDFIngest", pdf_ingest_node)
+    graph.add_node("CurateMetadata", curate_metadata_node)
 
     # El enrutamiento se hace directamente desde START con conditional_edges.
     # Para el flujo "csv" no hay ningún nodo que ejecutar; va directo a END.
@@ -42,6 +48,7 @@ async def build_ingest_subgraph():
             "pdf_minio": "PDFIngest",
         },
     )
-    graph.add_edge("PDFIngest", END)
+    graph.add_edge("PDFIngest", "CurateMetadata")
+    graph.add_edge("CurateMetadata", END)
 
     return graph.compile(name="IngestSubgraph")

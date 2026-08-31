@@ -14,10 +14,10 @@ up:
 	$(DEDUPLICATOR_COMPOSE) up -d
 	@echo "▶  Starting MCPs..."
 	$(COMPOSE) up -d
-	@echo "▶  Starting local LangGraph Platform..."
-	LANGGRAPH_STARTUP_TIMEOUT=30 langgraph dev --allow-blocking
 	@echo "▶  Starting Metadata Extractor..."
 	$(METADATA_EXTRACTOR_COMPOSE) up -d
+	@echo "▶  Starting local LangGraph Platform..."
+	LANGGRAPH_STARTUP_TIMEOUT=30 langgraph dev --allow-blocking
 
 # ─── Build images ─────────────────────────────────────────────────────────────
 # NOTE: OpenAlex MCP uses stdio transport → not in docker-compose, built standalone.

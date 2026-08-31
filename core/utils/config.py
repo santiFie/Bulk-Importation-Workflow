@@ -115,6 +115,8 @@ class Config:
     CROSSWALK_MODEL = "openai/gpt-oss-20b"
     CROSSWALK_VALIDATOR_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free"
     METADATA_EXTRACTOR_MODEL = "openai/gpt-oss-120b"
+    METADATA_CURATOR_MODEL = "openai/gpt-oss-20b"  # Modelo para el agente curador de metadatos PDF
+    CURATION_ANOMALY_THRESHOLD: float = 0.3         # Score mínimo para enviar una fila al agente curador
     
     OPEN_ROUTER_API_KEY = os.getenv("OPEN_ROUTER_API_KEY")
     OPEN_ROUTER_BASE_URL = "https://openrouter.ai/api/v1"

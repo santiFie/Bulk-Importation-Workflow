@@ -84,3 +84,7 @@ class State(TypedDict):
     # --- Paso 9: Importación a DSpace ---
     import_mapfile_path: NotRequired[str]           # Path local donde se guardará el mapfile generado por DSpace
     import_exclude_bitstreams: NotRequired[bool]    # Si es True, excluye bitstreams del proceso de importación
+
+    # --- Paso 1b: Curación de Metadatos PDF ---
+    curated_csv_path: NotRequired[str]              # CSV curado generado por CurateMetadata (no sobreescribe source_csv_path)
+    curation_stats: NotRequired[dict]               # Estadísticas del proceso de curación: {total, limpias, curadas, marcadas, errores}
