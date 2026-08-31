@@ -22,9 +22,10 @@ import tempfile
 from pathlib import Path
 from typing import Any, Optional
 
-from langchain_groq import ChatGroq
+from langchain_core.language_models.chat_models import BaseChatModel
 
 from core.utils.config import config
+from core.utils.get_local_model import FallbackLLM
 from core.utils.prompt_loader import load_agent_prompt
 from core.clients.crosswalk_client import CrosswalkClient, CrosswalkApiError
 
@@ -264,7 +265,7 @@ def save_custom_regex(pattern: str) -> None:
         json.dump(customs, f, indent=2, ensure_ascii=False)
 
 
-def detect_separator(values: list[str], llm: Optional[ChatGroq] = None) -> dict[str, str]:
+def detect_separator(values: list[str], llm: Optional[BaseChatModel] = None) -> dict[str, str]:
     """
     Detecta deterministamente candidatos a separador en una lista de valores
     de una columna multivaluada, y usa un LLM como supervisor de la partición resultante.
@@ -515,10 +516,10 @@ def _validate_separator_with_llm(csv_path: str, config_path: str) -> str:
             separator_config_description=separator_config_description,
             samples_text=samples_text,
         )
-        validator_llm = ChatGroq(
-            model=getattr(config, "SEARCHER_MODEL", "openai/gpt-oss-120b"),
-            temperature=0,
-        )
+        validator_llm = FallbackLLM(
+            groq_model=getattr(config, "SEARCHER_MODEL", "openai/gpt-oss-120b"),
+            openrouter_model=getattr(config, "SEARCHER_MODEL", "openai/gpt-oss-120b"),
+        ).resolve()
         response = validator_llm.invoke(prompt)
         return response.content
 

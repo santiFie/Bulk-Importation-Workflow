@@ -9,12 +9,12 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
 from langchain_core.messages import SystemMessage, BaseMessage, HumanMessage, AIMessage
-from langchain_google_genai import ChatGoogleGenerativeAI
 from typing import TypedDict, Annotated, Literal
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.graph.message import add_messages
 from core.utils.config import config
+from core.utils.get_local_model import FallbackLLM
 from core.utils.prompt_loader import load_agent_prompt
 
 
@@ -35,10 +35,10 @@ async def build_github_workflow(tools):
     Returns:
         Compiled GitHub agent graph
     """
-    github_model = ChatGoogleGenerativeAI(
-        model=config.GITHUB_MODEL,
-        temperature=0
-    ).bind_tools(tools=tools)
+    github_model = FallbackLLM(
+        groq_model=config.GITHUB_MODEL,
+        openrouter_model=config.GITHUB_MODEL,
+    ).resolve_with_tools(tools=tools)
 
     async def github_agent_node(state: GithubState):
         """Agent node that handles GitHub operations"""

@@ -12,12 +12,12 @@ Flujo:
 from typing import Annotated, TypedDict
 
 from langchain_core.messages import BaseMessage, SystemMessage
-from langchain_groq import ChatGroq
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
 
 from core.utils.config import config
+from core.utils.get_local_model import FallbackLLM
 from core.utils.prompt_loader import load_agent_prompt
 
 
@@ -40,10 +40,10 @@ async def build_metadata_extractor_workflow(tools: list):
         Grafo compilado listo para ser invocado.
     """
 
-    extractor_model = ChatGroq(
-        model=config.METADATA_EXTRACTOR_MODEL,
-        temperature=0,
-    ).bind_tools(tools=tools)
+    extractor_model = FallbackLLM(
+        groq_model=config.METADATA_EXTRACTOR_MODEL,
+        openrouter_model=config.METADATA_EXTRACTOR_MODEL,
+    ).resolve_with_tools(tools=tools)
 
     async def metadata_extractor_node(state: MetadataExtractorState) -> dict:
         """

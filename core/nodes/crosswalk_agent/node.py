@@ -35,9 +35,7 @@ from pydantic import Field as PydanticField
 
 from langchain_core.messages import SystemMessage, ToolMessage
 from langchain_core.tools import tool
-from langchain_groq import ChatGroq
-from langchain_nvidia_ai_endpoints import ChatNVIDIA
-from langchain_openai import ChatOpenAI
+from langchain_core.language_models.chat_models import BaseChatModel
 from langsmith import traceable
 from langgraph.types import interrupt
 
@@ -51,7 +49,7 @@ from core.nodes.crosswalk_agent.helpers import (
     _validate_config_deterministic,
 )
 
-from core.utils.get_local_model import get_model
+from core.utils.get_local_model import FallbackLLM
 # Set to True to use local Ollama model, False to use remote OpenAI model
 USE_LOCAL_MODEL = False
 
@@ -150,7 +148,7 @@ def _save_config_file(
 # ---------------------------------------------------------------------------
 
 def _phase2b_react_regex(
-    llm: ChatGroq | ChatOpenAI | ChatNVIDIA,
+    llm: BaseChatModel,
     csv_path: str,
     column: str,
     head_rows: list[dict],
@@ -302,7 +300,7 @@ def generate_source_crosswalk_config(state: dict) -> dict[str, Any]:
         print(f"[generate_source_crosswalk_config] Reusando config existente: {config_output_path}")
         return {"source_crosswalk_config": config_output_path}
 
-    llm = get_model(provider="groq", model=config.CROSSWALK_MODEL)
+    llm = FallbackLLM(groq_model=config.CROSSWALK_MODEL, openrouter_model=config.CROSSWALK_MODEL).resolve()
 
     # =========================================================================
     # FASE 1 — Mapeo de columnas (LLM, herramienta única)

@@ -4,8 +4,6 @@ import asyncio
 from typing import Annotated, Any, TypedDict, List, Tuple, Literal, cast
 from langchain_core.messages import BaseMessage, SystemMessage
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from langchain_groq import ChatGroq
-from langchain_nvidia_ai_endpoints import ChatNVIDIA
 from langgraph.graph import END, START, StateGraph
 from core.agent.bots_agent import build_bots_workflow
 from core.agent.github_agent import build_github_workflow
@@ -16,6 +14,7 @@ from core.agent.openalex_agent import build_openalex_workflow
 from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
 from core.utils.config import config
+from core.utils.get_local_model import FallbackLLM
 from core.utils.rag_context import retrieve_planner_context
 from core.utils.local_rag_context import retrieve_planner_context_local
 
@@ -167,7 +166,10 @@ async def create_supervisor_graph(persistence_saver):
     minio_graph = await build_minio_workflow(tools["minio"])
     openalex_graph = await build_openalex_workflow(tools["openalex"])
 
-    planner_llm = ChatGroq(model=config.SUPERVISOR_MODEL, temperature=0)
+    planner_llm = FallbackLLM(
+        groq_model=config.SUPERVISOR_MODEL,
+        openrouter_model=config.SUPERVISOR_MODEL,
+    ).resolve()
 
     DOWNLOADS_DIR = config.DOWNLOADS_DIR
     planner_system_prompt=f"""
@@ -360,7 +362,11 @@ async def create_supervisor_graph(persistence_saver):
         Explain what was done and provide any final requested information or confirmation."""
         
         # Use not structured output here
-        final_llm = ChatGroq(model=config.SUPERVISOR_MODEL, temperature=0.3)
+        final_llm = FallbackLLM(
+            groq_model=config.SUPERVISOR_MODEL,
+            openrouter_model=config.SUPERVISOR_MODEL,
+            temperature=0.3,
+        ).resolve()
         response = final_llm.invoke(final_prompt)
         
         return {"response": response.content}

@@ -9,7 +9,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
 from langchain_core.messages import SystemMessage, BaseMessage, AIMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_groq import ChatGroq
 from pydantic import BaseModel, Field
 from typing import TypedDict, Annotated, Literal
 from langgraph.graph import StateGraph, START, END
@@ -17,6 +16,7 @@ from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.graph.message import add_messages
 from core.tools.tavily import generate_tavily
 from core.utils.config import config
+from core.utils.get_local_model import FallbackLLM
 from core.utils.prompt_loader import load_agent_prompt
 
 
@@ -52,8 +52,9 @@ def build_searcher_graph():
     """
     tavily_tool = generate_tavily()
 
-    author_llm = ChatGroq(model=config.SEARCHER_MODEL, temperature=0)
-    reviewer_llm = ChatGroq(model=config.SEARCHER_MODEL, temperature=0)
+    searcher_llm = FallbackLLM(groq_model=config.SEARCHER_MODEL, openrouter_model=config.SEARCHER_MODEL)
+    author_llm = searcher_llm.resolve()
+    reviewer_llm = searcher_llm.resolve()
 
     async def author_node(state: SearcherAgentState) -> dict:
         """

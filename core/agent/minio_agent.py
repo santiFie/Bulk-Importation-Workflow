@@ -4,10 +4,10 @@ from langchain_core.messages import BaseMessage, SystemMessage, AIMessage
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.graph.message import add_messages
-from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
 from langchain_core.tools import tool
 from core.utils.config import config
+from core.utils.get_local_model import FallbackLLM
 from core.utils.prompt_loader import load_agent_prompt
 
 DOWNLOADS_DIR = config.DOWNLOADS_DIR
@@ -49,7 +49,7 @@ def get_host_downloads_dir() -> str:
 async def build_minio_workflow(tools):
 
     tools.append(get_host_downloads_dir)
-    minio_model = ChatGroq(model=config.MINIO_MODEL, temperature=0).bind_tools(tools=tools)
+    minio_model = FallbackLLM(groq_model=config.MINIO_MODEL, openrouter_model=config.MINIO_MODEL).resolve_with_tools(tools=tools)
     #minio_model = get_minio_model_with_tools(tools)
 
     async def minio_node(state):

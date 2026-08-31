@@ -1,11 +1,10 @@
 from typing import TypedDict, Annotated, List
 from langchain_core.messages import BaseMessage, SystemMessage
-from langchain_groq import ChatGroq
-from langchain_nvidia import ChatNVIDIA
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.graph import END, START, StateGraph
 from core.utils.config import config
+from core.utils.get_local_model import FallbackLLM
 from core.utils.prompt_loader import load_agent_prompt
 
 
@@ -17,10 +16,7 @@ async def build_openalex_workflow(tools):
 
 
     async def openalex_node(state: OpenAlexState):
-        openalex_model = ChatNVIDIA(model=config.OPENALEX_MODEL,
-                                    api_key=config.NVIDIA_API_KEY,
-                                    temperature=0.01,                                    
-                                    ).bind_tools(tools=tools)
+        openalex_model = FallbackLLM(groq_model=config.OPENALEX_MODEL, openrouter_model=config.OPENALEX_MODEL).resolve_with_tools(tools=tools)
         sys_msg = SystemMessage(content=load_agent_prompt("openalex_agent"))
         prompt = [sys_msg] + state["messages"]
         response = await openalex_model.ainvoke(prompt)
