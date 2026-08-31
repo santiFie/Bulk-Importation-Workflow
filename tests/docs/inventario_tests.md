@@ -1,6 +1,6 @@
 # Inventario de Tests — `tests/`
 
-Análisis de todos los archivos de test del proyecto para ordenarlos y decidir cuáles conservar, unificar o eliminar.
+Inventario y análisis de todos los archivos de test del proyecto, organizados en subcarpetas según su alcance (`unit/`, `integration/`, `studio/`).
 
 ---
 
@@ -8,35 +8,52 @@ Análisis de todos los archivos de test del proyecto para ordenarlos y decidir c
 
 ```
 tests/
-├── data/                          ← Datos de prueba (CSVs, configs)
-├── docs/                          ← Documentación (este archivo)
-├── studio/                        ← Scripts de ejecución manual (NO son pytest)
-│   ├── run_crosswalk_agent.py
-│   └── run_pipeline.py
-├── test_deduplicator.py           ← Tests unitarios del motor de crosswalk
-├── test_graph_steps.py            ← Tests de integración de cada nodo del grafo
-├── test_pipeline_evaluation.py    ← Evaluador del pipeline integrado con LangSmith
-└── test_source_config_generator.py ← Evaluador del agente de crosswalk con LangSmith
+├── data/                                 ← Datos de prueba (CSVs, configs)
+├── docs/                                 ← Documentación técnica de testing
+├── studio/                               ← Scripts de ejecución manual interactiva (NO son pytest)
+│   ├── run_crosswalk_agent.py            (opcional)
+│   └── run_pipeline.py                   ← Ejecución paso a paso del pipeline
+├── unit/                                 ← Tests unitarios (aislados, rápidos, sin dependencias de red obligatorias)
+│   ├── enrichers/                        ← Tests unitarios de clientes de enriquecimiento (con mocks)
+│   │   ├── test_crossref_enricher.py     ← Cliente Crossref
+│   │   ├── test_openalex_enricher.py     ← Cliente OpenAlex
+│   │   └── test_openlibrary_enricher.py  ← Cliente OpenLibrary
+│   ├── test_deduplicator.py              ← Motor de crosswalk (Crosswalk, CsvHandler)
+│   ├── test_heuristic_detectors.py       ← Detección heurística de anomalías en PDFs
+│   └── test_text_fixers.py               ← Correctores deterministas de texto
+└── integration/                          ← Tests de integración (nodos de LangGraph, servicios externos y LangSmith)
+    ├── test_curation_node.py             ← Nodo de curación de metadatos (PDF curation)
+    ├── test_graph_steps.py               ← Integración secuencial de nodos del pipeline
+    ├── test_pdf_ingest_node.py           ← Ingesta real MinIO + MCP Metadata Extractor
+    ├── test_pipeline_evaluation.py       ← Evaluación del pipeline completo en LangSmith
+    └── test_source_config_generator.py   ← Evaluación del agente de crosswalk en LangSmith
+```
+
+---
+
+## Cómo ejecutar la suite
+
+Con el entorno virtual `.venv` activado (`source .venv/bin/activate`):
+
+```bash
+# 1. Ejecutar solo tests unitarios (rápidos, sin servicios externos)
+pytest tests/unit/ -v
+
+# 2. Ejecutar solo tests unitarios excluyendo tests de API real en enrichers
+pytest tests/unit/ -v -k "not integration"
+
+# 3. Ejecutar tests de integración
+pytest tests/integration/ -v
+
+# 4. Ejecutar toda la suite completa
+pytest tests/ -v
 ```
 
 ---
 
 ## 1. Scripts de ejecución manual (`studio/`)
 
-> **No son tests de pytest.** Son scripts que se ejecutan con `python` directamente para hacer smoke tests manuales y observar trazas en LangSmith.
-
-### `studio/run_crosswalk_agent.py`
-
-| Campo | Detalle |
-|-------|---------|
-| **Tipo** | Script manual (no pytest) |
-| **Cómo ejecutar** | `python tests/studio/run_crosswalk_agent.py` |
-| **Qué hace** | Invoca únicamente `generate_source_crosswalk_config` (Paso 1) de forma aislada sobre `SearchResults.csv` (Springer). Imprime en consola los mapeos generados y la configuración del separador. Registra la traza en LangSmith. |
-| **Qué testea** | Smoke test del agente LLM de generación de crosswalk config. Útil para iterar sobre el prompt o la lógica del nodo sin ejecutar el pipeline entero. |
-| **Dependencias externas** | Groq API (LLM), LangSmith (tracing). |
-| **Veredicto** | ✅ **Conservar** — es el único punto de entrada rápido para depurar el Paso 1. |
-
----
+> **No son tests de pytest.** Son scripts que se ejecutan con `python` directamente para hacer smoke tests manuales, interactivos y observar trazas en LangSmith.
 
 ### `studio/run_pipeline.py`
 
@@ -51,145 +68,137 @@ tests/
 
 ---
 
-## 2. Tests de pytest
+## 2. Tests Unitarios (`unit/`)
 
-### `test_deduplicator.py`
+### `unit/test_text_fixers.py`
+
+| Campo | Detalle |
+|-------|---------|
+| **Tipo** | Tests unitarios puros (pytest) |
+| **Módulo testeado** | `core/utils/text_fixers.py` |
+| **Clases / grupos** | `TestFixSpacedChars`, `TestRemoveCidArtifacts`, `TestDeduplicateCyclicText`, `TestFixGluedWords`, `TestNormalizarAutores`, `TestAplicarCorrectoresProgramaticos` |
+| **Qué testea** | |
+| → `TestFixSpacedChars` | Colapso de caracteres separados por espacios espurios (típico en OCR/PDFs). |
+| → `TestRemoveCidArtifacts` | Eliminación de artefactos `(cid:XX)` y reemplazo de ligaduras comunes (`(cid:27)` → `fi`). |
+| → `TestDeduplicateCyclicText` | Detección y recorte de texto duplicado cíclicamente (ej. título repetido 2 o 3 veces). |
+| → `TestFixGluedWords` | Separación de palabras pegadas por mayúsculas intermedias o puntuación sin espacio. |
+| → `TestNormalizarAutores` | Formateo consistente de listas de autores (`Apellido, Nombre ||| ...`). |
+| → `TestAplicarCorrectoresProgramaticos` | Pipeline secuencial completo de correctores sobre un diccionario de metadatos. |
+| **Dependencias externas** | Ninguna (local y ultra rápido). |
+| **Veredicto** | ✅ **Conservar** |
+
+---
+
+### `unit/test_heuristic_detectors.py`
+
+| Campo | Detalle |
+|-------|---------|
+| **Tipo** | Tests unitarios puros (pytest) |
+| **Módulo testeado** | `core/utils/heuristic_detectors.py` |
+| **Clases / grupos** | `TestDetectarCharsDispersos`, `TestDetectarArtefactosCid`, `TestDetectarRepeticionCiclica`, `TestDetectarTextoPegado`, `TestDetectarCharsControl`, `TestDetectarLongitudAnomala`, `TestCalcularScoreAnomalia`, `TestAnalizarFila`, `TestTriarRegistros`, `TestCalcularEstadisticasLote` |
+| **Qué testea** | |
+| → Detectores individuales | Detección aislada de cada tipología de anomalía en campos de texto (título, abstract, autores). |
+| → `TestCalcularScoreAnomalia` | Ponderación de anomalías y cálculo de score normalizado `[0.0, 1.0]`. |
+| → `TestTriarRegistros` | Clasificación de registros en `limpios` vs `anomalos` según umbral. |
+| → `TestCalcularEstadisticasLote` | Métricas agregadas del lote bajo análisis. |
+| **Dependencias externas** | Ninguna. |
+| **Veredicto** | ✅ **Conservar** |
+
+---
+
+### `unit/test_deduplicator.py`
 
 | Campo | Detalle |
 |-------|---------|
 | **Tipo** | Tests unitarios (pytest) |
+| **Módulo testeado** | `core/scripts/crosswalk/` (`Crosswalk`, `CsvHandler`, `CrosswalkContext`) |
 | **Clases / grupos** | `TestGetConfigPathForSource`, `TestTransformMetadataCsvWithSedici`, `TestTransformMetadataCsvWithOaidc`, `TestTransformMetadataCsvEdgeCases`, `TestRomeroToSediciCrosswalk` |
-| **Nodo cubierto** | Motor de crosswalk (`Crosswalk`, `CsvHandler`, `CrosswalkContext`) — **independiente del grafo LangGraph** |
-| **Qué testea** | |
-| → `TestGetConfigPathForSource` | Helper que mapea nombre de fuente (`"sedici"`, `"oaidc"`, etc.) a su archivo JSON. Verifica case-insensitivity, trim de espacios, error para fuente desconocida, y que todos los archivos existan en disco. |
-| → `TestTransformMetadataCsvWithSedici` | Aplica crosswalk `sedici` sobre `sedici_input.csv`. Verifica: mensaje de éxito, creación del archivo, columnas genéricas (`title`, `date`, `author`, `id`), filas con datos, campo `title` no vacío. |
-| → `TestTransformMetadataCsvWithOaidc` | Aplica crosswalk `oaidc` sobre `oaidc_input.csv`. Verifica columnas específicas (`dc.title`, `dc.type`, `sedici.contributor.director`) y que el filtro `lowercase` se aplique al autor. |
-| → `TestTransformMetadataCsvEdgeCases` | CSV vacío → error, CSV inexistente → error, config inexistente → error, directorio de salida inexistente → se crea, mensaje de éxito contiene la ruta. |
-| → `TestRomeroToSediciCrosswalk` | Aplica crosswalk `romero_to_sedici` (Paso 5) sobre `result-14531-Romero.csv`. Verifica existencia del config, éxito, columnas SEDICI (`dc.title[es]`, `sedici.creator.person[es]`, `dc.date.issued`). |
-| **Dependencias externas** | Ninguna (todo local). |
-| **Problema detectado** | ⚠️ `test_sedici_transform_returns_success_message` usa una ruta absoluta hardcodeada (`/home/santi/...`) para el output, no `tmp_path`. Es el único test con side effect en disco. |
-| **Veredicto** | ✅ **Conservar** — son los tests más rápidos y fundamentales. Cubren el motor de crosswalk sin red ni LLM. Arreglar el test con ruta hardcodeada. |
+| **Qué testea** | Mapeo y transformación de CSVs de metadatos locales mediante configuraciones JSON de crosswalk sin levantar servicios web. |
+| **Dependencias externas** | Ninguna (usa CSVs de `tests/data/`). |
+| **Veredicto** | ✅ **Conservar** |
 
 ---
 
-### `test_graph_steps.py`
+### `unit/enrichers/`
+
+| Archivo | Módulo testeado | Qué testea | Dependencias |
+|---------|-----------------|------------|--------------|
+| `test_crossref_enricher.py` | `core/clients/enrichers/crossref_enricher.py` | Consulta por DOI, normalización de autores/fechas/títulos, manejo de errores y reintentos. | Mocks (tests rápidos); `@pytest.mark.integration` opcional con red. |
+| `test_openalex_enricher.py` | `core/clients/enrichers/openalex_enricher.py` | Consulta por título e ISSN, extracción de metadatos primarios, parsing de respuesta JSON. | Mocks (tests rápidos); `@pytest.mark.integration` opcional con red. |
+| `test_openlibrary_enricher.py` | `core/clients/enrichers/openlibrary_enricher.py` | Normalización de ISBN (ISBN-10 / ISBN-13), consulta de libros y parseo. | Mocks (tests rápidos); `@pytest.mark.integration` opcional con red. |
+
+---
+
+## 3. Tests de Integración (`integration/`)
+
+### `integration/test_graph_steps.py`
 
 | Campo | Detalle |
 |-------|---------|
 | **Tipo** | Tests de integración (pytest) |
-| **Clases / grupos** | `TestGenerateSourceCrosswalkConfig`, `TestMapSourceToGeneric`, `TestMapSediciToGeneric`, `TestDeduplicate`, `TestMetadataReconciliation`, `TestMapToSediciFormat`, `TestMetadataCorrections`, `TestGenerateSafToImport`, `TestImportToDspace`, `TestPipelineCompleto` |
-| **Nodos cubiertos** | Pasos 1, 2a, 2b, 3, 4, 5, 6, 8, 9 — el pipeline **completo** vía los nodos de `core/graph.py` |
-| **Mock del Deduplicador** | `FakeDeduplicatorClient` — más sofisticado que el de `run_pipeline.py`: usa `sedici.identifier.other` como ID para que el JOIN del Paso 4 sea correcto. |
-| **Qué testea por clase** | |
-| → `TestGenerateSourceCrosswalkConfig` | Cache del config (no sobreescribe si existe), fallback 1:1 cuando el LLM lanza error, estructura del config de fallback, error con CSV vacío, retorno correcto de la clave `source_crosswalk_config`. Incluye test E2E fallback → crosswalk → CSV procesable. |
-| → `TestMapSourceToGeneric` | Genera archivo, no está vacío, contiene columna `title`, retorna `{}`. |
-| → `TestMapSediciToGeneric` | Genera archivo, no está vacío, contiene `{title, date, author}`, retorna `{}`. |
-| → `TestDeduplicate` | Genera archivo, no está vacío, contiene columna `total`, retorna `{}`. (con mock) |
-| → `TestMetadataReconciliation` | Genera CSV reconciliado, mantiene columnas originales del fuente, contiene ítems, retorna `{}`. |
-| → `TestMapToSediciFormat` | Genera CSV SEDICI-ready, contiene `{dc.title[es], sedici.creator.person[es], dc.date.issued}`, tiene datos, `dc.title[es]` no vacío, retorna `{}`. |
-| → `TestMetadataCorrections` | CSV sigue existiendo, columnas no cambian, filas no cambian, no quedan separadores `|||`, retorna `{}`. |
-| → `TestGenerateSafToImport` | Crea directorio SAF, crea subdirectorios `item_*`, `dublin_core.xml` existe en primer ítem, `contents` existe, XML válido con tag `<dublin_core>`, retorna `{}`. |
-| → `TestImportToDspace` | Sin credenciales → retorna `{}` sin excepción. Sin SAF → retorna `{}`. Con cliente completamente mockeado → guarda mapfile correcto. |
-| → `TestPipelineCompleto` | E2E de todos los pasos en secuencia, verificando que cada archivo intermedio se genere. |
-| **Dependencias externas** | Servicio crosswalk (REST) para pasos 2a, 2b, 5. DSpace MCP mockeado en Paso 9. |
-| **Veredicto** | ✅ **Conservar** — es la suite de integración principal. La más completa y valiosa del proyecto. |
+| **Nodos cubiertos** | Pasos 1, 2a, 2b, 3, 4, 5, 6, 8, 9 — pipeline completo vía los nodos de `core/graph.py` |
+| **Mock del Deduplicador** | `FakeDeduplicatorClient` (mock con join por ID). |
+| **Qué testea** | Generación de config LLM (fallback y estructura), mapeos a genérico, deduplicación simulada, reconciliación de metadatos, formato SEDICI, correcciones finales, armado de estructura SAF y preparación de importación DSpace. |
+| **Dependencias externas** | Servicio crosswalk local (REST) para pasos 2a, 2b, 5. |
+| **Veredicto** | ✅ **Conservar** — suite principal de validación funcional. |
 
 ---
 
-### `test_pipeline_evaluation.py`
+### `integration/test_pdf_ingest_node.py`
 
 | Campo | Detalle |
 |-------|---------|
-| **Tipo** | Evaluador integrado con LangSmith (no se ejecuta como pytest normal) |
-| **Cómo ejecutar** | `python tests/test_pipeline_evaluation.py` |
-| **Qué hace** | Crea un dataset `Pipeline_Integration_Tests` en LangSmith, agrega los casos de `TEST_CASES` y ejecuta el pipeline completo hasta `STOP_AFTER_STEP`. Registra los resultados como un experimento. |
-| **Evaluadores heurísticos** | |
-| → `no_errors_evaluator` | Score 1.0 si ningún paso lanzó excepción. |
-| → `all_steps_executed_evaluator` | Score = pasos ejecutados / pasos esperados. |
-| → `files_generated_evaluator` | Score = archivos generados / archivos esperados. |
-| → `row_count_evaluator` | Score = CSVs con al menos 1 fila / total de CSVs generados. |
-| → `generic_columns_evaluator` | Score = columnas genéricas presentes / columnas esperadas (configurable por caso). |
-| → `sedici_columns_evaluator` | Score = columnas SEDICI presentes / columnas esperadas. |
-| → `data_integrity_evaluator` | Score 1.0 si el conteo de filas no crece entre pasos (el pipeline solo filtra). |
-| **Configuración** | `TEST_CASES`, `STOP_AFTER_STEP`, `DATASET_NAME`, `EXPERIMENT_PREFIX` — todo editable en el archivo. |
-| **Dependencias externas** | LangSmith API, Groq API (Paso 1), servicio crosswalk. |
-| **Veredicto** | ✅ **Conservar** — es la herramienta de evaluación formal del pipeline. Complementa a `test_graph_steps.py` con visibilidad en LangSmith y métricas comparables entre experimentos. |
+| **Tipo** | Test de integración real con servicios |
+| **Nodo cubierto** | `pdf_ingest_node` (`core/nodes/ingest_nodes.py`) |
+| **Qué testea** | Conexión e ingesta desde MinIO (bucket `importacion`), invocación del MCP Metadata Extractor, extracción de textos/metadatos y generación de `source_from_pdfs.csv`. |
+| **Dependencias externas** | MinIO (`localhost:9003`), Metadata Extractor MCP (`http://localhost:9604/mcp`), Docker (`aistor`), Groq API Key. Se salta automáticamente si la infra no está disponible. |
+| **Veredicto** | ✅ **Conservar** |
 
 ---
 
-### `test_source_config_generator.py`
+### `integration/test_curation_node.py`
 
 | Campo | Detalle |
 |-------|---------|
-| **Tipo** | Evaluador integrado con LangSmith (no se ejecuta como pytest normal) |
-| **Cómo ejecutar** | `python tests/test_source_config_generator.py` |
-| **Qué hace** | Crea un dataset `Crosswalk_Module_Tests` en LangSmith, agrega un ejemplo con `SearchResults.csv` (Springer) y ejecuta `generate_source_crosswalk_config`. Registra los resultados como experimento. |
-| **Evaluadores heurísticos** | |
-| → `valid_json_structure_evaluator` | Verifica que el JSON generado tenga la estructura `[mappings, settings]`. Score 0.0 o 1.0. |
-| → `critical_columns_mapped_evaluator` | Score = columnas críticas mapeadas / columnas esperadas. Columnas esperadas: `{id, title, author, date, doi, citation, type}`. |
-| → `separators_evaluator` | Verifica `file_delimiter`, `replace_separator` y que haya un `separator_regex` válido (Springer usa regex porque los autores no tienen separador explícito). |
-| → `regex_splits_correctly_evaluator` | Aplica el regex generado contra 20 filas reales de `Authors`. Score 1.0 si ≥ 60% de filas se dividen en > 1 token. |
-| **Dependencias externas** | LangSmith API, Groq API, `SearchResults.csv` en `tests/data/`. |
-| **Veredicto** | ✅ **Conservar** — es el único evaluador formal del Paso 1 (agente LLM). Permite comparar experimentos entre modelos y prompts. Muy útil dado el cambio reciente de `openai/gpt-oss-120b` a `llama-3.1-8b-instant`. |
+| **Tipo** | Test de integración y funcionalidad de nodo |
+| **Nodo cubierto** | `curate_metadata_node` (`core/nodes/curation_nodes.py`) |
+| **Qué testea** | Flujo de curación sobre CSV extraído de PDFs (`/tmp/source_from_pdfs.csv`), aplicación de correctores en lote, triaje de anomalías, integración con agente LLM (mockeado o real) y flujo E2E Ingest → Curation. |
+| **Dependencias externas** | Requiere CSV de PDFs generado por `test_pdf_ingest_node.py` o servicios MinIO/Extractor para la prueba E2E completa (se salta si no están). |
+| **Veredicto** | ✅ **Conservar** |
 
 ---
 
-## 3. Datos de prueba (`data/`)
+### `integration/test_pipeline_evaluation.py`
 
-| Archivo | Tamaño | Usado en |
-|---------|--------|----------|
-| `SearchResults.csv` | 2.3 MB | Prácticamente todos los tests (CSV fuente Springer) |
-| `export_10915_all.csv` | 1.2 MB | `run_pipeline.py`, `test_graph_steps.py`, `test_pipeline_evaluation.py` (CSV de SEDICI) |
-| `result-14531-Romero.csv` | 32 KB | `test_deduplicator.py` (CSV fuente Romero para crosswalk) |
-| `sedici_input.csv` | 1.9 KB | `test_deduplicator.py` (CSV minimal de SEDICI para tests unitarios) |
-| `oaidc_input.csv` | 421 B | `test_deduplicator.py` (CSV minimal OAIDC) |
-| `empty.csv` | 54 B | `test_deduplicator.py` (caso borde: CSV vacío) |
-| `export.csv` | 30 KB | `test_deduplicator.py::test_sedici_transform_returns_success_message` (ruta hardcodeada — ⚠️) |
-| `crosswalk_config_Romero.json` | 1.6 KB | No referenciado en ningún test activo |
+| Campo | Detalle |
+|-------|---------|
+| **Tipo** | Evaluador integrado con LangSmith |
+| **Cómo ejecutar** | `python tests/integration/test_pipeline_evaluation.py` |
+| **Qué hace** | Crea dataset `Pipeline_Integration_Tests` en LangSmith, ejecuta el pipeline completo con casos de prueba configurables y registra métricas cuantitativas (errores, integridad de datos, retención de filas, presencia de columnas SEDICI). |
+| **Dependencias externas** | LangSmith API, Groq API, servicio crosswalk. |
+| **Veredicto** | ✅ **Conservar** |
 
 ---
 
-## 4. Resumen de superposiciones y problemas
+### `integration/test_source_config_generator.py`
 
-### Superposiciones entre archivos
-
-| Tema | Archivos con overlap |
-|------|---------------------|
-| Mock del DeduplicatorClient | `run_pipeline.py`, `test_pipeline_evaluation.py`, `test_graph_steps.py` — cada uno tiene su propia copia del mock `_FakeDeduplicatorClient`. |
-| Estado inicial del pipeline | `run_pipeline.py`, `test_pipeline_evaluation.py` — construyen el `state` de forma casi idéntica. |
-| Import de `run_pipeline_until_step` | `run_pipeline.py`, `test_pipeline_evaluation.py` — ambos usan esta función pero con propósitos distintos. |
-
-### Problemas detectados
-
-| # | Archivo | Problema | Severidad |
-|---|---------|----------|-----------|
-| P1 | `test_deduplicator.py` L170 | Ruta de output hardcodeada (`/home/santi/...`) en `test_sedici_transform_returns_success_message` → escribe en disco real, no usa `tmp_path`. | 🟡 Media |
-| P2 | `test_graph_steps.py` L37–38 | `SOURCE_CROSSWALK` y `SEDICI_CROSSWALK` apuntan al mismo archivo (`sedicicrosswalkconfig.json`), pero el Paso 2a debería usar el config del origen (Romero), no el de SEDICI. Puede enmascarar errores del crosswalk del origen. | 🔴 Alta |
-| P3 | `test_source_config_generator.py` L11 | `MCP_SRC_PATH` apunta a `MCPs/Deduplicator MCP/src` (directorio con espacios, no coincide con la estructura actual `mcps/deduplicator_mcp/src`). | 🟡 Media |
-| P4 | Mock del deduplicador | Tres copias del mismo mock en tres archivos distintos. Si cambia el formato del CSV de salida del Deduplicador, hay que actualizar en tres lugares. | 🟡 Media |
+| Campo | Detalle |
+|-------|---------|
+| **Tipo** | Evaluador integrado con LangSmith |
+| **Cómo ejecutar** | `python tests/integration/test_source_config_generator.py` |
+| **Qué hace** | Evalúa el agente de generación de crosswalk config contra `SearchResults.csv`, midiendo validez de JSON, mapeo de columnas críticas y exactitud de expresiones regulares de separadores. |
+| **Dependencias externas** | LangSmith API, Groq API, datos en `tests/data/`. |
+| **Veredicto** | ✅ **Conservar** |
 
 ---
 
-## 5. Veredicto final — qué conservar, unificar o eliminar
+## 4. Datos de prueba (`data/`)
 
-### Conservar sin cambios
-- `studio/run_crosswalk_agent.py` ✅
-- `studio/run_pipeline.py` ✅
-- `test_graph_steps.py` ✅ (suite de integración principal)
-- `test_pipeline_evaluation.py` ✅ (evaluación LangSmith del pipeline)
-- `test_source_config_generator.py` ✅ (evaluación LangSmith del Paso 1)
-
-### Conservar con correcciones
-- `test_deduplicator.py` — corregir **P1**: reemplazar la ruta hardcodeada por `tmp_path` en `test_sedici_transform_returns_success_message`.
-
-### Acciones recomendadas adicionales
-1. **Corregir P2 en `test_graph_steps.py`**: `SOURCE_CROSSWALK` debería apuntar al config del repositorio origen (Romero), no al de SEDICI.
-2. **Centralizar el mock del Deduplicador**: extraer `FakeDeduplicatorClient` a un archivo `tests/conftest.py` o `tests/fixtures.py` y eliminarlo de los tres archivos que lo duplican.
-3. **Eliminar `data/crosswalk_config_Romero.json`** si no está referenciado en ningún test activo (o documentar su propósito).
-
-### No hay archivos para eliminar
-Todos los archivos existentes tienen un propósito diferenciado. El problema no es redundancia de archivos sino redundancia de código interno (el mock del deduplicador).
-
----
-
-*Generado el 2026-07-29 analizando `tests/` del repositorio `santiFie/LangGraph`.*
+| Archivo | Descripción / Uso principal |
+|---------|-----------------------------|
+| `SearchResults.csv` | CSV fuente de Springer para pruebas de crosswalk y pipeline. |
+| `export_10915_all.csv` | Export de SEDICI utilizado para deduplicación y reconciliación. |
+| `result-14531-Romero.csv` | CSV fuente Romero para validación de crosswalk a SEDICI. |
+| `sedici_input.csv` | CSV minimal de SEDICI para tests unitarios del crosswalk. |
+| `oaidc_input.csv` | CSV minimal OAIDC para tests unitarios. |
+| `empty.csv` | CSV vacío para prueba de casos borde. |

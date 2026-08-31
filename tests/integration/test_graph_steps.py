@@ -26,11 +26,11 @@ import pytest
 # ---------------------------------------------------------------------------
 # Paths — deben definirse antes de la clase FakeDeduplicatorClient
 # ---------------------------------------------------------------------------
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 MCP_SRC_PATH = os.path.join(PROJECT_ROOT, "MCPs", "Deduplicator MCP", "src")
 CROSSWALK_MODULE_PATH = os.path.join(PROJECT_ROOT, "core", "scripts", "crosswalk")
 CONFIGS_DIR = os.path.join(CROSSWALK_MODULE_PATH, "configs")
-DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
 
 SOURCE_CSV = os.path.join(DATA_DIR, "SearchResults.csv")
 SEDICI_CSV = os.path.join(DATA_DIR, "export_10915_all.csv")

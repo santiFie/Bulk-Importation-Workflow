@@ -7,12 +7,12 @@ from langgraph_sdk import get_client
 from langsmith import Client, evaluate
 from langsmith.evaluation import EvaluationResult
 
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 MCP_SRC_PATH = os.path.join(PROJECT_ROOT, "MCPs", "Deduplicator MCP", "src")
 CORE_MODULE_PATH = os.path.join(PROJECT_ROOT, "core")
 CROSSWALK_MODULE_PATH = os.path.join(PROJECT_ROOT, "core", "scripts", "crosswalk")
 CONFIGS_DIR = os.path.join(CROSSWALK_MODULE_PATH, "configs")
-DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
 
 # The crosswalk.py module uses flat imports (from crosswalk_context import *),
 # so its directory must be in sys.path.
