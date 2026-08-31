@@ -25,16 +25,43 @@ from typing import Annotated, Any, TypedDict
 
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langchain_core.tools import tool
-from langchain_groq import ChatGroq
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from langgraph.prebuilt import ToolNode, tools_condition
 
 from core.clients.enrichers.provider_factory import EnricherFactory
 from core.utils.config import config
+from core.utils.get_local_model import FallbackLLM
 from core.utils.prompt_loader import load_agent_prompt
 
+
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Construcción del modelo LLM con fallback automático
+# ---------------------------------------------------------------------------
+
+def _construir_modelo_curador():
+    """
+    Instancia el modelo LLM para el agente curador con fallback automático.
+
+    Orden de prioridad (siempre el mismo):
+      1. Groq        — más rápido y barato para tareas de curación.
+      2. Nvidia NIM  — alternativa si Groq no está disponible.
+      3. OpenRouter  — fallback universal con acceso a múltiples proveedores.
+
+    Raises:
+        RuntimeError: Si no hay ninguna API key configurada.
+
+    Returns:
+        Instancia del modelo LLM compatible con bind_tools().
+    """
+    return FallbackLLM(
+        groq_model=config.METADATA_CURATOR_MODEL,
+        openrouter_model=config.METADATA_CURATOR_MODEL,
+    ).resolve()
+
 
 
 # ---------------------------------------------------------------------------
@@ -256,17 +283,14 @@ async def build_metadata_curator_agent():
     """
     Construye el grafo del agente curador de metadatos.
 
-    Usa el modelo configurado en `config.METADATA_CURATOR_MODEL` (modelo
-    pequeño/mediano, por defecto el mismo que el crosswalk agent) con las
-    dos tools de curación: OCR y validación con enrichers.
+    Selecciona el modelo LLM con fallback automático (Groq → Nvidia → OpenRouter)
+    usando `_construir_modelo_curador()`. Vincula las dos tools de curación:
+    OCR y validación con enrichers.
 
     Returns:
         Grafo compilado listo para ser invocado con un HumanMessage.
     """
-    curator_model = ChatGroq(
-        model=config.METADATA_CURATOR_MODEL,
-        temperature=0,
-    ).bind_tools(tools=_CURATOR_TOOLS)
+    curator_model = _construir_modelo_curador().bind_tools(tools=_CURATOR_TOOLS)
 
     async def metadata_curator_node(state: MetadataCuratorState) -> dict:
         """
@@ -291,6 +315,7 @@ async def build_metadata_curator_agent():
     workflow.add_edge("tools", "metadata_curator")
 
     return workflow.compile(name="MetadataCuratorGraph")
+
 
 
 # ---------------------------------------------------------------------------
@@ -351,10 +376,14 @@ def parsear_respuesta_agente(respuesta_texto: str) -> list[dict]:
     """
     # Intentar extraer bloque JSON de markdown
     import re
-    match = re.search(r"```(?:json)?\s*(\[.*?\])\s*```", respuesta_texto, re.DOTALL)
+    match = re.search(r"```(?:json)?\s*(.*?)\s*```", respuesta_texto, re.DOTALL)
     if match:
         try:
-            return json.loads(match.group(1))
+            resultado = json.loads(match.group(1))
+            if isinstance(resultado, list):
+                return resultado
+            if isinstance(resultado, dict):
+                return [resultado]
         except json.JSONDecodeError:
             pass
 

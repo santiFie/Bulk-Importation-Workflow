@@ -6,9 +6,9 @@ Inventario y análisis de todos los archivos de test del proyecto, organizados e
 
 ## Mapa de la carpeta `tests/`
 
-```
 tests/
-├── data/                                 ← Datos de prueba (CSVs, configs)
+├── data/                                 ← Datos de prueba (CSVs, configs, dataset de curación)
+│   └── curation_dataset.json             ← Dataset de casos de prueba para el agente curador
 ├── docs/                                 ← Documentación técnica de testing
 ├── studio/                               ← Scripts de ejecución manual interactiva (NO son pytest)
 │   ├── run_crosswalk_agent.py            (opcional)
@@ -24,6 +24,7 @@ tests/
 └── integration/                          ← Tests de integración (nodos de LangGraph, servicios externos y LangSmith)
     ├── test_curation_node.py             ← Nodo de curación de metadatos (PDF curation)
     ├── test_graph_steps.py               ← Integración secuencial de nodos del pipeline
+    ├── test_metadata_curator_agent.py    ← Suite de 3 niveles del Agente Curador (Sintético, Dataset Eval, E2E MinIO/OCR)
     ├── test_pdf_ingest_node.py           ← Ingesta real MinIO + MCP Metadata Extractor
     ├── test_pipeline_evaluation.py       ← Evaluación del pipeline completo en LangSmith
     └── test_source_config_generator.py   ← Evaluación del agente de crosswalk en LangSmith
@@ -168,6 +169,21 @@ pytest tests/ -v
 
 ---
 
+### `integration/test_metadata_curator_agent.py`
+
+| Campo | Detalle |
+|-------|---------|
+| **Tipo** | Suite híbrida de 3 niveles: Tests programáticos sintéticos, evaluación LLM basada en dataset y tests E2E |
+| **Módulo/Nodo cubierto** | `MetadataCuratorAgent` (`core/agent/metadata_curator_agent.py`), correctores de texto (`core/utils/text_fixers.py`) y nodo `curate_metadata_node` |
+| **Estructura por Niveles** | |
+| → `TestCorreccionesEspecificasPorTipo` (Nivel 1) | **Tests sintéticos programáticos:** Valida la aplicación determinista y rápida de correctores (`deduplicate_cyclic_text`, `fix_glued_words`, `fix_spaced_chars`, etc.) sin consultar MinIO ni llamar al LLM. |
+| → `TestAgenteCurador_DatasetEval` (Nivel 2) | **Evaluación LLM parametrizada:** Carga `tests/data/curation_dataset.json` y mockea las `@tool` (`re_extract_with_ocr`, `validate_with_enrichers`) para medir la precisión de razonamiento del LLM, su capacidad de usar herramientas y el marcado de `_curation_needed`. |
+| → `TestAgenteCurador_IntegracionE2E` (Nivel 3) | **Integración End-to-End con Tools Reales:** Conecta con MinIO (`importacion-jaio`), descarga PDFs físicos y ejecuta extracción OCR real con Tesseract sobre documentos con problemas severos de layout. |
+| **Dependencias externas** | Nivel 1: ninguna; Nivel 2: API key de LLM (Groq / Nvidia / OpenRouter); Nivel 3: API key de LLM + MinIO local (`localhost:9003`). |
+| **Veredicto** | ✅ **Conservar** — núcleo de validación y benchmarking del agente de curación. |
+
+---
+
 ### `integration/test_pipeline_evaluation.py`
 
 | Campo | Detalle |
@@ -196,6 +212,7 @@ pytest tests/ -v
 
 | Archivo | Descripción / Uso principal |
 |---------|-----------------------------|
+| `curation_dataset.json` | Dataset curado de casos de prueba para `MetadataCuratorAgent` (entradas, mocks de tools y salidas esperadas). |
 | `SearchResults.csv` | CSV fuente de Springer para pruebas de crosswalk y pipeline. |
 | `export_10915_all.csv` | Export de SEDICI utilizado para deduplicación y reconciliación. |
 | `result-14531-Romero.csv` | CSV fuente Romero para validación de crosswalk a SEDICI. |
