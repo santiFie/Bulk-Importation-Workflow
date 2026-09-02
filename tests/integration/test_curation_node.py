@@ -111,6 +111,8 @@ class TestCurationDesdeCsvExistente:
         assert isinstance(resultado, dict)
         assert "curated_csv_path" in resultado
         assert "curation_stats" in resultado
+        # La nueva estrategia bifurca el resultado en dos archivos
+        assert "pending_to_review_csv_path" in resultado
 
         # 2. El CSV curado debe escribirse en un archivo diferente al original
         curated_path = resultado["curated_csv_path"]
@@ -130,14 +132,31 @@ class TestCurationDesdeCsvExistente:
         assert stats["total"] == 10
         assert stats["limpias"] + stats["sospechosas_detectadas"] + stats["sin_datos"] == 10
 
-        # 6. El CSV curado debe ser legible con el mismo número de filas
+        # 6. Bifurcación: la suma de filas curadas + pendientes == total de registros
         with open(curated_path, newline="", encoding="utf-8") as fh:
-            reader = csv.DictReader(fh)
-            filas = list(reader)
-        assert len(filas) == 10
+            filas_curadas = list(csv.DictReader(fh))
+
+        pending_path = resultado["pending_to_review_csv_path"]
+        filas_pendientes = []
+        if pending_path and os.path.isfile(pending_path):
+            with open(pending_path, newline="", encoding="utf-8") as fh:
+                filas_pendientes = list(csv.DictReader(fh))
+
+        assert len(filas_curadas) + len(filas_pendientes) == 10, (
+            f"La suma de filas curadas ({len(filas_curadas)}) + pendientes "
+            f"({len(filas_pendientes)}) no da el total esperado (10)."
+        )
+
+        # 7. Todas las filas del CSV curado NO deben tener curation_needed=True
+        for fila in filas_curadas:
+            assert fila.get("curation_needed", "False") not in ("True", "true", "1"), (
+                f"Fila '{fila.get('id')}' en curated_csv tiene curation_needed=True "
+                f"pero debería estar en pending_to_review."
+            )
 
         print(f"\nEstadísticas de curación: {stats}")
-        print(f"CSV curado escrito en: {curated_path}")
+        print(f"CSV curado ({len(filas_curadas)} filas): {curated_path}")
+        print(f"CSV pendientes ({len(filas_pendientes)} filas): {pending_path}")
 
     @pytest.mark.skipif(
         not os.path.isfile(CSV_REAL_PATH),
@@ -262,7 +281,7 @@ class TestCurationDesdeCsvSintetico:
         os.unlink(csv_path)
 
     def test_csv_vacio_no_lanza_excepcion(self):
-        """Un CSV vacío (solo header) debe manejarse sin errores."""
+        """Un CSV vacío (solo header) debe manejarse sin errores y pending_to_review debe ser None."""
         csv_path = _escribir_csv_temp([], self.CAMPOS)
         workspace_dir = tempfile.mkdtemp(prefix="test_curation_vacio_")
         state = {"workspace_dir": workspace_dir, "source_csv_path": csv_path}
@@ -271,6 +290,7 @@ class TestCurationDesdeCsvSintetico:
 
         assert "curated_csv_path" in resultado
         assert resultado["curation_stats"]["total"] == 0
+        assert resultado.get("pending_to_review_csv_path") is None
         os.unlink(csv_path)
 
     def test_csv_fuente_invalido_retorna_error(self):
@@ -318,6 +338,87 @@ class TestCurationDesdeCsvSintetico:
 
         assert resultado["curated_csv_path"] != csv_path
         assert os.path.isfile(csv_path), "El CSV original fue eliminado."
+        os.unlink(csv_path)
+
+
+    def test_bifurcacion_filas_marcadas_van_a_pending(self):
+        """
+        Verifica que las filas que el agente marca con curation_needed=True
+        terminan en pending_to_review_csv_path y NO en curated_csv_path.
+        """
+        # Una fila limpia y una sospechosa (agente falla en corregirla)
+        registros = [
+            {
+                "id": "limpio.pdf",
+                "title": "Framework de segmentación de imágenes",
+                "author": "Diego Comas|Gustavo Meschino",
+                "description": "Texto normal sin ningún problema de formato.",
+                "date": "2022",
+                "type": "objeto de conferencia",
+                "citation": "Universidad de Buenos Aires",
+            },
+            {
+                "id": "sospechoso.pdf",
+                # CAMPO_VACIO en 'author': los correctores programáticos no pueden
+                # inventar datos → pasa al agente; el mock devuelve [] → queda marcado
+                "title": "Framework de Segmentacion de Imagenes",
+                "author": "",
+                "description": "Texto normal sin problemas de formato.",
+                "date": "2023",
+                "type": "articulo",
+                "citation": "Fuente",
+            },
+        ]
+
+        csv_path = _escribir_csv_temp(registros, self.CAMPOS)
+        workspace_dir = tempfile.mkdtemp(prefix="test_bifurcacion_")
+
+        state = {
+            "workspace_dir": workspace_dir,
+            "source_csv_path": csv_path,
+        }
+
+        # El agente devuelve lista vacía → no corrige nada → fila sospechosa queda marcada
+        with patch(
+            "core.nodes.curation_nodes.build_metadata_curator_agent",
+            new_callable=AsyncMock,
+        ) as mock_build:
+            mock_agente = AsyncMock()
+            mock_agente.ainvoke = AsyncMock(return_value={
+                "messages": [MagicMock(content="```json\n[]\n```")]
+            })
+            mock_build.return_value = mock_agente
+
+            resultado = asyncio.run(curate_metadata_node(state))
+
+        # Verificar la bifurcación
+        assert "curated_csv_path" in resultado
+        assert "pending_to_review_csv_path" in resultado
+
+        curated_path = resultado["curated_csv_path"]
+        pending_path = resultado["pending_to_review_csv_path"]
+
+        assert os.path.isfile(curated_path), "El CSV curado debe existir."
+        assert pending_path is not None, "Debe haber un CSV de pendientes cuando hay filas marcadas."
+        assert os.path.isfile(pending_path), f"El CSV pending no existe en '{pending_path}'."
+
+        with open(curated_path, newline="", encoding="utf-8") as fh:
+            filas_curadas = list(csv.DictReader(fh))
+        with open(pending_path, newline="", encoding="utf-8") as fh:
+            filas_pendientes = list(csv.DictReader(fh))
+
+        # La fila limpia está en curated; la sospechosa en pending
+        assert len(filas_curadas) == 1, f"Esperaba 1 fila curada, hubo {len(filas_curadas)}."
+        assert len(filas_pendientes) == 1, f"Esperaba 1 fila pendiente, hubo {len(filas_pendientes)}."
+        assert filas_curadas[0]["id"] == "limpio.pdf"
+        assert filas_pendientes[0]["id"] == "sospechoso.pdf"
+        assert filas_pendientes[0].get("curation_needed") in ("True", "true", "1", True), (
+            "La fila en pending debe tener curation_needed=True."
+        )
+
+        # La suma total es consistente
+        assert len(filas_curadas) + len(filas_pendientes) == len(registros)
+
         os.unlink(csv_path)
 
 

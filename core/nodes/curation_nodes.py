@@ -85,10 +85,12 @@ async def curate_metadata_node(state: State) -> dict[str, Any]:
         logger.error("[CurateMetadata] CSV fuente no encontrado: '%s'", source_csv)
         return {
             "curated_csv_path": source_csv,
+            "pending_to_review_csv_path": None,
             "curation_stats": {"error": f"CSV no encontrado: {source_csv}"},
         }
 
     output_csv = os.path.join(workspace_dir, "curated_from_pdfs.csv")
+    pending_csv = os.path.join(workspace_dir, "pending_to_review.csv")
     umbral = config.CURATION_ANOMALY_THRESHOLD
 
     logger.info(
@@ -104,6 +106,7 @@ async def curate_metadata_node(state: State) -> dict[str, Any]:
         _escribir_csv([], output_csv)
         return {
             "curated_csv_path": output_csv,
+            "pending_to_review_csv_path": None,
             "curation_stats": {"total": 0, "limpias": 0, "curadas": 0, "marcadas": 0, "errores": 0},
         }
 
@@ -164,36 +167,52 @@ async def curate_metadata_node(state: State) -> dict[str, Any]:
             sospechosas_post_fix, stats
         )
 
-    # ── 5. Ensamblar resultado final ─────────────────────────────────────────
-    todos_los_registros = (
-        limpias
-        + curadas_por_fix
-        + curadas_por_agente
-        + marcadas_revision
-        + sin_datos
-    )
+    # ── 5. Ensamblar resultado final (bifurcación) ───────────────────────────
+    # curadas_finales → continúan el pipeline (Fast-Track)
+    curadas_finales = limpias + curadas_por_fix + curadas_por_agente
 
-    # Restaurar orden original por id
+    # pendientes_finales → cuarentena para revisión humana (HITL)
+    pendientes_finales = marcadas_revision + sin_datos
+
+    # Restaurar orden original por id en ambas listas
     orden_original = {r.get("id", ""): i for i, r in enumerate(registros)}
-    todos_los_registros.sort(
+    curadas_finales.sort(
+        key=lambda r: orden_original.get(r.get("id", ""), 9999)
+    )
+    pendientes_finales.sort(
         key=lambda r: orden_original.get(r.get("id", ""), 9999)
     )
 
-    _escribir_csv(todos_los_registros, output_csv)
+    _escribir_csv(curadas_finales, output_csv)
+
+    # Escribir el CSV solo si hay ítems pendientes
+    if pendientes_finales:
+        _escribir_csv(pendientes_finales, pending_csv)
+        logger.warning(
+            "[CurateMetadata] %d ítem(s) pendientes de revisión → '%s'. "
+            "Requieren revisión manual antes de continuar.",
+            len(pendientes_finales), pending_csv,
+        )
+    else:
+        pending_csv = None
+        logger.info("[CurateMetadata] Ningún ítem requiere revisión manual.")
 
     stats["marcadas_revision"] = len(marcadas_revision)
 
     logger.info(
         "[CurateMetadata] Curación completada. "
-        "Limpias: %d, Fix programático: %d, Agente: %d, Marcadas: %d, Sin datos: %d. "
-        "CSV curado: '%s'",
-        len(limpias), stats["curadas_programatico"],
-        stats["curadas_agente"], stats["marcadas_revision"],
-        len(sin_datos), output_csv,
+        "Aptas para importar: %d (limpias: %d, fix: %d, agente: %d). "
+        "En cuarentena: %d (marcadas: %d, sin_datos: %d). "
+        "CSV curado: '%s'.",
+        len(curadas_finales),
+        len(limpias), stats["curadas_programatico"], stats["curadas_agente"],
+        len(pendientes_finales), stats["marcadas_revision"], len(sin_datos),
+        output_csv,
     )
 
     return {
         "curated_csv_path": output_csv,
+        "pending_to_review_csv_path": pending_csv,
         "curation_stats": stats,
     }
 

@@ -79,7 +79,103 @@ pytest tests/integration/test_metadata_curator_agent.py::TestAgenteCurador_Integ
 
 ---
 
-## 3. Cómo Agregar Nuevos Casos de Prueba al Dataset
+## 3. Mecánica Interna de los Tests del Nivel 2
+
+Esta sección explica en detalle cómo funciona el motor de parametrización y el sistema de mocking que sustenta la clase `TestAgenteCurador_DatasetEval`.
+
+### 3.1. Parametrización desde el Dataset JSON
+
+El dataset de evaluación (`tests/data/curation_dataset.json`) es un array de objetos JSON. Cada objeto representa un caso de prueba independiente con su `input`, `mock_tools` y `expected_output`.
+
+La función `_cargar_dataset_evaluacion()` se ejecuta **una sola vez** durante la fase de recolección de pytest (antes de correr cualquier test). Retorna la lista completa de casos:
+
+```python
+def _cargar_dataset_evaluacion() -> list[dict]:
+    path = Path(__file__).parent.parent / "data" / "curation_dataset.json"
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+```
+
+El decorador `@pytest.mark.parametrize` recibe esa lista y genera **un test idéntico por cada dict**:
+
+```python
+@pytest.mark.parametrize(
+    "caso", _cargar_dataset_evaluacion(), ids=lambda c: c["case_name"]
+)
+class TestAgenteCurador_DatasetEval:
+    ...
+```
+
+- `"caso"`: nombre del parámetro que recibe cada test method.
+- Segundo argumento: el iterable (lista de dicts del JSON).
+- `ids=lambda c: c["case_name"]`: extrae el nombre legible para el output de pytest.
+
+Si el JSON contiene 3 entradas, pytest crea:
+
+```
+TestAgenteCurador_DatasetEval::test_evaluacion_caso[Completa date vacio usando enrichers por ISSN]
+TestAgenteCurador_DatasetEval::test_evaluacion_caso[Resuelve titulo residual con OCR]
+TestAgenteCurador_DatasetEval::test_evaluacion_caso[Marca titulo como curation_needed si falla OCR y Enrichers]
+```
+
+Cada test recibe su dict completo como el parámetro `caso`:
+
+```python
+def test_evaluacion_caso(self, caso: dict, agente_curador_fixture):
+    fila_input = caso["input"]
+    expected_output = caso["expected_output"]
+    mock_tools = caso.get("mock_tools", {})
+    ...
+```
+
+### 3.2. Mecanismo de Mocking de Tools
+
+Las tools del agente (`re_extract_with_ocr` y `validate_with_enrichers`) son funciones Python decoradas con `@tool` de LangChain. Este decorador las envuelve en un objeto `Tool` que expone:
+
+- `.name` / `.description` / `.args_schema`: metadata que se envía al LLM via `bind_tools()` para que sepa qué hacen las tools y cuándo invocarlas.
+- `.func`: la implementación Python que se ejecuta cuando el LLM decide llamar a la tool.
+
+Cuando el agente se construye (`build_metadata_curator_agent()`), las tools se vinculan al modelo:
+
+```python
+curator_model = _construir_modelo_curador().bind_tools(tools=_CURATOR_TOOLS)
+```
+
+Esto le envía al LLM el esquema JSON de cada tool (nombre, parámetros, docstring). El LLM **no ejecuta nada** — solo decide, basándose en el prompt y los datos de la fila, si conviene llamar a una tool y con qué argumentos.
+
+Cuando el LLM emite un tool call, LangGraph lo routea al `ToolNode`, que ejecuta `tool.func(**args)`. El test intercepta ese punto reemplazando `.func`:
+
+```python
+patch.object(
+    ...re_extract_with_ocr, "func",
+    side_effect=lambda **kwargs: ocr_mock   # reemplaza la función real
+)
+```
+
+Esto sustituye la implementación real de `re_extract_with_ocr.func` por un lambda que retorna el dict definido en `mock_tools` del caso de prueba (ej. `{"texto_extraido": "...", "ocr_applied": true}`).
+
+### 3.3. Flujo Completo de Un Test del Nivel 2
+
+```
+1. pytest carga el caso del JSON → dict con input, mock_tools, expected_output
+2. Se inyectan los mocks (patch.object sobre .func de cada tool)
+3. Se invoca el agente con la fila de input via construir_mensaje_curacion()
+4. El LLM lee la fila + anomalias → decide si llamar tools
+5. Si el LLM decide llamar a re_extract_with_ocr(pdf_path=...):
+     → ToolNode ejecuta .func(pdf_path=...)
+     → El mock retorna {"texto_extraido": "Estimacion de texturas", ...}
+6. El LLM recibe esa respuesta como ToolMessage
+7. El LLM integra el resultado y genera la corrección final (JSON estructurado)
+8. parsear_respuesta_agente() extrae las correcciones del JSON del LLM
+9. Se busca la corrección correspondiente al ID de la fila de input
+10. Se comparan los campos de la corrección contra expected_output
+```
+
+El LLM **no sabe** que los tools están mockeados. Para él, es como si las tools devolvieran respuestas reales. La única diferencia es velocidad (milisegundos vs. segundos) y determinismo (siempre la misma respuesta para el mismo caso).
+
+---
+
+## 4. Cómo Agregar Nuevos Casos de Prueba al Dataset
 
 Todos los casos de evaluación del **Nivel 2** se definen en el archivo [`tests/data/curation_dataset.json`](file:///home/santi/Documentos/LangGraph/Modulo-Marta/tests/data/curation_dataset.json).
 
@@ -248,7 +344,7 @@ Al configurar el campo `_curation.anomalias`, utiliza los identificadores canón
 
 ---
 
-## 4. Evaluación Formal en LangSmith
+## 5. Evaluación Formal en LangSmith
 
 Para medir el rendimiento de diferentes modelos LLM (Groq vs Nvidia NIM vs OpenRouter) o realizar pruebas de regresión, se utiliza el script [`scripts/evaluate_curation_agent.py`](file:///home/santi/Documentos/LangGraph/Modulo-Marta/scripts/evaluate_curation_agent.py).
 
@@ -273,7 +369,7 @@ En la consola y en el panel web de LangSmith verás el experimento registrado co
 
 ---
 
-## 5. Resumen de Comandos de Testing
+## 6. Resumen de Comandos de Testing
 
 ```bash
 # Ejecutar toda la suite de curación (Niveles 1, 2 y 3)
