@@ -179,7 +179,7 @@ def _construir_modelo_con_fallback():
 
 
 # ---------------------------------------------------------------------------
-# Clase 1: Tests unitarios de los helpers del agente (sin red ni LLM)
+# Clase 1: Tests unitarios de los helpers del agente (sin red ni LLM) (Nivel 1)
 # ---------------------------------------------------------------------------
 
 class TestHelpersMensajeCuracion:
@@ -298,7 +298,7 @@ class TestHelpersMensajeCuracion:
 
 
 # ---------------------------------------------------------------------------
-# Clase 2: Validación de correcciones por tipo de anomalía (datos reales)
+# Clase 2: Validación de correcciones por tipo de anomalía (datos reales) (Nivel 1)
 # ---------------------------------------------------------------------------
 
 class TestCorreccionesEspecificasPorTipo:
@@ -417,8 +417,8 @@ def agente_curador_fixture():
     """Construye el agente curador con el modelo LLM disponible."""
     if not _tiene_api_key_llm():
         pytest.skip("No hay API key de LLM disponible.")
-    from core.agent.metadata_curator_agent import build_metadata_curator_agent
-    return asyncio.run(build_metadata_curator_agent())
+    from core.agent.metadata_curator_agent import _construir_modelo_curador
+    return asyncio.run(_construir_modelo_curador())
 
 
 @pytest.mark.parametrize(
@@ -456,12 +456,12 @@ class TestAgenteCurador_DatasetEval:
         with patch.object(
             __import__("core.agent.metadata_curator_agent", fromlist=["re_extract_with_ocr"]).re_extract_with_ocr, 
             "func", 
-            side_effect=lambda **kwargs: ocr_mock
+            side_effect=lambda **kwargs: ocr_mock # Reemplaza la tool re_extract_with_ocr con el mock
         ) if ocr_mock else contextlib.nullcontext(), \
              patch.object(
             __import__("core.agent.metadata_curator_agent", fromlist=["validate_with_enrichers"]).validate_with_enrichers, 
             "func", 
-            side_effect=lambda **kwargs: enricher_mock
+            side_effect=lambda **kwargs: enricher_mock # Reemplaza la tool validate_with_enrichers con el mock
         ) if enricher_mock else contextlib.nullcontext():
 
             # Invocar agente

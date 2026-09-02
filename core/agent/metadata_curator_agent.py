@@ -37,28 +37,13 @@ from core.utils.prompt_loader import load_agent_prompt
 
 logger = logging.getLogger(__name__)
 
-
-# ---------------------------------------------------------------------------
-# Construcción del modelo LLM con fallback automático
-# ---------------------------------------------------------------------------
-
-def _construir_modelo_curador():
+def _construir_modelo_curador() -> FallbackLLM:
     """
     Instancia el modelo LLM para el agente curador con fallback automático.
-
-    Orden de prioridad (siempre el mismo):
-      1. Groq        — más rápido y barato para tareas de curación.
-      2. Nvidia NIM  — alternativa si Groq no está disponible.
-      3. OpenRouter  — fallback universal con acceso a múltiples proveedores.
-
-    Raises:
-        RuntimeError: Si no hay ninguna API key configurada.
-
-    Returns:
-        Instancia del modelo LLM compatible con bind_tools().
     """
     return FallbackLLM(
         groq_model=config.METADATA_CURATOR_MODEL,
+        nvidia_model=config.METADATA_CURATOR_MODEL,
         openrouter_model=config.METADATA_CURATOR_MODEL,
     ).resolve()
 
