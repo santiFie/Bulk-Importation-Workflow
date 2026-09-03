@@ -73,17 +73,17 @@ class CrossrefEnricher(BaseEnricher):
         response.raise_for_status()
         return response.json()
 
-    def enrich_by_doi(self, doi: str) -> dict:
+    def enrich_by_doi(self, doi: str, schema: str = "sedici") -> dict:
         """
         Recupera metadatos de un trabajo académico a partir de su DOI.
 
         Args:
             doi: Identificador DOI del documento (ej. "10.1000/xyz123").
+            schema: Esquema de columnas de salida ("sedici" o "generic").
 
         Returns:
             Diccionario con los metadatos enriquecidos, o vacío si no se
-            encontró el DOI. Las claves relevantes incluyen:
-            - title, author, published, publisher, ISSN, abstract, type
+            encontró el DOI.
         """
         if not doi or not str(doi).strip():
             return {}
@@ -101,7 +101,7 @@ class CrossrefEnricher(BaseEnricher):
 
         work = data.get("message", {})
         parsed = self.parse_response(work)
-        return self.map_to_csv_columns(parsed)
+        return self.map_by_schema(parsed, schema)
 
     def parse_response(self, data: Any) -> dict:
         """

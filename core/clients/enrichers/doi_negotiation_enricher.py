@@ -57,7 +57,7 @@ class DOINegotiationEnricher(BaseEnricher):
     def provider_name(self) -> str:
         return "DOINegotiation"
 
-    def enrich_by_doi(self, doi: str) -> dict:
+    def enrich_by_doi(self, doi: str, schema: str = "sedici") -> dict:
         """
         Pide metadata CSL JSON al resolver doi.org.
 
@@ -99,7 +99,7 @@ class DOINegotiationEnricher(BaseEnricher):
             return {}
 
         parsed = self.parse_response(data)
-        return self.map_to_csv_columns(parsed)
+        return self.map_by_schema(parsed, schema)
 
     def parse_response(self, data: Any) -> dict:
         """Mapea CSL JSON al schema interno común."""

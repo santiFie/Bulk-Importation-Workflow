@@ -47,12 +47,10 @@ class OpenLibraryEnricher(BaseEnricher):
     def provider_name(self) -> str:
         return "OpenLibrary"
 
-    def enrich_by_isbn(self, isbn: str) -> dict:
-        """Enriquecer un libro por ISBN.
-
-        Usa el endpoint Books con jscmd=data (título, autores, editorial,
-        fecha, páginas, materias). Devuelve {} si el ISBN no está en
-        OpenLibrary.
+    def enrich_by_isbn(self, isbn: str, schema: str = "sedici") -> dict:
+        """
+        Consulta la API de OpenLibrary a partir de un ISBN y retorna los
+        metadatos parseados en el schema configurado.
         """
         norm = _normalize_isbn(isbn)
         if not norm:
@@ -78,7 +76,7 @@ class OpenLibraryEnricher(BaseEnricher):
 
         parsed = self.parse_response(entry)
         parsed["isbn"] = norm
-        return self.map_to_csv_columns(parsed)
+        return self.map_by_schema(parsed, schema)
 
     def parse_response(self, data: Any) -> dict:
         """Normaliza la respuesta de OpenLibrary al schema interno."""

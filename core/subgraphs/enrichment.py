@@ -1,19 +1,21 @@
 """
 Subgrafo de Enriquecimiento de Metadatos.
 
-Ejecutado después de la deduplicación. Consulta fuentes externas (Crossref,
-OpenAlex) para completar los metadatos de los ítems a importar.
+Ejecutado antes de la deduplicación (sobre `generic_source_csv_path`).
+Consulta fuentes académicas externas (Crossref, OpenAlex, DOI Negotiation, OpenLibrary)
+para completar los metadatos de los ítems a importar en formato genérico unificado.
 
 El enriquecimiento es opcional y se activa con state["enrichment_enabled"] = True.
 
 Estrategia de enriquecimiento (árbol de decisión por ítem):
-  Tiene DOI         → Crossref  (fuente autoritativa)
+  Tiene DOI         → Crossref → DOI Negotiation (fallback)
   Sin DOI, ISSN     → OpenAlex  (por ISSN)
-  Sin DOI ni ISSN   → OpenAlex  (por título, baja confianza)
+  Sin DOI ni ISSN   → OpenAlex  (por título)
+  Tiene ISBN        → OpenLibrary (libros)
   Sin ningún campo  → omitir
 
-Los campos enriquecidos se escriben como columnas adicionales en el CSV
-reconciliado (in-place), manteniendo compatibilidad con el ExportSubgraph.
+Los campos enriquecidos se escriben completando valores faltantes directamente
+en el CSV genérico (in-place), maximizando la calidad de la deduplicación subsiguiente.
 
 Topología:
   START

@@ -227,7 +227,8 @@ def metadata_reconciliation(state: dict) -> dict[str, Any]:
     # Filtrar: solo ítems con porcentaje total por debajo del umbral seguro
     df_to_import = df_dedup[df_dedup["total"] < umbral_seguro]
 
-    df_source = pd.read_csv(state["source_csv_path"])
+    source_path = state.get("curated_csv_path") or state["source_csv_path"]
+    df_source = pd.read_csv(source_path)
 
     # Intentar encontrar la columna de identificador en el CSV original
     id_col_dedup = "id"
@@ -239,9 +240,28 @@ def metadata_reconciliation(state: dict) -> dict[str, Any]:
 
     if id_col_source is None:
         # Fallback: usar el índice para el join
-        df_reconciled = df_source.iloc[df_to_import.index]
+        df_reconciled = df_source.iloc[df_to_import.index].copy()
     else:
-        df_reconciled = df_source[df_source[id_col_source].isin(df_to_import[id_col_dedup])]
+        df_reconciled = df_source[df_source[id_col_source].isin(df_to_import[id_col_dedup])].copy()
+
+    # Si el enriquecimiento estuvo habilitado, propagar columnas enriquecidas del CSV genérico
+    generic_csv_path = state.get("generic_source_csv_path")
+    if state.get("enrichment_enabled", False) and generic_csv_path and os.path.isfile(generic_csv_path):
+        try:
+            df_generic = pd.read_csv(generic_csv_path)
+            if id_col_dedup in df_generic.columns and id_col_source and id_col_source in df_reconciled.columns:
+                df_generic_map = df_generic.set_index(id_col_dedup)
+                candidate_cols = ["author", "date", "doi", "issn", "isbn", "citation", "subject", "type"]
+                for col in candidate_cols:
+                    if col in df_generic_map.columns:
+                        mapped_series = df_reconciled[id_col_source].map(df_generic_map[col])
+                        if col not in df_reconciled.columns:
+                            df_reconciled[col] = mapped_series
+                        else:
+                            mask_empty = df_reconciled[col].isna() | df_reconciled[col].astype(str).str.strip().isin(["", "nan", "None"])
+                            df_reconciled.loc[mask_empty, col] = mapped_series[mask_empty]
+        except Exception as exc:
+            print(f"[metadata_reconciliation] Advertencia al propagar metadatos enriquecidos: {exc}")
 
     output_dir = os.path.dirname(state["reconciled_csv_path"])
     if output_dir:

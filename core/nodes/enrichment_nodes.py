@@ -84,10 +84,10 @@ def _check_provider_health() -> dict[str, bool]:
 
 def enrich_metadata_node(state: State) -> dict[str, Any]:
     """
-    Nodo EnrichMetadata — Enriquece los metadatos del CSV reconciliado.
+    Nodo EnrichMetadata — Enriquece los metadatos del CSV en formato genérico.
 
-    Lee `reconciled_csv_path`, aplica la estrategia de enriquecimiento
-    a cada fila y escribe el resultado de vuelta sobre el mismo archivo.
+    Lee `generic_source_csv_path`, aplica la estrategia de enriquecimiento
+    a cada fila y escribe los campos completados directamente sobre el mismo archivo.
     Al finalizar, actualiza `enrichment_stats` con un resumen de la operación.
 
     La estrategia por fila es:
@@ -97,17 +97,17 @@ def enrich_metadata_node(state: State) -> dict[str, Any]:
       - Tiene ISBN:             OpenLibrary (libros).
       - Sin ningún campo útil:  omite el ítem.
 
-    Los campos enriquecidos se agregan al DataFrame como columnas adicionales
-    con nombres de metadatos SEDICI/Dublin Core (ej. ``dc.title``,
-    ``sedici.creator.person``) según la fuente utilizada.
+    Los campos enriquecidos se mapean al esquema genérico (ej. `author`,
+    `date`, `citation`, `subject`) y rellenan los valores vacíos o faltantes
+    en el CSV para maximizar la calidad de la deduplicación posterior.
     """
-    reconciled_path = state["reconciled_csv_path"]
+    generic_path = state.get("generic_source_csv_path")
 
-    if not os.path.isfile(reconciled_path):
+    if not generic_path or not os.path.isfile(generic_path):
         logger.error(
-            "[EnrichMetadata] CSV reconciliado no encontrado: '%s'", reconciled_path
+            "[EnrichMetadata] CSV genérico de origen no encontrado: '%s'", generic_path
         )
-        return {"enrichment_stats": {"error": f"Archivo no encontrado: {reconciled_path}"}}
+        return {"enrichment_stats": {"error": f"Archivo genérico no encontrado: {generic_path}"}}
 
     # Health check pre-lote: detectar APIs indisponibles antes de iterar
     provider_health = _check_provider_health()
@@ -117,9 +117,9 @@ def enrich_metadata_node(state: State) -> dict[str, Any]:
     doi_negotiation = EnricherFactory.create("doi_negotiation")
     openlibrary = EnricherFactory.create("openlibrary")
 
-    df = pd.read_csv(reconciled_path)
+    df = pd.read_csv(generic_path, dtype=str).fillna("")
     total = len(df)
-    logger.info("[EnrichMetadata] Enriqueciendo %d ítems desde '%s'...", total, reconciled_path)
+    logger.info("[EnrichMetadata] Enriqueciendo %d ítems genéricos desde '%s'...", total, generic_path)
 
     stats: dict[str, int] = {
         "total": total,
@@ -131,22 +131,26 @@ def enrich_metadata_node(state: State) -> dict[str, Any]:
         "errors": 0,
     }
 
-    enriched_rows: list[dict] = []
-
     for idx, row in df.iterrows():
         extra = _enrich_row(
             row, crossref, openalex, doi_negotiation,
             openlibrary, provider_health, stats,
+            schema="generic",
         )
-        enriched_rows.append(extra)
+        # Rellenar campos faltantes o vacíos en el DataFrame genérico
+        for col, val in extra.items():
+            if val is None or str(val).strip() in ("", "nan", "None"):
+                continue
+            if col not in df.columns:
+                df[col] = ""
+            curr_val = df.at[idx, col]
+            if pd.isna(curr_val) or str(curr_val).strip() in ("", "nan", "None"):
+                if df[col].dtype != "object":
+                    df[col] = df[col].astype("object")
+                df.at[idx, col] = str(val)
 
-    # Agregar columnas enriquecidas al DataFrame
-    enrichment_df = pd.DataFrame(enriched_rows, index=df.index)
-    for col in enrichment_df.columns:
-        df[col] = enrichment_df[col]
-
-    # Escribir de vuelta al mismo path (enriquecimiento in-place)
-    df.to_csv(reconciled_path, index=False)
+    # Escribir de vuelta al mismo path (enriquecimiento in-place sobre generic_source.csv)
+    df.to_csv(generic_path, index=False)
 
     logger.info(
         "[EnrichMetadata] Completado. Crossref: %d, DOI Negotiation: %d, "
@@ -195,6 +199,7 @@ def _enrich_row(
     openlibrary: BaseEnricher,
     provider_health: dict[str, bool],
     stats: dict,
+    schema: str = "generic",
 ) -> dict:
     """
     Determina la estrategia de enriquecimiento para una fila y ejecuta la consulta.
@@ -215,35 +220,35 @@ def _enrich_row(
     try:
         # --- DOI: Crossref (fuente autoritativa) ---
         if doi and provider_health.get("crossref", True):
-            enriched = crossref.enrich_by_doi(doi)
+            enriched = crossref.enrich_by_doi(doi, schema=schema)
             if enriched:
                 stats["enriched_crossref"] += 1
                 return enriched
 
         # --- DOI: DOI Negotiation (fallback para DataCite, Zenodo, etc.) ---
         if doi and provider_health.get("doi_negotiation", True):
-            enriched = doi_negotiation.enrich_by_doi(doi)
+            enriched = doi_negotiation.enrich_by_doi(doi, schema=schema)
             if enriched:
                 stats["enriched_doi_negotiation"] += 1
                 return enriched
 
         # --- ISSN: OpenAlex ---
         if issn and provider_health.get("openalex", True):
-            enriched = openalex.enrich_by_issn(issn)
+            enriched = openalex.enrich_by_issn(issn, schema=schema)
             if enriched:
                 stats["enriched_openalex"] += 1
                 return enriched
 
         # --- Título: OpenAlex ---
         if title and provider_health.get("openalex", True):
-            enriched = openalex.enrich_by_title(title)
+            enriched = openalex.enrich_by_title(title, schema=schema)
             if enriched:
                 stats["enriched_openalex"] += 1
                 return enriched
 
         # --- ISBN: OpenLibrary (libros) ---
         if isbn and provider_health.get("openlibrary", True):
-            enriched = openlibrary.enrich_by_isbn(isbn)
+            enriched = openlibrary.enrich_by_isbn(isbn, schema=schema)
             if enriched:
                 stats["enriched_openlibrary"] += 1
                 return enriched

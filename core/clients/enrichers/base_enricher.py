@@ -62,6 +62,20 @@ class BaseEnricher(ABC):
         # open_access y citations: omitidos intencionalmente
     }
 
+    GENERIC_COLUMN_MAP: dict[str, str] = {
+        "title":            "title",
+        "authors":          "author",
+        "year":             "date",
+        "doi":              "doi",
+        "type":             "type",
+        "journal":          "citation",
+        "issn":             "issn",
+        "abstract_es":      "description",
+        "abstract_en":      "description",
+        "subjects":         "subject",
+        "isbn":             "isbn",
+    }
+
     def __init__(self, base_url: str, timeout: int = 15) -> None:
         self.base_url = base_url
         self._timeout = timeout
@@ -85,19 +99,19 @@ class BaseEnricher(ABC):
     # Estrategias de consulta (cada subclase implementa las que aplica)
     # ------------------------------------------------------------------
 
-    def enrich_by_doi(self, doi: str) -> dict:
+    def enrich_by_doi(self, doi: str, schema: str = "sedici") -> dict:
         """Enriquecer a partir de un DOI. Devuelve {} si no soportado."""
         return {}
 
-    def enrich_by_title(self, title: str) -> dict:
+    def enrich_by_title(self, title: str, schema: str = "sedici") -> dict:
         """Enriquecer a partir de un título. Devuelve {} si no soportado."""
         return {}
 
-    def enrich_by_issn(self, issn: str) -> dict:
+    def enrich_by_issn(self, issn: str, schema: str = "sedici") -> dict:
         """Enriquecer a partir de un ISSN. Devuelve {} si no soportado."""
         return {}
 
-    def enrich_by_isbn(self, isbn: str) -> dict:
+    def enrich_by_isbn(self, isbn: str, schema: str = "sedici") -> dict:
         """Enriquecer a partir de un ISBN. Devuelve {} si no soportado."""
         return {}
 
@@ -131,6 +145,26 @@ class BaseEnricher(ABC):
             for k, v in parsed.items()
             if k in self.SEDICI_COLUMN_MAP and v not in (None, "")
         }
+
+    def map_to_generic_columns(self, parsed: dict) -> dict:
+        """
+        Transforma el schema interno normalizado al formato de columnas genéricas.
+
+        Utiliza ``GENERIC_COLUMN_MAP`` para traducir cada clave interna
+        (ej. ``authors``) al nombre de columna genérica entendida por el Deduplicador
+        (ej. ``author``).
+        """
+        return {
+            self.GENERIC_COLUMN_MAP[k]: v
+            for k, v in parsed.items()
+            if k in self.GENERIC_COLUMN_MAP and v not in (None, "")
+        }
+
+    def map_by_schema(self, parsed: dict, schema: str = "sedici") -> dict:
+        """Mapea según el esquema destino ('sedici' o 'generic')."""
+        if schema == "generic":
+            return self.map_to_generic_columns(parsed)
+        return self.map_to_csv_columns(parsed)
 
     # ------------------------------------------------------------------
     # Health check

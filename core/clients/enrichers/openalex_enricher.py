@@ -73,7 +73,7 @@ class OpenAlexEnricher(BaseEnricher):
         response.raise_for_status()
         return response.json()
 
-    def enrich_by_title(self, title: str) -> dict:
+    def enrich_by_title(self, title: str, schema: str = "sedici") -> dict:
         """
         Busca el trabajo académico más relevante por título y retorna sus metadatos.
 
@@ -82,6 +82,7 @@ class OpenAlexEnricher(BaseEnricher):
 
         Args:
             title: Título del documento a buscar.
+            schema: Esquema de columnas de salida ("sedici" o "generic").
 
         Returns:
             Diccionario con metadatos enriquecidos o vacío si no se encontró.
@@ -104,14 +105,15 @@ class OpenAlexEnricher(BaseEnricher):
             return {}
 
         parsed = self.parse_response(results[0])
-        return self.map_to_csv_columns(parsed)
+        return self.map_by_schema(parsed, schema)
 
-    def enrich_by_issn(self, issn: str) -> dict:
+    def enrich_by_issn(self, issn: str, schema: str = "sedici") -> dict:
         """
         Busca el trabajo académico por ISSN y retorna sus metadatos.
 
         Args:
             issn: ISSN de la revista (puede incluir guiones).
+            schema: Esquema de columnas de salida ("sedici" o "generic").
 
         Returns:
             Diccionario con metadatos enriquecidos o vacío si no se encontró.
@@ -136,7 +138,7 @@ class OpenAlexEnricher(BaseEnricher):
             return {}
 
         parsed = self.parse_response(results[0])
-        return self.map_to_csv_columns(parsed)
+        return self.map_by_schema(parsed, schema)
 
     def parse_response(self, data: Any) -> dict:
         """

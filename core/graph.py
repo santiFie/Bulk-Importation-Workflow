@@ -1,17 +1,16 @@
 """
 Punto de entrada del grafo LangGraph del pipeline de importación a SEDICI.
 
-Ensambla el grafo principal componiendo los cuatro subgrafos especializados
+Ensambla el grafo principal componiendo los subgrafos especializados
 en una secuencia lineal de fases. Cada subgrafo encapsula una responsabilidad
 bien definida y puede ser testeado e invocado de forma independiente.
 
 Pipeline:
   START
-    → SetupWorkspace        (inicialización del workspace y paths)
-    → IngestSubgraph        (normaliza la fuente: CSV directo o PDFs en MinIO)
-    → CrosswalkDedupSubgraph (crosswalk + deduplicación + reconciliación)
-    → EnrichmentSubgraph    (enriquecimiento opcional: Crossref / OpenAlex)
-    → ExportSubgraph        (SAF + importación a DSpace)
+    → SetupWorkspace         (inicialización del workspace y paths)
+    → IngestSubgraph         (normaliza la fuente: CSV directo o PDFs en MinIO)
+    → CrosswalkDedupSubgraph (crosswalk + enriquecimiento opcional pre-dedup + deduplicación + reconciliación)
+    → ExportSubgraph         (SAF + importación a DSpace)
   END
 
 Fuentes de entrada soportadas (via state["input_source_type"]):
@@ -20,8 +19,9 @@ Fuentes de entrada soportadas (via state["input_source_type"]):
                  y genera el CSV automáticamente.
 
 Enriquecimiento opcional (via state["enrichment_enabled"]):
-  - False (default): el EnrichmentSubgraph pasa directamente a END.
-  - True:            consulta Crossref (por DOI) u OpenAlex (por ISSN/título).
+  - False (default): omite consultas a APIs externas.
+  - True:            consulta Crossref / OpenAlex / DOI Negotiation / OpenLibrary
+                     sobre el CSV genérico antes de la deduplicación.
 """
 
 import asyncio
@@ -177,9 +177,9 @@ async def create_graph(persistence_saver):
     """
     Crea el grafo principal del pipeline de importación en masa.
 
-    Compila los cuatro subgrafos especializados y los compone en una
-    secuencia lineal. Cada subgrafo es un nodo en el grafo principal
-    con responsabilidades bien delimitadas.
+    Compila los subgrafos especializados y los compone en una
+    secuencia lineal de fases: Ingestión, Crosswalk con Enriquecimiento
+    pre-deduplicación, y Exportación final a DSpace.
 
     Args:
         persistence_saver: Checkpointer de LangGraph para persistencia de estado.
@@ -188,10 +188,9 @@ async def create_graph(persistence_saver):
         Grafo compilado listo para ser invocado o expuesto en LangGraph Studio.
     """
     # Compilar subgrafos de forma paralela
-    ingest_sg, crosswalk_dedup_sg, enrichment_sg, export_sg = await asyncio.gather(
+    ingest_sg, crosswalk_dedup_sg, export_sg = await asyncio.gather(
         build_ingest_subgraph(),
         build_crosswalk_dedup_subgraph(),
-        build_enrichment_subgraph(),
         build_export_subgraph(),
     )
 
@@ -201,15 +200,13 @@ async def create_graph(persistence_saver):
     graph.add_node("SetupWorkspace",        setup_workspace)
     graph.add_node("IngestSubgraph",        ingest_sg)
     graph.add_node("CrosswalkDedupSubgraph",crosswalk_dedup_sg)
-    graph.add_node("EnrichmentSubgraph",    enrichment_sg)
     graph.add_node("ExportSubgraph",        export_sg)
 
     # ── Aristas (secuencia lineal de fases) ────────────────────────────────
     graph.add_edge(START,                   "SetupWorkspace")
     graph.add_edge("SetupWorkspace",        "IngestSubgraph")
     graph.add_edge("IngestSubgraph",        "CrosswalkDedupSubgraph")
-    graph.add_edge("CrosswalkDedupSubgraph","EnrichmentSubgraph")
-    graph.add_edge("EnrichmentSubgraph",    "ExportSubgraph")
+    graph.add_edge("CrosswalkDedupSubgraph","ExportSubgraph")
     graph.add_edge("ExportSubgraph",        END)
 
     return graph.compile(
