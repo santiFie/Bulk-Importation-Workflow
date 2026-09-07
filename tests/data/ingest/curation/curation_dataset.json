@@ -1,0 +1,119 @@
+[
+  {
+    "case_name": "Completa date vacio usando enrichers por ISSN",
+    "input": {
+      "id": "39-jaiio-ast-09.pdf-PDFA.pdf",
+      "title": "Evaluación de un modelo de calidad de software",
+      "author": "Juan Perez",
+      "type": "objeto de conferencia",
+      "date": "",
+      "issn": "1850-2806",
+      "_curation": {
+        "anomalias": {
+          "date": ["CAMPO_VACIO"]
+        },
+        "score": 0.6
+      }
+    },
+    "expected_output": {
+      "date": "2010"
+    },
+    "mock_tools": {
+      "validate_with_enrichers": {
+        "found": true,
+        "strategy": "by_issn",
+        "data": {
+          "date": "2010"
+        }
+      },
+      "re_extract_with_ocr": {
+        "texto_extraido": "",
+        "ocr_applied": false
+      }
+    }
+  },
+  {
+    "case_name": "Resuelve titulo residual con OCR",
+    "input": {
+      "id": "39-jaiio-ast-06.pdf-PDFA.pdf",
+      "title": "E s t i m a c i o n d e t e x t u r a s",
+      "author": "Maria Gonzalez",
+      "type": "objeto de conferencia",
+      "_curation": {
+        "anomalias": {
+          "title": ["CHARS_DISPERSOS"]
+        },
+        "score": 0.9
+      }
+    },
+    "expected_output": {
+      "title": "Estimacion de texturas"
+    },
+    "mock_tools": {
+      "validate_with_enrichers": {
+        "found": false,
+        "strategy": "none"
+      },
+      "re_extract_with_ocr": {
+        "texto_extraido": "Estimacion de texturas",
+        "ocr_applied": true
+      }
+    }
+  },
+  {
+    "case_name": "Marca titulo como curation_needed si falla OCR y Enrichers",
+    "input": {
+      "id": "dummy-ilegible.pdf",
+      "title": "xxx yyy zzz jjjj",
+      "author": "Desconocido",
+      "type": "objeto de conferencia",
+      "_curation": {
+        "anomalias": {
+          "title": ["CHARS_DISPERSOS"]
+        },
+        "score": 0.9
+      }
+    },
+    "expected_output": {
+      "title_curation_needed": true
+    },
+    "mock_tools": {
+      "validate_with_enrichers": {
+        "found": false,
+        "strategy": "none"
+      },
+      "re_extract_with_ocr": {
+        "texto_extraido": "xxx yyy zzz jjjj",
+        "ocr_applied": true
+      }
+    }
+  },
+  {
+    "case_name": "Resuelve texto pegado grave en descripcion via OCR",
+    "input": {
+      "id": "39-jaiio-ast-10.pdf-PDFA.pdf",
+      "title": "Filtrado Bayesiano",
+      "description": "EnelmarcodelfiltradoBayesiano,sepresentaunmodeloenelcualelprocesodemedicion...",
+      "type": "objeto de conferencia",
+      "_curation": {
+        "anomalias": {
+          "description": ["TEXTO_PEGADO"]
+        },
+        "score": 0.4
+      }
+    },
+    "expected_output": {
+      "description": "En el marco del filtrado Bayesiano, se presenta un modelo en el cual el proceso de medicion..."
+    },
+    "mock_tools": {
+      "validate_with_enrichers": {
+        "found": false,
+        "strategy": "none"
+      },
+      "re_extract_with_ocr": {
+        "texto_extraido": "En el marco del filtrado Bayesiano, se presenta un modelo en el cual el proceso de medicion...",
+        "ocr_applied": true
+      }
+    }
+  }
+]
