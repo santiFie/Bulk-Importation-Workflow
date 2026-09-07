@@ -21,8 +21,24 @@ import pytest
 # ---------------------------------------------------------------------------
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 CROSSWALK_MODULE_PATH = os.path.join(PROJECT_ROOT, "core", "scripts", "crosswalk")
-CONFIGS_DIR = os.path.join(CROSSWALK_MODULE_PATH, "configs")
 DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
+
+
+def get_data_file(filename: str) -> str:
+    """Busca un archivo en las subcarpetas organizadas de tests/data/."""
+    for sub in (
+        ("crosswalk_dedup", "dedup_benchmarks"),
+        ("crosswalk_dedup", "repository"),
+        ("crosswalk_dedup", "sources_samples"),
+        ("ingest", "raw"),
+        ("ingest", "curation"),
+        ("enrichment",),
+        ("export",),
+    ):
+        candidate = os.path.join(DATA_DIR, *sub, filename)
+        if os.path.exists(candidate):
+            return candidate
+    return os.path.join(DATA_DIR, filename)
 
 for path in (PROJECT_ROOT, CROSSWALK_MODULE_PATH):
     if path not in sys.path:
@@ -167,9 +183,9 @@ class TestTransformMetadataCsvWithSedici:
     """Tests de transformación usando el CSV de SEDICI como fuente."""
 
     def test_sedici_transform_returns_success_message(self, tmp_path):
-        output_csv = "/home/santi/Documentos/LangGraph/Modulo-Marta/tests/data/export.csv"
+        output_csv = str(tmp_path / "export.csv")
         state = {
-            "source_csv_path": os.path.join(DATA_DIR, "result-14531-Romero.csv"),
+            "source_csv_path": get_data_file("result-14531-Romero.csv"),
             "config_json_path": get_config_path_for_source("sedici"),
             "target_csv_path": output_csv,
         }
@@ -179,7 +195,7 @@ class TestTransformMetadataCsvWithSedici:
     def test_sedici_output_file_is_created(self, tmp_path):
         output_csv = str(tmp_path / "sedici_output.csv")
         state = {
-            "source_csv_path": os.path.join(DATA_DIR, "sedici_input.csv"),
+            "source_csv_path": get_data_file("sedici_input.csv"),
             "config_json_path": get_config_path_for_source("sedici"),
             "target_csv_path": output_csv,
         }
@@ -190,7 +206,7 @@ class TestTransformMetadataCsvWithSedici:
         """Las columnas de salida deben coincidir con los campos 'replace' del config."""
         output_csv = str(tmp_path / "sedici_output.csv")
         state = {
-            "source_csv_path": os.path.join(DATA_DIR, "sedici_input.csv"),
+            "source_csv_path": get_data_file("sedici_input.csv"),
             "config_json_path": get_config_path_for_source("sedici"),
             "target_csv_path": output_csv,
         }
@@ -208,7 +224,7 @@ class TestTransformMetadataCsvWithSedici:
     def test_sedici_output_has_data_rows(self, tmp_path):
         output_csv = str(tmp_path / "sedici_output.csv")
         state = {
-            "source_csv_path": os.path.join(DATA_DIR, "sedici_input.csv"),
+            "source_csv_path": get_data_file("sedici_input.csv"),
             "config_json_path": get_config_path_for_source("sedici"),
             "target_csv_path": output_csv,
         }
@@ -223,7 +239,7 @@ class TestTransformMetadataCsvWithSedici:
         """El campo 'title' (required=true en el config) no debe estar vacío."""
         output_csv = str(tmp_path / "sedici_output.csv")
         state = {
-            "source_csv_path": os.path.join(DATA_DIR, "sedici_input.csv"),
+            "source_csv_path": get_data_file("sedici_input.csv"),
             "config_json_path": get_config_path_for_source("sedici"),
             "target_csv_path": output_csv,
         }
@@ -244,7 +260,7 @@ class TestTransformMetadataCsvWithOaidc:
     def test_oaidc_transform_returns_success_message(self, tmp_path):
         output_csv = str(tmp_path / "oaidc_output.csv")
         state = {
-            "source_csv_path": os.path.join(DATA_DIR, "oaidc_input.csv"),
+            "source_csv_path": get_data_file("oaidc_input.csv"),
             "config_json_path": get_config_path_for_source("oaidc"),
             "target_csv_path": output_csv,
         }
@@ -254,7 +270,7 @@ class TestTransformMetadataCsvWithOaidc:
     def test_oaidc_output_has_expected_columns(self, tmp_path):
         output_csv = str(tmp_path / "oaidc_output.csv")
         state = {
-            "source_csv_path": os.path.join(DATA_DIR, "oaidc_input.csv"),
+            "source_csv_path": get_data_file("oaidc_input.csv"),
             "config_json_path": get_config_path_for_source("oaidc"),
             "target_csv_path": output_csv,
         }
@@ -272,7 +288,7 @@ class TestTransformMetadataCsvWithOaidc:
         """El config de oaidc aplica el filtro 'lowercase' al campo author."""
         output_csv = str(tmp_path / "oaidc_output.csv")
         state = {
-            "source_csv_path": os.path.join(DATA_DIR, "oaidc_input.csv"),
+            "source_csv_path": get_data_file("oaidc_input.csv"),
             "config_json_path": get_config_path_for_source("oaidc"),
             "target_csv_path": output_csv,
         }
@@ -294,7 +310,7 @@ class TestTransformMetadataCsvEdgeCases:
     def test_empty_csv_returns_error_message(self, tmp_path):
         output_csv = str(tmp_path / "empty_output.csv")
         state = {
-            "source_csv_path": os.path.join(DATA_DIR, "empty.csv"),
+            "source_csv_path": get_data_file("empty.csv"),
             "config_json_path": get_config_path_for_source("sedici"),
             "target_csv_path": output_csv,
         }
@@ -316,7 +332,7 @@ class TestTransformMetadataCsvEdgeCases:
     def test_nonexistent_config_json_returns_error(self, tmp_path):
         output_csv = str(tmp_path / "output.csv")
         state = {
-            "source_csv_path": os.path.join(DATA_DIR, "sedici_input.csv"),
+            "source_csv_path": get_data_file("sedici_input.csv"),
             "config_json_path": "/ruta/que/no/existe/config.json",
             "target_csv_path": output_csv,
         }
@@ -329,7 +345,7 @@ class TestTransformMetadataCsvEdgeCases:
         new_dir.mkdir(parents=True)
         output_csv = str(new_dir / "output.csv")
         state = {
-            "source_csv_path": os.path.join(DATA_DIR, "sedici_input.csv"),
+            "source_csv_path": get_data_file("sedici_input.csv"),
             "config_json_path": get_config_path_for_source("sedici"),
             "target_csv_path": output_csv,
         }
@@ -340,7 +356,7 @@ class TestTransformMetadataCsvEdgeCases:
     def test_success_message_contains_output_path(self, tmp_path):
         output_csv = str(tmp_path / "result.csv")
         state = {
-            "source_csv_path": os.path.join(DATA_DIR, "sedici_input.csv"),
+            "source_csv_path": get_data_file("sedici_input.csv"),
             "config_json_path": get_config_path_for_source("sedici"),
             "target_csv_path": output_csv,
         }
@@ -366,7 +382,7 @@ class TestRomeroToSediciCrosswalk:
     def test_romero_to_sedici_transform_returns_success(self, tmp_path):
         output_csv = str(tmp_path / "romero_sedici_output.csv")
         state = {
-            "source_csv_path": os.path.join(DATA_DIR, "result-14531-Romero.csv"),
+            "source_csv_path": get_data_file("result-14531-Romero.csv"),
             "config_json_path": get_config_path_for_source("romero_to_sedici"),
             "target_csv_path": output_csv,
         }
@@ -376,7 +392,7 @@ class TestRomeroToSediciCrosswalk:
     def test_romero_to_sedici_output_has_sedici_columns(self, tmp_path):
         output_csv = str(tmp_path / "romero_sedici_output.csv")
         state = {
-            "source_csv_path": os.path.join(DATA_DIR, "result-14531-Romero.csv"),
+            "source_csv_path": get_data_file("result-14531-Romero.csv"),
             "config_json_path": get_config_path_for_source("romero_to_sedici"),
             "target_csv_path": output_csv,
         }
@@ -401,7 +417,7 @@ if __name__ == "__main__":
         tmp_path = tmp.name
 
     state_p2 = {
-        "source_csv_path": os.path.join(DATA_DIR, "result-14531-Romero.csv"),
+        "source_csv_path": get_data_file("result-14531-Romero.csv"),
         "config_json_path": get_config_path_for_source("sedici"),
         "target_csv_path": tmp_path,
     }
@@ -413,7 +429,7 @@ if __name__ == "__main__":
         tmp_path5 = tmp5.name
 
     state_p5 = {
-        "source_csv_path": os.path.join(DATA_DIR, "result-14531-Romero.csv"),
+        "source_csv_path": get_data_file("result-14531-Romero.csv"),
         "config_json_path": get_config_path_for_source("romero_to_sedici"),
         "target_csv_path": tmp_path5,
     }

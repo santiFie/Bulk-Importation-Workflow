@@ -120,9 +120,9 @@ HITL_AUTO_RESPONSE: str = "accept"
 # Agregar más entradas para realizar pruebas sucesivas con distintos CSVs.
 TEST_CASES: list[dict] = [
     {
-        "source_csv_path": os.path.join(DATA_DIR, "articulos_unlp_doaj_v2.csv"),
+        "source_csv_path": os.path.join(DATA_DIR, "ingest", "raw", "articulos_unlp_doaj_v2.csv"),
         "source_name": "unlp_doaj",
-        "repository_csv_path": os.path.join(DATA_DIR, "export_10915_all.csv"),
+        "repository_csv_path": os.path.join(DATA_DIR, "crosswalk_dedup", "repository", "export_10915_all.csv"),
         "dspace_collection": "d0fb620b-6b5e-43d3-ba3f-d0183ed5b84f",
         "import_validate_only": True,
         "input_source_type": "csv",
@@ -133,9 +133,9 @@ TEST_CASES: list[dict] = [
         "expected_author_counts": [2, 2, 4, 5, 3],
     },
     {
-        "source_csv_path": os.path.join(DATA_DIR, "openalex.csv"),
+        "source_csv_path": os.path.join(DATA_DIR, "enrichment", "openalex.csv"),
         "source_name": "openalex",
-        "repository_csv_path": os.path.join(DATA_DIR, "export_10915_all.csv"),
+        "repository_csv_path": os.path.join(DATA_DIR, "crosswalk_dedup", "repository", "export_10915_all.csv"),
         "dspace_collection": "d0fb620b-6b5e-43d3-ba3f-d0183ed5b84f",
         "import_validate_only": True,
         "input_source_type": "csv",
@@ -150,7 +150,7 @@ TEST_CASES: list[dict] = [
         "source_name": "minio_dspace",
         "minio_bucket": "importacion",
         "minio_prefix": "",
-        "repository_csv_path": os.path.join(DATA_DIR, "export_10915_all.csv"),
+        "repository_csv_path": os.path.join(DATA_DIR, "crosswalk_dedup", "repository", "export_10915_all.csv"),
         "dspace_collection": "d0fb620b-6b5e-43d3-ba3f-d0183ed5b84f",
         "import_validate_only": True,
         "input_source_type": "pdf_minio",

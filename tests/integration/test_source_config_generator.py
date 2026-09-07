@@ -256,10 +256,8 @@ def run_evaluation():
         dataset = client.read_dataset(dataset_name=dataset_name)
         print(f"El dataset '{dataset_name}' ya existe. Añadiendo nuevos ejemplos...")
 
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    data_folder = os.path.join(current_dir, "data") 
     csv_filename = "SearchResults.csv"
-    csv_path = os.path.join(data_folder, csv_filename)
+    csv_path = os.path.join(DATA_DIR, "ingest", "raw", csv_filename)
     
     if not os.path.exists(csv_path):
         print(f"Error: No se encontró el archivo en {csv_path}")

@@ -12,8 +12,7 @@ Encapsula los pasos 1 a 4 del pipeline:
 Topología:
   START
     ├─ (crosswalk LLM) → GenerateSourceCrosswalkConfig → MapSourceToGeneric ──┐
-    ├─ (pdf minio)     → BypassSourceCrosswalk ───────────────────────────────┴→ EnrichmentSubgraph ──┐
-    └─ MapSediciToGeneric ────────────────────────────────────────────────────────────────────────────┴→ Deduplicate → MetadataReconciliation → END
+    └─ (pdf minio)     → BypassSourceCrosswalk ───────────────────────────────┴→ EnrichmentSubgraph → MapSediciToGeneric → Deduplicate → MetadataReconciliation → END
 """
 
 import shutil
@@ -70,17 +69,14 @@ async def build_crosswalk_dedup_subgraph():
         "BypassSourceCrosswalk": "BypassSourceCrosswalk"
     })
     
-    # Flujo de SEDICI
-    graph.add_edge(START,                          "MapSediciToGeneric")
-    
     graph.add_edge("GenerateSourceCrosswalkConfig","MapSourceToGeneric")
 
     # Ambas rutas de la fuente generan generic_source.csv y pasan por EnrichmentSubgraph
     graph.add_edge("MapSourceToGeneric",    "EnrichmentSubgraph")
     graph.add_edge("BypassSourceCrosswalk", "EnrichmentSubgraph")
 
-    # EnrichmentSubgraph y MapSediciToGeneric convergen en Deduplicate
-    graph.add_edge("EnrichmentSubgraph",    "Deduplicate")
+    # Tras procesar y enriquecer la fuente, se mapea SEDICI y convergen en Deduplicate
+    graph.add_edge("EnrichmentSubgraph",    "MapSediciToGeneric")
     graph.add_edge("MapSediciToGeneric",    "Deduplicate")
 
     graph.add_edge("Deduplicate",            "MetadataReconciliation")

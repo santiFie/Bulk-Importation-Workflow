@@ -223,26 +223,59 @@ def metadata_reconciliation(state: dict) -> dict[str, Any]:
     umbral_seguro = state.get("umbral_seguro") or 10
 
     df_dedup = pd.read_csv(state["dedup_output_csv_path"])
-
-    # Filtrar: solo ítems con porcentaje total por debajo del umbral seguro
-    df_to_import = df_dedup[df_dedup["total"] < umbral_seguro]
-
     source_path = state.get("curated_csv_path") or state["source_csv_path"]
     df_source = pd.read_csv(source_path)
-
-    # Intentar encontrar la columna de identificador en el CSV original
     id_col_dedup = "id"
-    id_col_source = None
-    for candidate in ["id", "sedici.identifier.other", "dc.identifier.uri"]:
-        if candidate in df_source.columns:
-            id_col_source = candidate
-            break
 
-    if id_col_source is None:
-        # Fallback: usar el índice para el join
-        df_reconciled = df_source.iloc[df_to_import.index].copy()
+    # Detectar formato de columnas del Deduplicador
+    if "similarity" in df_dedup.columns and "id_document1" in df_dedup.columns:
+        # Formato Backend REST: reporta posibles duplicados entre documentos
+        def _parse_similarity(val):
+            if pd.isna(val) or str(val).strip().upper() in ("NO_DUPLICATE", "NONE", ""):
+                return 0.0
+            try:
+                score = float(val)
+                if score <= 1.0 and umbral_seguro > 1:
+                    score *= 100.0
+                return score
+            except (ValueError, TypeError):
+                return 100.0
+
+        scores = df_dedup["similarity"].apply(_parse_similarity)
+        # Identificar IDs de la fuente (id_document2) que son duplicados por encima del umbral
+        duplicate_mask = scores >= umbral_seguro
+        duplicate_source_ids = set(
+            df_dedup.loc[duplicate_mask, "id_document2"].dropna().astype(str).unique()
+        )
+
+        id_col_source = None
+        for candidate in ["id", "sedici.identifier.other", "dc.identifier.uri"]:
+            if candidate in df_source.columns:
+                id_col_source = candidate
+                break
+
+        if id_col_source and duplicate_source_ids:
+            df_reconciled = df_source[~df_source[id_col_source].astype(str).isin(duplicate_source_ids)].copy()
+        else:
+            df_reconciled = df_source.copy()
+
     else:
-        df_reconciled = df_source[df_source[id_col_source].isin(df_to_import[id_col_dedup])].copy()
+        # Formato legacy / mock (FakeDeduplicatorClient)
+        score_col = "total" if "total" in df_dedup.columns else df_dedup.columns[-1]
+        df_to_import = df_dedup[pd.to_numeric(df_dedup[score_col], errors="coerce").fillna(0) < umbral_seguro]
+        id_col_dedup = "id" if "id" in df_dedup.columns else df_dedup.columns[0]
+
+        id_col_source = None
+        for candidate in ["id", "sedici.identifier.other", "dc.identifier.uri"]:
+            if candidate in df_source.columns:
+                id_col_source = candidate
+                break
+
+        if id_col_source is None:
+            # Fallback: usar el índice para el join
+            df_reconciled = df_source.iloc[df_to_import.index].copy()
+        else:
+            df_reconciled = df_source[df_source[id_col_source].isin(df_to_import[id_col_dedup])].copy()
 
     # Si el enriquecimiento estuvo habilitado, propagar columnas enriquecidas del CSV genérico
     generic_csv_path = state.get("generic_source_csv_path")

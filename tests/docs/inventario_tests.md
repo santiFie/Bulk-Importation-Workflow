@@ -6,9 +6,13 @@ Inventario y análisis de todos los archivos de test del proyecto, organizados e
 
 ## Mapa de la carpeta `tests/`
 
+```text
 tests/
-├── data/                                 ← Datos de prueba (CSVs, configs, dataset de curación)
-│   └── curation_dataset.json             ← Dataset de casos de prueba para el agente curador
+├── data/                                 ← Datos de prueba organizados por subgrafo
+│   ├── ingest/                           ← CSVs crudos (raw/) y curación de PDFs (curation/)
+│   ├── crosswalk_dedup/                  ← Curados de PDFs, muestras de fuentes, SEDICI y benchmarks
+│   ├── enrichment/                       ← Datasets para enriquecimiento (OpenAlex, Crossref)
+│   └── export/                           ← Tablas de licencias y metadatos para exportación SAF
 ├── docs/                                 ← Documentación técnica de testing
 ├── studio/                               ← Scripts de ejecución manual interactiva (NO son pytest)
 │   ├── run_crosswalk_agent.py            (opcional)
@@ -21,11 +25,15 @@ tests/
 │   ├── test_deduplicator.py              ← Motor de crosswalk (Crosswalk, CsvHandler)
 │   ├── test_heuristic_detectors.py       ← Detección heurística de anomalías en PDFs
 │   └── test_text_fixers.py               ← Correctores deterministas de texto
-└── integration/                          ← Tests de integración (nodos de LangGraph, servicios externos y LangSmith)
-    ├── test_curation_node.py             ← Nodo de curación de metadatos (PDF curation)
-    ├── test_graph_steps.py               ← Integración secuencial de nodos del pipeline
+└── integration/                          ← Tests de integración (subgrafos, nodos y suites E2E)
+    ├── subgraphs/                        ← Tests de integración para subgrafos individuales
+    │   └── test_crosswalk_dedup_subgraph.py ← Subgrafo CrosswalkDedupSubgraph (LLM y backend reales)
+    ├── nodes/                            ← Tests de integración para nodos individuales
+    │   ├── test_curation_node.py         ← Nodo curate_metadata_node (PDF curation)
+    │   ├── test_pdf_ingest_node.py       ← Nodo pdf_ingest_node (MinIO + Metadata Extractor)
+    │   └── test_enrichment_node.py       ← Nodo enrich_metadata_node y route_enrichment
+    ├── test_graph_steps.py               ← Integración secuencial de nodos legacy (pendiente actualización)
     ├── test_metadata_curator_agent.py    ← Suite de 3 niveles del Agente Curador (Sintético, Dataset Eval, E2E MinIO/OCR)
-    ├── test_pdf_ingest_node.py           ← Ingesta real MinIO + MCP Metadata Extractor
     ├── test_pipeline_evaluation.py       ← Evaluación del pipeline completo en LangSmith
     └── test_source_config_generator.py   ← Evaluación del agente de crosswalk en LangSmith
 ```
@@ -43,10 +51,16 @@ pytest tests/unit/ -v
 # 2. Ejecutar solo tests unitarios excluyendo tests de API real en enrichers
 pytest tests/unit/ -v -k "not integration"
 
-# 3. Ejecutar tests de integración
+# 3. Ejecutar tests de subgrafos individuales
+pytest tests/integration/subgraphs/ -v
+
+# 4. Ejecutar tests de nodos individuales
+pytest tests/integration/nodes/ -v
+
+# 5. Ejecutar toda la suite de integración
 pytest tests/integration/ -v
 
-# 4. Ejecutar toda la suite completa
+# 6. Ejecutar toda la suite completa
 pytest tests/ -v
 ```
 
@@ -78,13 +92,7 @@ pytest tests/ -v
 | **Tipo** | Tests unitarios puros (pytest) |
 | **Módulo testeado** | `core/utils/text_fixers.py` |
 | **Clases / grupos** | `TestFixSpacedChars`, `TestRemoveCidArtifacts`, `TestDeduplicateCyclicText`, `TestFixGluedWords`, `TestNormalizarAutores`, `TestAplicarCorrectoresProgramaticos` |
-| **Qué testea** | |
-| → `TestFixSpacedChars` | Colapso de caracteres separados por espacios espurios (típico en OCR/PDFs). |
-| → `TestRemoveCidArtifacts` | Eliminación de artefactos `(cid:XX)` y reemplazo de ligaduras comunes (`(cid:27)` → `fi`). |
-| → `TestDeduplicateCyclicText` | Detección y recorte de texto duplicado cíclicamente (ej. título repetido 2 o 3 veces). |
-| → `TestFixGluedWords` | Separación de palabras pegadas por mayúsculas intermedias o puntuación sin espacio. |
-| → `TestNormalizarAutores` | Formateo consistente de listas de autores (`Apellido, Nombre ||| ...`). |
-| → `TestAplicarCorrectoresProgramaticos` | Pipeline secuencial completo de correctores sobre un diccionario de metadatos. |
+| **Qué testea** | Correcciones deterministas de texto sobre cadenas y diccionarios de metadatos (espacios espurios, artefactos CID, repetición cíclica, palabras pegadas, autores). |
 | **Dependencias externas** | Ninguna (local y ultra rápido). |
 | **Veredicto** | ✅ **Conservar** |
 
@@ -97,11 +105,7 @@ pytest tests/ -v
 | **Tipo** | Tests unitarios puros (pytest) |
 | **Módulo testeado** | `core/utils/heuristic_detectors.py` |
 | **Clases / grupos** | `TestDetectarCharsDispersos`, `TestDetectarArtefactosCid`, `TestDetectarRepeticionCiclica`, `TestDetectarTextoPegado`, `TestDetectarCharsControl`, `TestDetectarLongitudAnomala`, `TestCalcularScoreAnomalia`, `TestAnalizarFila`, `TestTriarRegistros`, `TestCalcularEstadisticasLote` |
-| **Qué testea** | |
-| → Detectores individuales | Detección aislada de cada tipología de anomalía en campos de texto (título, abstract, autores). |
-| → `TestCalcularScoreAnomalia` | Ponderación de anomalías y cálculo de score normalizado `[0.0, 1.0]`. |
-| → `TestTriarRegistros` | Clasificación de registros en `limpios` vs `anomalos` según umbral. |
-| → `TestCalcularEstadisticasLote` | Métricas agregadas del lote bajo análisis. |
+| **Qué testea** | Detección aislada de anomalías en campos de texto, cálculo de score normalizado y triaje de registros en lotes. |
 | **Dependencias externas** | Ninguna. |
 | **Veredicto** | ✅ **Conservar** |
 
@@ -132,32 +136,27 @@ pytest tests/ -v
 
 ## 3. Tests de Integración (`integration/`)
 
-### `integration/test_graph_steps.py`
+### 3.1 Tests de Subgrafos (`integration/subgraphs/`)
+
+#### `integration/subgraphs/test_crosswalk_dedup_subgraph.py`
 
 | Campo | Detalle |
 |-------|---------|
-| **Tipo** | Tests de integración (pytest) |
-| **Nodos cubiertos** | Pasos 1, 2a, 2b, 3, 4, 5, 6, 8, 9 — pipeline completo vía los nodos de `core/graph.py` |
-| **Mock del Deduplicador** | `FakeDeduplicatorClient` (mock con join por ID). |
-| **Qué testea** | Generación de config LLM (fallback y estructura), mapeos a genérico, deduplicación simulada, reconciliación de metadatos, formato SEDICI, correcciones finales, armado de estructura SAF y preparación de importación DSpace. |
-| **Dependencias externas** | Servicio crosswalk local (REST) para pasos 2a, 2b, 5. |
-| **Veredicto** | ✅ **Conservar** — suite principal de validación funcional. |
+| **Tipo** | Tests de integración de subgrafo con LLM y servicios reales (pytest) |
+| **Subgrafo cubierto** | `CrosswalkDedupSubgraph` (`core/subgraphs/crosswalk_dedup.py`) |
+| **Clases / grupos** | `TestCrosswalkDedupSubgraphTopology`, `TestCrosswalkDedupSubgraphE2E` |
+| **Qué testea** | |
+| → `TestCrosswalkDedupSubgraphTopology` | Compilación del subgrafo, presencia de todos los nodos (`GenerateSourceCrosswalkConfig`, `MapSourceToGeneric`, `BypassSourceCrosswalk`, `EnrichmentSubgraph`, `MapSediciToGeneric`, `Deduplicate`, `MetadataReconciliation`), verificación del router condicional `route_source_crosswalk` y del nodo puente `bypass_source_crosswalk`. |
+| → `test_flujo_completo_rama_csv_con_llm_y_servicios_reales` | Ejecución E2E del subgrafo en rama CSV usando el **agente LLM real** (`FallbackLLM`), la API REST de **Crosswalk** en Docker, la API REST del **Deduplicador** y reconciliación final. |
+| → `test_flujo_rama_pdf_minio_bypass_crosswalk` | Ejecución del subgrafo en rama PDF/MinIO con `BypassSourceCrosswalk`, MapSedici, Deduplicador real y Reconciliación. |
+| **Dependencias externas** | API Key LLM (Groq / Nvidia), backend Docker `deduplicator_crosswalk_web` (`http://localhost:8000`). |
+| **Veredicto** | ✅ **Conservar** — suite principal de validación del subgrafo de crosswalk y deduplicación. |
 
 ---
 
-### `integration/test_pdf_ingest_node.py`
+### 3.2 Tests de Nodos Individuales (`integration/nodes/`)
 
-| Campo | Detalle |
-|-------|---------|
-| **Tipo** | Test de integración real con servicios |
-| **Nodo cubierto** | `pdf_ingest_node` (`core/nodes/ingest_nodes.py`) |
-| **Qué testea** | Conexión e ingesta desde MinIO (bucket `importacion`), invocación del MCP Metadata Extractor, extracción de textos/metadatos y generación de `source_from_pdfs.csv`. |
-| **Dependencias externas** | MinIO (`localhost:9003`), Metadata Extractor MCP (`http://localhost:9604/mcp`), Docker (`aistor`), Groq API Key. Se salta automáticamente si la infra no está disponible. |
-| **Veredicto** | ✅ **Conservar** |
-
----
-
-### `integration/test_curation_node.py`
+#### `integration/nodes/test_curation_node.py`
 
 | Campo | Detalle |
 |-------|---------|
@@ -169,40 +168,75 @@ pytest tests/ -v
 
 ---
 
-### `integration/test_metadata_curator_agent.py`
+#### `integration/nodes/test_pdf_ingest_node.py`
+
+| Campo | Detalle |
+|-------|---------|
+| **Tipo** | Test de integración real con servicios |
+| **Nodo cubierto** | `pdf_ingest_node` (`core/nodes/ingest_nodes.py`) |
+| **Qué testea** | Conexión e ingesta desde MinIO (bucket `importacion`), invocación del MCP Metadata Extractor, extracción de textos/metadatos y generación de `source_from_pdfs.csv`. |
+| **Dependencias externas** | MinIO (`localhost:9003`), Metadata Extractor MCP (`http://localhost:9604/mcp`), Docker (`aistor`), Groq API Key. Se salta automáticamente si la infra no está disponible. |
+| **Veredicto** | ✅ **Conservar** |
+
+---
+
+#### `integration/nodes/test_enrichment_node.py`
+
+| Campo | Detalle |
+|-------|---------|
+| **Tipo** | Test de integración / funcionalidad de nodo |
+| **Nodo cubierto** | `enrich_metadata_node` y `route_enrichment` (`core/nodes/enrichment_nodes.py`) |
+| **Qué testea** | Enrutador condicional de enriquecimiento y completado de metadatos in-place sobre el CSV genérico (`generic_source_csv_path`). |
+| **Dependencias externas** | Mocks de clientes de enriquecimiento (aislado, rápido). |
+| **Veredicto** | ✅ **Conservar** |
+
+---
+
+### 3.3 Evaluaciones y Suites E2E / LangSmith (`integration/`)
+
+#### `integration/test_graph_steps.py`
+
+| Campo | Detalle |
+|-------|---------|
+| **Tipo** | Tests de integración secuencial (pytest) |
+| **Nodos cubiertos** | Pasos 1, 2a, 2b, 3, 4, 5, 6, 8, 9 — pipeline completo vía los nodos de `core/graph.py` |
+| **Mock del Deduplicador** | `FakeDeduplicatorClient` (mock con join por ID). |
+| **Estado actual** | ⚠️ **Pendiente de actualización:** Suite legacy previa a la modularización en subgrafos. Se conserva para refactorización futura. |
+| **Veredicto** | 🔄 **Conservar (Pendiente de refactor)** |
+
+---
+
+#### `integration/test_metadata_curator_agent.py`
 
 | Campo | Detalle |
 |-------|---------|
 | **Tipo** | Suite híbrida de 3 niveles: Tests programáticos sintéticos, evaluación LLM basada en dataset y tests E2E |
 | **Módulo/Nodo cubierto** | `MetadataCuratorAgent` (`core/agent/metadata_curator_agent.py`), correctores de texto (`core/utils/text_fixers.py`) y nodo `curate_metadata_node` |
-| **Estructura por Niveles** | |
-| → `TestCorreccionesEspecificasPorTipo` (Nivel 1) | **Tests sintéticos programáticos:** Valida la aplicación determinista y rápida de correctores (`deduplicate_cyclic_text`, `fix_glued_words`, `fix_spaced_chars`, etc.) sin consultar MinIO ni llamar al LLM. |
-| → `TestAgenteCurador_DatasetEval` (Nivel 2) | **Evaluación LLM parametrizada:** Carga `tests/data/curation_dataset.json` y mockea las `@tool` (`re_extract_with_ocr`, `validate_with_enrichers`) para medir la precisión de razonamiento del LLM, su capacidad de usar herramientas y el marcado de `_curation_needed`. |
-| → `TestAgenteCurador_IntegracionE2E` (Nivel 3) | **Integración End-to-End con Tools Reales:** Conecta con MinIO (`importacion-jaio`), descarga PDFs físicos y ejecuta extracción OCR real con Tesseract sobre documentos con problemas severos de layout. |
-| **Dependencias externas** | Nivel 1: ninguna; Nivel 2: API key de LLM (Groq / Nvidia / OpenRouter); Nivel 3: API key de LLM + MinIO local (`localhost:9003`). |
-| **Veredicto** | ✅ **Conservar** — núcleo de validación y benchmarking del agente de curación. |
+| **Estructura por Niveles** | Nivel 1 (sintético), Nivel 2 (evaluación con dataset y mocks de tools), Nivel 3 (E2E con MinIO y Tesseract OCR). |
+| **Dependencias externas** | API key de LLM (Groq / Nvidia / OpenRouter); Nivel 3: MinIO local (`localhost:9003`). |
+| **Veredicto** | ✅ **Conservar** |
 
 ---
 
-### `integration/test_pipeline_evaluation.py`
+#### `integration/test_pipeline_evaluation.py`
 
 | Campo | Detalle |
 |-------|---------|
 | **Tipo** | Evaluador integrado con LangSmith |
 | **Cómo ejecutar** | `python tests/integration/test_pipeline_evaluation.py` |
-| **Qué hace** | Crea dataset `Pipeline_Integration_Tests` en LangSmith, ejecuta el pipeline completo con casos de prueba configurables y registra métricas cuantitativas (errores, integridad de datos, retención de filas, presencia de columnas SEDICI). |
+| **Qué hace** | Crea dataset `Pipeline_Integration_Tests` en LangSmith, ejecuta el pipeline completo con casos de prueba configurables y registra métricas cuantitativas. |
 | **Dependencias externas** | LangSmith API, Groq API, servicio crosswalk. |
 | **Veredicto** | ✅ **Conservar** |
 
 ---
 
-### `integration/test_source_config_generator.py`
+#### `integration/test_source_config_generator.py`
 
 | Campo | Detalle |
 |-------|---------|
 | **Tipo** | Evaluador integrado con LangSmith |
 | **Cómo ejecutar** | `python tests/integration/test_source_config_generator.py` |
-| **Qué hace** | Evalúa el agente de generación de crosswalk config contra `SearchResults.csv`, midiendo validez de JSON, mapeo de columnas críticas y exactitud de expresiones regulares de separadores. |
+| **Qué hace** | Evalúa el agente de generación de crosswalk config contra `SearchResults.csv`, midiendo validez de JSON y separadores. |
 | **Dependencias externas** | LangSmith API, Groq API, datos en `tests/data/`. |
 | **Veredicto** | ✅ **Conservar** |
 

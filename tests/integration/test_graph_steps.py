@@ -32,8 +32,8 @@ CROSSWALK_MODULE_PATH = os.path.join(PROJECT_ROOT, "core", "scripts", "crosswalk
 CONFIGS_DIR = os.path.join(CROSSWALK_MODULE_PATH, "configs")
 DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
 
-SOURCE_CSV = os.path.join(DATA_DIR, "SearchResults.csv")
-SEDICI_CSV = os.path.join(DATA_DIR, "export_10915_all.csv")
+SOURCE_CSV = os.path.join(DATA_DIR, "ingest", "raw", "SearchResults.csv")
+SEDICI_CSV = os.path.join(DATA_DIR, "crosswalk_dedup", "repository", "export_10915_all.csv")
 SOURCE_CROSSWALK = os.path.join(CONFIGS_DIR, "sedicicrosswalkconfig.json")
 SEDICI_CROSSWALK = os.path.join(CONFIGS_DIR, "sedicicrosswalkconfig.json")
 TARGET_CROSSWALK = os.path.join(CONFIGS_DIR, "config_romero_to_sedici.json")

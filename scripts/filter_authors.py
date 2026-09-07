@@ -1,6 +1,6 @@
 import re
 
-csv_path = "tests/data/SearchResults.csv"
+csv_path = "tests/data/ingest/raw/SearchResults.csv"
 
 def parse_csv_line(line):
     fields = []

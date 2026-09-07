@@ -20,7 +20,7 @@ graph TD
     end
 
     subgraph "Nivel 2: Evaluación LLM sobre Dataset Estático"
-        D2[tests/data/curation_dataset.json] --> A2[MetadataCuratorAgent]
+        D2[tests/data/ingest/curation/curation_dataset.json] --> A2[MetadataCuratorAgent]
         M2[Mock Tools: OCR & Enrichers] -. Inyección .-> A2
         A2 --> R2[Validación de Razonamiento y Schema / LLM Real]
     end
@@ -59,7 +59,7 @@ pytest tests/integration/test_metadata_curator_agent.py::TestCorreccionesEspecif
 ### Nivel 2: Evaluación LLM sobre Dataset Estático (`TestAgenteCurador_DatasetEval`)
 
 * **Ubicación:** `tests/integration/test_metadata_curator_agent.py` → Clase `TestAgenteCurador_DatasetEval`
-* **Dataset fuente:** `tests/data/curation_dataset.json`
+* **Dataset fuente:** `tests/data/ingest/curation/curation_dataset.json`
 * **Mecanismo de Mocking:** Utiliza `unittest.mock.patch.object` sobre el atributo `.func` de las `@tool` (`re_extract_with_ocr` y `validate_with_enrichers`). De esta forma, el LLM decide si llamar a una tool y qué parámetros pasarle, pero la respuesta es provista instantáneamente por el mock definido en el caso de prueba.
 * **Comando para ejecutar:**
 ```bash
@@ -85,13 +85,13 @@ Esta sección explica en detalle cómo funciona el motor de parametrización y e
 
 ### 3.1. Parametrización desde el Dataset JSON
 
-El dataset de evaluación (`tests/data/curation_dataset.json`) es un array de objetos JSON. Cada objeto representa un caso de prueba independiente con su `input`, `mock_tools` y `expected_output`.
+El dataset de evaluación (`tests/data/ingest/curation/curation_dataset.json`) es un array de objetos JSON. Cada objeto representa un caso de prueba independiente con su `input`, `mock_tools` y `expected_output`.
 
 La función `_cargar_dataset_evaluacion()` se ejecuta **una sola vez** durante la fase de recolección de pytest (antes de correr cualquier test). Retorna la lista completa de casos:
 
 ```python
 def _cargar_dataset_evaluacion() -> list[dict]:
-    path = Path(__file__).parent.parent / "data" / "curation_dataset.json"
+    path = Path(__file__).parent.parent / "data" / "ingest" / "curation" / "curation_dataset.json"
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 ```
@@ -177,7 +177,7 @@ El LLM **no sabe** que los tools están mockeados. Para él, es como si las tool
 
 ## 4. Cómo Agregar Nuevos Casos de Prueba al Dataset
 
-Todos los casos de evaluación del **Nivel 2** se definen en el archivo [`tests/data/curation_dataset.json`](file:///home/santi/Documentos/LangGraph/Modulo-Marta/tests/data/curation_dataset.json).
+Todos los casos de evaluación del **Nivel 2** se definen en el archivo [`tests/data/ingest/curation/curation_dataset.json`](file:///home/santi/Documentos/LangGraph/Modulo-Marta/tests/data/ingest/curation/curation_dataset.json).
 
 ### Estructura y Formato del Esquema JSON
 
@@ -349,7 +349,7 @@ Al configurar el campo `_curation.anomalias`, utiliza los identificadores canón
 Para medir el rendimiento de diferentes modelos LLM (Groq vs Nvidia NIM vs OpenRouter) o realizar pruebas de regresión, se utiliza el script [`scripts/evaluate_curation_agent.py`](file:///home/santi/Documentos/LangGraph/Modulo-Marta/scripts/evaluate_curation_agent.py).
 
 ### Funcionamiento del Evaluador
-1. **Sincronización:** Lee `tests/data/curation_dataset.json` y sube los ejemplos al dataset remoto `Metadata_Curator_Evaluation` en LangSmith.
+1. **Sincronización:** Lee `tests/data/ingest/curation/curation_dataset.json` y sube los ejemplos al dataset remoto `Metadata_Curator_Evaluation` en LangSmith.
 2. **Ejecución:** Corre el agente asincrónicamente inyectando los mocks correspondientes a cada ejemplo.
 3. **Métrica `exact_match`:** Compara las claves de `expected_output` contra la salida del modelo. Devuelve `1.0` si todos los campos coinciden exactamente o `0.0` si falta alguno o hay discrepancias.
 

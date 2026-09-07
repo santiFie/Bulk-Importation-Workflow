@@ -405,7 +405,7 @@ from unittest.mock import patch
 
 def _cargar_dataset_evaluacion() -> list[dict]:
     """Carga el dataset de evaluación estático."""
-    path = Path(__file__).parent.parent / "data" / "curation_dataset.json"
+    path = Path(__file__).parent.parent / "data" / "ingest" / "curation" / "curation_dataset.json"
     if not path.exists():
         return []
     with open(path, "r", encoding="utf-8") as f:

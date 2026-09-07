@@ -56,7 +56,12 @@ class State(TypedDict):
 
     # --- Directorio de Ejecución (Workspace) ---
     workspace_dir: NotRequired[str]   # Ruta de la carpeta del lote: runs/{source_name}_{fecha}_{cant}
-
+    
+    # --- Paso 1b: Curación de Metadatos PDF ---
+    curated_csv_path: NotRequired[str]              # CSV con ítems aptos (limpios + curados exitosamente); continúa el pipeline
+    pending_to_review_csv_path: NotRequired[str]    # CSV de cuarentena con ítems que requieren revisión manual (curation_needed=True o sin_datos)
+    curation_stats: NotRequired[dict]               # Estadísticas del proceso de curación: {total, limpias, curadas, marcadas, errores}
+    
     # --- Paso 2: Crosswalk configs y outputs intermedios (Opcionales / Derivados) ---
     source_crosswalk_config: NotRequired[str]        # JSON de crosswalk para el repositorio origen → formato genérico (puede ser generado por agente)
     sedici_crosswalk_config: NotRequired[str]        # JSON de crosswalk para SEDICI → formato genérico
@@ -84,8 +89,4 @@ class State(TypedDict):
     # --- Paso 9: Importación a DSpace ---
     import_mapfile_path: NotRequired[str]           # Path local donde se guardará el mapfile generado por DSpace
     import_exclude_bitstreams: NotRequired[bool]    # Si es True, excluye bitstreams del proceso de importación
-
-    # --- Paso 1b: Curación de Metadatos PDF ---
-    curated_csv_path: NotRequired[str]              # CSV con ítems aptos (limpios + curados exitosamente); continúa el pipeline
-    pending_to_review_csv_path: NotRequired[str]    # CSV de cuarentena con ítems que requieren revisión manual (curation_needed=True o sin_datos)
-    curation_stats: NotRequired[dict]               # Estadísticas del proceso de curación: {total, limpias, curadas, marcadas, errores}
+    

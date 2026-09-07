@@ -1,7 +1,7 @@
 """
 Script de evaluación formal en LangSmith para el MetadataCuratorAgent.
 
-Sincroniza el dataset local `tests/data/curation_dataset.json` con LangSmith
+Sincroniza el dataset local `tests/data/ingest/curation/curation_dataset.json` con LangSmith
 y ejecuta una evaluación automatizada, mockeando las tools para determinismo.
 """
 
@@ -15,7 +15,7 @@ from langsmith import Client, evaluate
 from core.agent.metadata_curator_agent import build_metadata_curator_agent, construir_mensaje_curacion, parsear_respuesta_agente
 
 DATASET_NAME = "Metadata_Curator_Evaluation"
-DATASET_PATH = Path(__file__).parent.parent / "tests" / "data" / "curation_dataset.json"
+DATASET_PATH = Path(__file__).parent.parent / "tests" / "data" / "ingest" / "curation" / "curation_dataset.json"
 
 def sync_dataset_to_langsmith(client: Client, dataset_name: str) -> bool:
     """Crea o actualiza el dataset en LangSmith desde el JSON local."""
