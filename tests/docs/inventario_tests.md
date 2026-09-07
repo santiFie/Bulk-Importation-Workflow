@@ -10,7 +10,7 @@ Inventario y análisis de todos los archivos de test del proyecto, organizados e
 tests/
 ├── data/                                 ← Datos de prueba organizados por subgrafo
 │   ├── ingest/                           ← CSVs crudos (raw/) y curación de PDFs (curation/)
-│   ├── crosswalk_dedup/                  ← Curados de PDFs, muestras de fuentes, SEDICI y benchmarks
+│   ├── crosswalk_dedup/                  ← Esquema genérico (generic_inputs/), fuentes externas (source_inputs/), SEDICI y benchmarks
 │   ├── enrichment/                       ← Datasets para enriquecimiento (OpenAlex, Crossref)
 │   └── export/                           ← Tablas de licencias y metadatos para exportación SAF
 ├── docs/                                 ← Documentación técnica de testing

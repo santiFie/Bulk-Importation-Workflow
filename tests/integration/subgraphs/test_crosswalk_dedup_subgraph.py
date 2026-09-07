@@ -32,10 +32,14 @@ DATA_DIR = os.path.join(PROJECT_ROOT, "tests", "data")
 CROSSWALK_DEDUP_DIR = os.path.join(DATA_DIR, "crosswalk_dedup")
 CONFIGS_DIR = os.path.join(PROJECT_ROOT, "core", "scripts", "crosswalk", "configs")
 
-# Rutas modularizadas por subgrafo
-SPRINGER_SAMPLE_CSV = os.path.join(CROSSWALK_DEDUP_DIR, "sources_samples", "sample_springer_raw.csv")
-PDF_CURATED_SAMPLE_CSV = os.path.join(CROSSWALK_DEDUP_DIR, "curated", "sample_pdf_curated.csv")
-SEDICI_EXPORT_CSV = os.path.join(CROSSWALK_DEDUP_DIR, "repository", "export_10915_all.csv")
+# Rutas de datos según el tipo de esquema de entrada al subgrafo
+GENERIC_INPUTS_DIR = os.path.join(CROSSWALK_DEDUP_DIR, "generic_inputs")
+SOURCE_INPUTS_DIR = os.path.join(CROSSWALK_DEDUP_DIR, "source_inputs")
+REPOSITORY_DIR = os.path.join(CROSSWALK_DEDUP_DIR, "repository")
+
+GENERIC_SAMPLE_CSV = os.path.join(GENERIC_INPUTS_DIR, "pdf_ingest_output.csv")
+SPRINGER_SAMPLE_CSV = os.path.join(SOURCE_INPUTS_DIR, "springer_sample.csv")
+SEDICI_SAMPLE_CSV = os.path.join(REPOSITORY_DIR, "sedici_sample.csv")
 SEDICI_CROSSWALK_CONFIG = os.path.join(CONFIGS_DIR, "export_10915_crosswalkconfig.json")
 
 
@@ -106,8 +110,7 @@ class TestCrosswalkDedupSubgraphE2E:
         shutil.copy(SPRINGER_SAMPLE_CSV, source_sample_path)
 
         sedici_sample_path = str(tmp_path / "sedici_sample.csv")
-        df_sedici = pd.read_csv(SEDICI_EXPORT_CSV).head(10)
-        df_sedici.to_csv(sedici_sample_path, index=False)
+        shutil.copy(SEDICI_SAMPLE_CSV, sedici_sample_path)
 
         source_name = "springer_e2e_test"
         generic_source_path = str(tmp_path / "generic_source.csv")
@@ -167,13 +170,12 @@ class TestCrosswalkDedupSubgraphE2E:
           - Debe tomar la ruta BypassSourceCrosswalk (sin llamar al LLM).
           - Ejecuta MapSediciToGeneric, Deduplicate y MetadataReconciliation.
         """
-        # Usar metadatos ya curados y en formato genérico desde el dataset modular
-        curated_path = str(tmp_path / "curated_source.csv")
-        shutil.copy(PDF_CURATED_SAMPLE_CSV, curated_path)
+        # Usar entrada en esquema genérico (salida de ingest/PDFs) para verificar bypass
+        generic_input_path = str(tmp_path / "generic_input.csv")
+        shutil.copy(GENERIC_SAMPLE_CSV, generic_input_path)
 
         sedici_sample_path = str(tmp_path / "sedici_sample.csv")
-        df_sedici = pd.read_csv(SEDICI_EXPORT_CSV).head(5)
-        df_sedici.to_csv(sedici_sample_path, index=False)
+        shutil.copy(SEDICI_SAMPLE_CSV, sedici_sample_path)
 
         generic_source_path = str(tmp_path / "generic_source.csv")
         generic_sedici_path = str(tmp_path / "generic_sedici.csv")
@@ -184,8 +186,8 @@ class TestCrosswalkDedupSubgraphE2E:
             "workspace_dir": str(tmp_path),
             "source_name": "curated_pdf_test",
             "input_source_type": "pdf_minio",
-            "curated_csv_path": curated_path,
-            "source_csv_path": curated_path,
+            "curated_csv_path": generic_input_path,
+            "source_csv_path": generic_input_path,
             "repository_csv_path": sedici_sample_path,
             "sedici_crosswalk_config": SEDICI_CROSSWALK_CONFIG,
             "generic_source_csv_path": generic_source_path,

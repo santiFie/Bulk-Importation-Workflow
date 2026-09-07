@@ -29,7 +29,8 @@ def get_data_file(filename: str) -> str:
     for sub in (
         ("crosswalk_dedup", "dedup_benchmarks"),
         ("crosswalk_dedup", "repository"),
-        ("crosswalk_dedup", "sources_samples"),
+        ("crosswalk_dedup", "source_inputs"),
+        ("crosswalk_dedup", "generic_inputs"),
         ("ingest", "raw"),
         ("ingest", "curation"),
         ("enrichment",),
