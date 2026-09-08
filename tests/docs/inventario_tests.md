@@ -27,6 +27,7 @@ tests/
 │   └── test_text_fixers.py               ← Correctores deterministas de texto
 └── integration/                          ← Tests de integración (subgrafos, nodos y suites E2E)
     ├── subgraphs/                        ← Tests de integración para subgrafos individuales
+    │   ├── test_ingest_subgraph.py          ← Subgrafo IngestSubgraph (bifurcación CSV y buckets MinIO)
     │   └── test_crosswalk_dedup_subgraph.py ← Subgrafo CrosswalkDedupSubgraph (LLM y backend reales)
     ├── nodes/                            ← Tests de integración para nodos individuales
     │   ├── test_curation_node.py         ← Nodo curate_metadata_node (PDF curation)
