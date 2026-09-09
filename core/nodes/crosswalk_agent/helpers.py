@@ -222,7 +222,7 @@ _REGEX_STRATEGIES: list[tuple] = [
     # Autores separados por punto+espacio+mayúscula: "Doe J. Smith A."
     (re.compile(r"\.\s+(?=[A-Z])"), "regex", r"\.\s+(?=[A-Z])"),
 ]
-_LITERAL_CANDIDATES: list[str] = ["||", "|", ";;", ";", ",,"]
+_LITERAL_CANDIDATES: list[str] = ["||", "|", ";;", ";", ",,", ",", "."]
 
 CUSTOM_REGEX_FILE = Path(__file__).parent / "custom_regexes.json"
 
