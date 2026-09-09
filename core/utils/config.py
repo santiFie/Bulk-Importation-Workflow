@@ -112,7 +112,7 @@ class Config:
     MINIO_MODEL = "openai/gpt-oss-120b"
     # OPENALEX_MODEL = "nvidia/nemotron-3-ultra-550b-a55b"
     OPENALEX_MODEL = "openai/gpt-oss-120b"
-    CROSSWALK_MODEL = "openai/gpt-oss-20b"
+    CROSSWALK_MODEL = "openai/gpt-oss-120b"
     CROSSWALK_VALIDATOR_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free"
     METADATA_EXTRACTOR_MODEL = "openai/gpt-oss-120b"
     METADATA_CURATOR_MODEL = "openai/gpt-oss-20b"  # Modelo para el agente curador de metadatos PDF

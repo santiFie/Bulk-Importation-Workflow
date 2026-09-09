@@ -36,9 +36,9 @@ CONFIGS_DIR = os.path.join(PROJECT_ROOT, "core", "scripts", "crosswalk", "config
 GENERIC_INPUTS_DIR = os.path.join(CROSSWALK_DEDUP_DIR, "generic_inputs")
 SOURCE_INPUTS_DIR = os.path.join(CROSSWALK_DEDUP_DIR, "source_inputs")
 REPOSITORY_DIR = os.path.join(CROSSWALK_DEDUP_DIR, "repository")
+RAW_DIR = os.path.join(CROSSWALK_DEDUP_DIR, "raw")
 
 GENERIC_SAMPLE_CSV = os.path.join(GENERIC_INPUTS_DIR, "pdf_ingest_output.csv")
-SPRINGER_SAMPLE_CSV = os.path.join(SOURCE_INPUTS_DIR, "springer_sample.csv")
 SEDICI_SAMPLE_CSV = os.path.join(REPOSITORY_DIR, "sedici_sample.csv")
 SEDICI_CROSSWALK_CONFIG = os.path.join(CONFIGS_DIR, "export_10915_crosswalkconfig.json")
 
@@ -105,14 +105,23 @@ class TestCrosswalkDedupSubgraphE2E:
           4. Deduplicate: Detección real de duplicados vía API REST del Deduplicador.
           5. MetadataReconciliation: Cruce y generación del CSV reconciliado.
         """
-        # Copiar la muestra acotada de la fuente para optimizar tiempo y consumo de tokens
+        # Flag para truncar el dataset fuente y ahorrar costos/tokens de LLM en cada ejecución.
+        # Cambiar a False para procesar el CSV completo.
+        TRUNCATE_SOURCE_CSV: bool = False
+        TRUNCATE_ROWS: int = 3
+
         source_sample_path = str(tmp_path / "source_sample.csv")
-        shutil.copy(SPRINGER_SAMPLE_CSV, source_sample_path)
+        source_csv_path = os.path.join(RAW_DIR, "Pubmed_sin_citation.csv")
+        if TRUNCATE_SOURCE_CSV:
+            pd.read_csv(source_csv_path).head(TRUNCATE_ROWS).to_csv(source_sample_path, index=False)
+        else:
+            shutil.copy(source_csv_path, source_sample_path)
 
         sedici_sample_path = str(tmp_path / "sedici_sample.csv")
-        shutil.copy(SEDICI_SAMPLE_CSV, sedici_sample_path)
+        sedici_csv_path = os.path.join(REPOSITORY_DIR, "sedici_sample.csv")
+        shutil.copy(sedici_csv_path, sedici_sample_path)
 
-        source_name = "springer_e2e_test"
+        source_name = "pubmed_sin_citation"
         generic_source_path = str(tmp_path / "generic_source.csv")
         generic_sedici_path = str(tmp_path / "generic_sedici.csv")
         dedup_output_path = str(tmp_path / "dedup_output.csv")
@@ -149,8 +158,12 @@ class TestCrosswalkDedupSubgraphE2E:
         # 2. Validar que MapSourceToGeneric y MapSediciToGeneric produjeron los CSVs genéricos
         assert os.path.isfile(generic_source_path), "generic_source.csv debió generarse vía API de crosswalk."
         assert os.path.isfile(generic_sedici_path), "generic_sedici.csv debió generarse vía API de crosswalk."
+        df_src_original = pd.read_csv(source_sample_path)
         df_gen_src = pd.read_csv(generic_source_path)
-        assert len(df_gen_src) == 3
+        assert len(df_gen_src) == len(df_src_original), (
+            f"El CSV genérico debe tener el mismo número de filas que la fuente "
+            f"({len(df_gen_src)} != {len(df_src_original)})."
+        )
 
         # 3. Validar que Deduplicate ejecutó en el backend y produjo el reporte de duplicados
         assert os.path.isfile(dedup_output_path), "dedup_output.csv debió generarse vía API del deduplicador."

@@ -38,7 +38,7 @@ SAMPLE_CSV_PATH = os.path.join(RAW_DATA_DIR, "SearchResults.csv")
 
 # Lista de buckets a evaluar de forma consecutiva
 # Puede sobreescribirse mediante la variable de entorno TEST_MINIO_BUCKETS (ej: "BUCKET_A,BUCKET_B")
-DEFAULT_BUCKETS = ["JAIO-24", "PUBMED-26", "importacion-jaio"]
+DEFAULT_BUCKETS = ["JAIO", "importacion"]
 ENV_BUCKETS = os.getenv("TEST_MINIO_BUCKETS")
 BUCKETS_TO_TEST = [b.strip() for b in ENV_BUCKETS.split(",") if b.strip()] if ENV_BUCKETS else DEFAULT_BUCKETS
 
