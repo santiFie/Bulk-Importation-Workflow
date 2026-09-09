@@ -156,6 +156,7 @@ class FallbackLLM:
                     ChatGroq(
                         model=self.groq_model,
                         temperature=self.temperature,
+                        max_retries=0,
                     )
                 )
             )
