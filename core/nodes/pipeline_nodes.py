@@ -203,6 +203,97 @@ def deduplicate(state: dict) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Helpers para Reconciliación de Metadatos
+# ---------------------------------------------------------------------------
+
+def _load_crosswalk_mappings(config_path: Any) -> tuple[dict[str, str], dict[str, str]]:
+    """
+    Lee un archivo de configuración de crosswalk y devuelve los mapeos entre
+    las cabeceras originales del CSV fuente y los campos destino genéricos.
+
+    Returns:
+        tuple (source_to_generic, generic_to_source):
+          - source_to_generic: Dict con clave cabecera fuente y valor campo genérico.
+          - generic_to_source: Dict con clave campo genérico y valor cabecera fuente.
+    """
+    source_to_generic: dict[str, str] = {}
+    generic_to_source: dict[str, str] = {}
+
+    if not config_path or not isinstance(config_path, str) or not os.path.isfile(config_path):
+        return source_to_generic, generic_to_source
+
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+
+        mappings = cfg[0] if isinstance(cfg, list) and len(cfg) > 0 and isinstance(cfg[0], list) else []
+        for m in mappings:
+            if isinstance(m, dict):
+                left = m.get("left", "").strip()
+                replace = m.get("replace", "").strip()
+                if left and replace:
+                    source_to_generic[left] = replace
+                    generic_to_source[replace] = left
+    except Exception as exc:
+        print(f"[_load_crosswalk_mappings] Advertencia al leer config: {exc}")
+
+    return source_to_generic, generic_to_source
+
+
+def _resolve_source_id_column(
+    state: dict,
+    df_source: Any,
+    generic_to_source: Any = None,
+) -> Any:
+    """
+    Identifica dinámicamente la columna que actúa como identificador en el CSV fuente.
+
+    Abstrae la lógica de selección en base al tipo de fuente y configuraciones:
+      1. Si la fuente proviene de MinIO ('pdf_minio') o no requiere crosswalk,
+         asume que el esquema ya es genérico y busca 'id' en las columnas.
+      2. Si existe configuración de crosswalk ('source_crosswalk_config'), consulta
+         cuál columna fuente fue mapeada al campo 'id' genérico.
+      3. Fallback heurístico: busca candidatos comunes ('id', 'sedici.identifier.other',
+         'dc.identifier.uri', 'doi', 'DOI', 'pmid', 'PMID', 'handle', 'url', 'uri').
+    """
+    # 1. Caso MinIO / PDFs directos o esquema ya genérico
+    if state.get("input_source_type") == "pdf_minio":
+        if "id" in df_source.columns:
+            return "id"
+
+    # 2. Caso Crosswalk Config
+    if generic_to_source is None:
+        _, generic_to_source = _load_crosswalk_mappings(state.get("source_crosswalk_config"))
+
+    id_from_mapping = generic_to_source.get("id") if generic_to_source else None
+    if id_from_mapping:
+        # En caso de columnas compuestas 'ColA+ColB', probar cada una
+        candidates_from_map = [c.strip() for c in id_from_mapping.split("+") if c.strip()]
+        for cand in candidates_from_map:
+            if cand in df_source.columns:
+                return cand
+
+    # 3. Fallback heurístico si no se definió en el crosswalk
+    fallback_candidates = [
+        "id",
+        "sedici.identifier.other",
+        "dc.identifier.uri",
+        "doi",
+        "DOI",
+        "pmid",
+        "PMID",
+        "handle",
+        "url",
+        "uri",
+    ]
+    for candidate in fallback_candidates:
+        if candidate in df_source.columns:
+            return candidate
+
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Paso 4 — metadata_reconciliation
 # ---------------------------------------------------------------------------
 @traceable(name="MetadataReconciliation", run_type="chain")
@@ -227,6 +318,11 @@ def metadata_reconciliation(state: dict) -> dict[str, Any]:
     df_source = pd.read_csv(source_path)
     id_col_dedup = "id"
 
+    # Cargar mapeos de crosswalk para resolución de columnas y propagación bidireccional
+    source_crosswalk_cfg = state.get("source_crosswalk_config")
+    _, generic_to_source = _load_crosswalk_mappings(source_crosswalk_cfg)
+    id_col_source = _resolve_source_id_column(state, df_source, generic_to_source)
+
     # Detectar formato de columnas del Deduplicador
     if "similarity" in df_dedup.columns and "id_document1" in df_dedup.columns:
         # Formato Backend REST: reporta posibles duplicados entre documentos
@@ -248,12 +344,6 @@ def metadata_reconciliation(state: dict) -> dict[str, Any]:
             df_dedup.loc[duplicate_mask, "id_document2"].dropna().astype(str).unique()
         )
 
-        id_col_source = None
-        for candidate in ["id", "sedici.identifier.other", "dc.identifier.uri"]:
-            if candidate in df_source.columns:
-                id_col_source = candidate
-                break
-
         if id_col_source and duplicate_source_ids:
             df_reconciled = df_source[~df_source[id_col_source].astype(str).isin(duplicate_source_ids)].copy()
         else:
@@ -264,12 +354,6 @@ def metadata_reconciliation(state: dict) -> dict[str, Any]:
         score_col = "total" if "total" in df_dedup.columns else df_dedup.columns[-1]
         df_to_import = df_dedup[pd.to_numeric(df_dedup[score_col], errors="coerce").fillna(0) < umbral_seguro]
         id_col_dedup = "id" if "id" in df_dedup.columns else df_dedup.columns[0]
-
-        id_col_source = None
-        for candidate in ["id", "sedici.identifier.other", "dc.identifier.uri"]:
-            if candidate in df_source.columns:
-                id_col_source = candidate
-                break
 
         if id_col_source is None:
             # Fallback: usar el índice para el join
@@ -288,11 +372,25 @@ def metadata_reconciliation(state: dict) -> dict[str, Any]:
                 for col in candidate_cols:
                     if col in df_generic_map.columns:
                         mapped_series = df_reconciled[id_col_source].map(df_generic_map[col])
+                        
+                        # 1. Inyectar o actualizar la columna genérica en df_reconciled
                         if col not in df_reconciled.columns:
                             df_reconciled[col] = mapped_series
                         else:
+                            if df_reconciled[col].dtype != "object":
+                                df_reconciled[col] = df_reconciled[col].astype("object")
                             mask_empty = df_reconciled[col].isna() | df_reconciled[col].astype(str).str.strip().isin(["", "nan", "None"])
                             df_reconciled.loc[mask_empty, col] = mapped_series[mask_empty]
+
+                        # 2. Propagación bidireccional: si la columna original de la fuente tiene otro nombre (ej. 'Journal/Book' para 'citation'),
+                        # actualizarla también con los valores enriquecidos si está vacía
+                        source_col = generic_to_source.get(col)
+                        if source_col and source_col in df_reconciled.columns and source_col != col:
+                            if df_reconciled[source_col].dtype != "object":
+                                df_reconciled[source_col] = df_reconciled[source_col].astype("object")
+                            mask_empty_source = df_reconciled[source_col].isna() | df_reconciled[source_col].astype(str).str.strip().isin(["", "nan", "None"])
+                            df_reconciled.loc[mask_empty_source, source_col] = mapped_series[mask_empty_source]
+
         except Exception as exc:
             print(f"[metadata_reconciliation] Advertencia al propagar metadatos enriquecidos: {exc}")
 
