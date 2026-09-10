@@ -59,9 +59,11 @@ def _run_crosswalk(csv_input_path: str, config_json_path: str, csv_output_path: 
         return f"Éxito: Mapeo realizado correctamente. Archivo guardado en '{csv_output_path}'"
 
     except CrosswalkApiError as exc:
-        return f"Error de API durante el crosswalk: {exc}"
+        raise RuntimeError(f"Error de API durante el crosswalk: {exc}") from exc
+        #return f"Error de API durante el crosswalk: {exc}"
     except Exception as exc:
-        return f"Error durante la ejecución del crosswalk: {repr(exc)}"
+        raise RuntimeError(f"Error durante la ejecución del crosswalk: {repr(exc)}") from exc
+        #return f"Error durante la ejecución del crosswalk: {repr(exc)}"
 
 
 def _save_csv(csv_bytes: bytes, output_path: str) -> dict[str, Any]:
@@ -279,15 +281,13 @@ def _resolve_source_id_column(
         "sedici.identifier.other",
         "dc.identifier.uri",
         "doi",
-        "DOI",
         "pmid",
-        "PMID",
         "handle",
         "url",
         "uri",
     ]
     for candidate in fallback_candidates:
-        if candidate in df_source.columns:
+        if candidate.lower() in df_source.columns.lower():
             return candidate
 
     return None
@@ -372,7 +372,7 @@ def metadata_reconciliation(state: dict) -> dict[str, Any]:
                 for col in candidate_cols:
                     if col in df_generic_map.columns:
                         mapped_series = df_reconciled[id_col_source].map(df_generic_map[col])
-                        
+
                         # 1. Inyectar o actualizar la columna genérica en df_reconciled
                         if col not in df_reconciled.columns:
                             df_reconciled[col] = mapped_series

@@ -110,7 +110,7 @@ class TestCrosswalkDedupSubgraphE2E:
         TRUNCATE_SOURCE_CSV: bool = False
         TRUNCATE_ROWS: int = 3
 
-        source_sample_path = str(tmp_path / "source_sample.csv")
+        source_sample_path = str(tmp_path / "export_10915_all.csv")
         source_csv_path = os.path.join(RAW_DIR, "Pubmed_sin_citation.csv")
         if TRUNCATE_SOURCE_CSV:
             pd.read_csv(source_csv_path).head(TRUNCATE_ROWS).to_csv(source_sample_path, index=False)

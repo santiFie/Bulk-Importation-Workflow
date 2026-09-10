@@ -47,6 +47,7 @@ from core.nodes.crosswalk_agent.helpers import (
     _build_generic_columns_description,
     detect_separator,
     _validate_config_deterministic,
+    enrich_source_with_crossref_doi,
 )
 
 from core.utils.get_local_model import FallbackLLM
@@ -288,6 +289,7 @@ def generate_source_crosswalk_config(state: dict) -> dict[str, Any]:
     """
     csv_path = state["source_csv_path"]
     source_name = state.get("source_name", "unknown")
+    augmented_path: Optional[str] = None
 
     head_rows = _read_csv_head(csv_path, n=5)
     csv_head_text = _format_csv_head_for_prompt(head_rows)
@@ -303,7 +305,7 @@ def generate_source_crosswalk_config(state: dict) -> dict[str, Any]:
     llm = FallbackLLM(groq_model=config.CROSSWALK_MODEL, openrouter_model=config.CROSSWALK_MODEL).resolve()
 
     # =========================================================================
-    # FASE 1 — Mapeo de columnas (LLM, herramienta única)
+    # FASE 1 — Mapeo de columnas (LLM asistido por herramientas)
     # =========================================================================
 
     def _run_phase1(feedback: Optional[str] = None) -> list[dict]:
@@ -334,6 +336,52 @@ def generate_source_crosswalk_config(state: dict) -> dict[str, Any]:
             mappings_draft = [m.model_dump() for m in mappings]
             return f"OK: {len(mappings)} mapeos guardados."
 
+        @tool
+        def enrich_source_columns_from_doi(
+            doi_column: str,
+            target_fields: list[str],
+        ) -> str:
+            """
+            Consulta Crossref utilizando los DOIs de la columna especificada para obtener
+            uno o varios metadatos genéricos faltantes (ej: 'type', 'date', 'author', 'citation', 'issn')
+            y añade las columnas correspondientes ('inferred_<campo>') al CSV fuente.
+
+            Args:
+                doi_column: Nombre exacto de la columna en el CSV que contiene los DOIs (ej: 'DOI').
+                target_fields: Lista de nombres de campos genéricos destino a inferir (ej: ['type'], ['type', 'date']).
+
+            Returns:
+                Confirmación detallando las nuevas columnas disponibles en el CSV para mapear.
+            """
+            nonlocal csv_path, head_rows, csv_head_text, augmented_path
+            try:
+                out_path = os.path.join(base_dir, f"augmented_{source_name}.csv")
+                fields_list = [target_fields] if isinstance(target_fields, str) else list(target_fields)
+                added_cols, aug_path, samples_by_field = enrich_source_with_crossref_doi(
+                    csv_path=csv_path,
+                    doi_column=doi_column,
+                    target_fields=fields_list,
+                    output_path=out_path,
+                )
+                csv_path = aug_path
+                augmented_path = aug_path
+                state["source_csv_path"] = aug_path
+                head_rows = _read_csv_head(csv_path, n=5)
+                csv_head_text = _format_csv_head_for_prompt(head_rows)
+                print(f"[Fase 1] Pre-enriquecimiento exitoso con Crossref. Columnas añadidas: {added_cols}")
+                mapping_tips = [
+                    f"left='{col}', replace='{f}'"
+                    for col, f in zip(added_cols, fields_list)
+                ]
+                return (
+                    f"Éxito: Se consultó Crossref vía '{doi_column}' y se generaron las columnas: {', '.join(added_cols)} "
+                    f"en el CSV. Muestras obtenidas: {samples_by_field}. "
+                    f"Ahora DEBES incluir en save_column_mappings los mapeos: {'; '.join(mapping_tips)}."
+                )
+            except Exception as exc:
+                print(f"[Fase 1] Error en enrich_source_columns_from_doi: {exc}")
+                return f"Error consultando Crossref: {exc}"
+
         generic_desc = _build_generic_columns_description()
         system_prompt = load_agent_prompt(
             "crosswalk_agent",
@@ -343,11 +391,11 @@ def generate_source_crosswalk_config(state: dict) -> dict[str, Any]:
         if feedback:
             system_prompt += f"\n\n--- FEEDBACK DE VALIDACIÓN ANTERIOR ---\n{feedback}\nCorregí los mapeos considerando este feedback."
 
-        phase1_llm = llm.bind_tools([save_column_mappings])
+        phase1_llm = llm.bind_tools([save_column_mappings, enrich_source_columns_from_doi])
         messages: list = [SystemMessage(system_prompt)]
 
         print("[Fase 1] Generando mapeos de columnas con LLM")
-        for iteration in range(3):
+        for iteration in range(5):
             response = phase1_llm.invoke(messages)
             messages.append(response)
 
@@ -355,6 +403,11 @@ def generate_source_crosswalk_config(state: dict) -> dict[str, Any]:
                 for tc in response.tool_calls:
                     if tc["name"] == "save_column_mappings":
                         result_msg = save_column_mappings.invoke(tc["args"])
+                    elif tc["name"] in {"enrich_source_columns_from_doi", "enrich_source_column_from_doi"}:
+                        args = dict(tc["args"])
+                        if "target_field" in args and "target_fields" not in args:
+                            args["target_fields"] = [args.pop("target_field")]
+                        result_msg = enrich_source_columns_from_doi.invoke(args)
                     else:
                         result_msg = f"Tool desconocida: {tc['name']}"
                     messages.append(ToolMessage(content=result_msg, tool_call_id=tc["id"]))
@@ -506,7 +559,10 @@ def generate_source_crosswalk_config(state: dict) -> dict[str, Any]:
             
     print("[generate_source_crosswalk_config] Fase 4: validación determinista completada")
 
-    return {"source_crosswalk_config": config_output_path}
+    res = {"source_crosswalk_config": config_output_path}
+    if augmented_path:
+        res["source_csv_path"] = augmented_path
+    return res
 
 
 # ---------------------------------------------------------------------------

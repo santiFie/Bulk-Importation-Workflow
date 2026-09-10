@@ -369,6 +369,9 @@ def _validate_config_deterministic(
           - "message": str — resumen legible del resultado.
     """
     CRITICAL = ["id", "title", "author", "date", "type"]
+    ENRICHABLE_GENERIC_FIELDS = {
+        "type", "date", "author", "title", "issn", "citation", "subject", "description", "isbn"
+    }
 
     result = _create_validation_sample(csv_path, config_path, n=n)
     if not result:
@@ -411,6 +414,13 @@ def _validate_config_deterministic(
     parts = [f"Columnas ({len(cols)}): {', '.join(cols)}"]
     if missing:
         parts.append(f"FALTAN columnas críticas: {', '.join(missing)}")
+        enrichable_missing = [f for f in missing if f in ENRICHABLE_GENERIC_FIELDS]
+        if enrichable_missing:
+            parts.append(
+                f"Tip: Si el CSV contiene una columna con DOI, podés usar la herramienta "
+                f"'enrich_source_columns_from_doi' con target_fields={enrichable_missing} "
+                f"para obtenerlos automáticamente desde Crossref antes de guardar los mappings."
+            )
     if not separator_ok:
         parts.append("ADVERTENCIA: Fallas detectadas en la separación de valores:")
         parts.extend([f"  - {issue}" for issue in separation_issues])
@@ -525,3 +535,113 @@ def _validate_separator_with_llm(csv_path: str, config_path: str) -> str:
 
     except Exception as exc:
         return f"Error running separator validation: {repr(exc)}"
+
+
+# ---------------------------------------------------------------------------
+# Pre-enriquecimiento de columnas mediante Crossref
+# ---------------------------------------------------------------------------
+
+def enrich_source_with_crossref_doi(
+    csv_path: str,
+    doi_column: str,
+    target_fields: list[str] | str = "type",
+    output_path: Optional[str] = None,
+) -> tuple[list[str], str, dict[str, list[str]]]:
+    """
+    Enriquece un CSV fuente consultando Crossref vía los DOIs de la columna dada.
+    Agrega una o más columnas 'inferred_<campo>' al CSV con los valores obtenidos.
+
+    Args:
+        csv_path: Ruta al CSV fuente original.
+        doi_column: Nombre de la columna en el CSV que contiene los DOIs.
+        target_fields: Campo o lista de campos destino a inferir (ej. 'type' o ['type', 'date']).
+        output_path: Ruta del CSV resultante. Si es None, se genera augmented_<original>.csv.
+
+    Returns:
+        tuple (added_columns, output_csv_path, sample_values_by_field)
+    """
+    import csv as _csv
+    from concurrent.futures import ThreadPoolExecutor
+    from core.clients.enrichers.crossref_enricher import CrossrefEnricher
+
+    if isinstance(target_fields, str):
+        fields = [target_fields]
+    else:
+        fields = list(target_fields)
+
+    with open(csv_path, "r", encoding="utf-8") as f:
+        sample = f.read(4096)
+        f.seek(0)
+        try:
+            dialect = _csv.Sniffer().sniff(sample)
+            delimiter = dialect.delimiter
+        except _csv.Error:
+            delimiter = ","
+        reader = _csv.DictReader(f, delimiter=delimiter)
+        fieldnames = list(reader.fieldnames or [])
+        rows = list(reader)
+
+    # Identificar la columna de DOI de forma case-insensitive
+    matched_col = None
+    for col in fieldnames:
+        if col.lower() == doi_column.lower():
+            matched_col = col
+            break
+
+    if not matched_col:
+        for col in fieldnames:
+            if "doi" in col.lower():
+                matched_col = col
+                break
+
+    if not matched_col:
+        raise ValueError(f"Columna '{doi_column}' no encontrada en el CSV.")
+
+    enricher = CrossrefEnricher()
+    unique_dois = list({
+        r[matched_col].strip() for r in rows if r.get(matched_col, "").strip()
+    })
+
+    doi_to_vals: dict[str, dict[str, str]] = {}
+
+    def _fetch(doi: str) -> tuple[str, dict[str, str]]:
+        try:
+            data = enricher.enrich_by_doi(doi, schema="generic")
+            return doi, {f: str(data.get(f, "") or "") for f in fields}
+        except Exception:
+            return doi, {f: "" for f in fields}
+
+    if unique_dois:
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            for doi, val_dict in executor.map(_fetch, unique_dois):
+                doi_to_vals[doi] = val_dict
+
+    added_columns: list[str] = []
+    for f in fields:
+        new_col = f"inferred_{f}"
+        added_columns.append(new_col)
+        if new_col not in fieldnames:
+            fieldnames.append(new_col)
+
+    sample_values_by_field: dict[str, list[str]] = {f: [] for f in fields}
+    for r in rows:
+        doi = r.get(matched_col, "").strip()
+        field_vals = doi_to_vals.get(doi, {})
+        for f in fields:
+            inferred = field_vals.get(f, "")
+            r[f"inferred_{f}"] = inferred
+            samples = sample_values_by_field[f]
+            if inferred and len(samples) < 5 and inferred not in samples:
+                samples.append(inferred)
+
+    if not output_path:
+        base_dir = os.path.dirname(csv_path) or "."
+        output_path = os.path.join(base_dir, f"augmented_{os.path.basename(csv_path)}")
+
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+    with open(output_path, "w", encoding="utf-8", newline="") as f:
+        writer = _csv.DictWriter(f, fieldnames=fieldnames, delimiter=delimiter)
+        writer.writeheader()
+        writer.writerows(rows)
+
+    return added_columns, output_path, sample_values_by_field
