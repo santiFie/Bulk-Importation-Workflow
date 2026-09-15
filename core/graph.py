@@ -39,7 +39,7 @@ from core.subgraphs.ingest import build_ingest_subgraph
 # Re-exportaciones: mantienen compatibilidad con tests e importaciones existentes
 # ---------------------------------------------------------------------------
 from core.state import State  # noqa: F401
-from core.nodes.crosswalk_agent.node import (  # noqa: F401
+from core.nodes.source_to_generic.node import (  # noqa: F401
     generate_source_crosswalk_config,
 )
 from core.nodes.target_crosswalk_agent import (  # noqa: F401
