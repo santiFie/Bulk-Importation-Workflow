@@ -2,41 +2,51 @@
 Cliente HTTP para la API REST del servicio de Deduplicador.
 
 Se comunica con los endpoints de /api/tool/deduplicator/ en el backend
-(Backend-Modulo-Nacho) reemplazando la integración previa por sockets/MCP.
+(Backend-Modulo-Nacho).
 
 Flujo de uso típico:
-  1. Autenticación lazy via JWT.
+  1. detect_duplicates() autentica la sesión (lazy JWT) si aún no lo está.
   2. POST /api/tool/deduplicator/ para iniciar la deduplicación.
   3. Polling de GET /api/tool/deduplicator/jobs/{id}/ hasta que status == 'FINISHED'.
   4. Descarga del CSV resultado via GET /api/tool/deduplicator/jobs/{id}/results/.
 """
 
+from __future__ import annotations
+
 import json
-import time
 import logging
+import time
 from typing import Optional
 
-import requests
-
-from core.utils.config import config
+from core.clients.base_client import JwtRestClient, JwtRestClientError
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_BASE_URL = "http://localhost:8000"
+# Valores de estado que reporta el backend para los jobs de deduplicación
+_STATUS_FINISHED  = "FINISHED"
+_STATUS_FAILED    = "FAILED"
+_STATUS_CANCELLED = "CANCELLED"
 
 
-def _get_base_url() -> str:
-    return getattr(config, "CROSSWALK_API_URL", _DEFAULT_BASE_URL).rstrip("/")
-
-
-class DeduplicatorApiError(Exception):
+class DeduplicatorApiError(JwtRestClientError):
     """Excepción lanzada ante errores con la API de deduplicación."""
     pass
 
 
-class DeduplicatorClient:
+class DeduplicatorClient(JwtRestClient):
     """
     Cliente para el servicio de Deduplicador utilizando la API REST.
+
+    Hereda de JwtRestClient el manejo de sesión y autenticación lazy.
+    Solo implementa la lógica específica del dominio de deduplicación:
+      - Envío de los dos CSVs al endpoint POST /api/tool/deduplicator/.
+      - Polling por estado del job hasta FINISHED.
+      - Descarga del CSV resultado.
+
+    Attributes:
+        base_url:      URL base del backend (ej. http://localhost:8000).
+        poll_interval: Segundos entre cada intento de polling.
+        poll_timeout:  Tiempo máximo de espera total en segundos.
     """
 
     def __init__(
@@ -45,44 +55,15 @@ class DeduplicatorClient:
         poll_interval: float = 2.0,
         poll_timeout: float = 360.0,
     ) -> None:
-        self.base_url = (base_url or _get_base_url()).rstrip("/")
-        self.poll_interval = poll_interval
-        self.poll_timeout = poll_timeout
-        self._session = requests.Session()
-        self._authenticated = False
+        super().__init__(base_url=base_url, poll_interval=poll_interval, poll_timeout=poll_timeout)
 
-    def _url(self, path: str) -> str:
-        return f"{self.base_url}{path}"
+    @property
+    def error_class(self) -> type[DeduplicatorApiError]:
+        return DeduplicatorApiError
 
-    def login(self) -> None:
-        """Obtiene tokens JWT usando las credenciales globales en la config."""
-        username = getattr(config, "CROSSWALK_API_USERNAME", None)
-        password = getattr(config, "CROSSWALK_API_PASSWORD", None)
-
-        if not username or not password:
-            raise DeduplicatorApiError(
-                "Credenciales no configuradas. Definí CROSSWALK_API_USERNAME y "
-                "CROSSWALK_API_PASSWORD."
-            )
-
-        url = self._url("/api/auth/login/")
-        response = self._session.post(
-            url,
-            json={"username": username, "password": password},
-        )
-
-        if not response.ok:
-            raise DeduplicatorApiError(
-                f"Error al autenticar: {response.status_code} — {response.text}"
-            )
-
-        tokens = response.json()
-        access_token = tokens.get("access")
-        if not access_token:
-            raise DeduplicatorApiError("Respuesta de login inválida.")
-
-        self._session.headers.update({"Authorization": f"Bearer {access_token}"})
-        self._authenticated = True
+    # ------------------------------------------------------------------
+    # API pública
+    # ------------------------------------------------------------------
 
     def detect_duplicates(
         self,
@@ -93,10 +74,17 @@ class DeduplicatorClient:
     ) -> bytes:
         """
         Ejecuta el proceso completo de deduplicación y retorna el CSV de resultados en bytes.
-        """
-        if not self._authenticated:
-            self.login()
 
+        Args:
+            csv_file1_path: Path al CSV de SEDICI en formato genérico.
+            csv_file2_path: Path al CSV de origen en formato genérico.
+            source_name:    Nombre del repositorio origen (para descripción del job).
+            multithread:    Si el servidor debe usar procesamiento multihilo.
+
+        Returns:
+            Contenido del CSV de resultados de deduplicación como bytes.
+        """
+        self._ensure_authenticated()
         job_id = self._submit_job(csv_file1_path, csv_file2_path, source_name, multithread)
         logger.info("[DeduplicatorClient] Job de deduplicación %s iniciado.", job_id)
 
@@ -105,6 +93,10 @@ class DeduplicatorClient:
 
         return self._download_results(job_id)
 
+    # ------------------------------------------------------------------
+    # Métodos internos
+    # ------------------------------------------------------------------
+
     def _submit_job(
         self,
         csv1_path: str,
@@ -112,6 +104,7 @@ class DeduplicatorClient:
         source_name: str,
         multithread: bool,
     ) -> int:
+        """Sube los dos CSVs al endpoint POST /api/tool/deduplicator/."""
         url = self._url("/api/tool/deduplicator/")
 
         with open(csv1_path, "rb") as f1, open(csv2_path, "rb") as f2:
@@ -138,14 +131,20 @@ class DeduplicatorClient:
         return job_id
 
     def _wait_for_job(self, job_id: int) -> None:
-        url = self._url(f"/api/tool/deduplicator/jobs/{job_id}/")
+        """
+        Hace polling sobre el estado del job hasta que termine (FINISHED/FAILED/CANCELLED).
+
+        Raises:
+            DeduplicatorApiError: Si el job falla, fue cancelado, o se supera el timeout.
+        """
+        status_url = self._url(f"/api/tool/deduplicator/jobs/{job_id}/")
         elapsed = 0.0
 
         while elapsed < self.poll_timeout:
             time.sleep(self.poll_interval)
             elapsed += self.poll_interval
 
-            response = self._session.get(url)
+            response = self._session.get(status_url)
             if not response.ok:
                 raise DeduplicatorApiError(
                     f"Error al consultar estado del job {job_id}: "
@@ -161,20 +160,26 @@ class DeduplicatorClient:
                 job_id, status, progress,
             )
 
-            if status == "FINISHED":
+            if status == _STATUS_FINISHED:
                 return
-            elif status == "FAILED":
+
+            if status == _STATUS_FAILED:
                 raise DeduplicatorApiError(
-                    f"El proceso de deduplicación {job_id} falló en el servidor: {job_data.get('observations')}"
+                    f"El proceso de deduplicación {job_id} falló en el servidor: "
+                    f"{job_data.get('observations')}"
                 )
-            elif status == "CANCELLED":
-                raise DeduplicatorApiError(f"El proceso de deduplicación {job_id} fue cancelado.")
+
+            if status == _STATUS_CANCELLED:
+                raise DeduplicatorApiError(
+                    f"El proceso de deduplicación {job_id} fue cancelado."
+                )
 
         raise DeduplicatorApiError(
             f"Timeout de espera del job {job_id} ({self.poll_timeout}s)."
         )
 
     def _download_results(self, job_id: int) -> bytes:
+        """Descarga el CSV de resultados del job finalizado."""
         url = self._url(f"/api/tool/deduplicator/jobs/{job_id}/results/")
         response = self._session.get(url)
 
