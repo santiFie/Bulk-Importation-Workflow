@@ -43,6 +43,9 @@ from core.nodes.crosswalk_agent.node import (  # noqa: F401
     generate_source_crosswalk_config,
     _generate_fallback_config,
 )
+from core.nodes.target_crosswalk_agent import (  # noqa: F401
+    generate_sedici_target_crosswalk_config,
+)
 from core.nodes.crosswalk_agent.helpers import (  # noqa: F401
     _read_csv_head,
     _format_csv_head_for_prompt,
@@ -78,6 +81,7 @@ PIPELINE_STEPS: list[tuple[str, str]] = [
     ("Paso 2b - MapSediciToGeneric",           "MapSediciToGeneric"),
     ("Paso 3 - Deduplicate",                   "Deduplicate"),
     ("Paso 4 - MetadataReconciliation",        "MetadataReconciliation"),
+    ("Paso 4b - GenerateSediciTargetConfig",   "GenerateSediciTargetConfig"),
     ("Paso 5 - MapToSediciFormat",             "MapToSediciFormat"),
     ("Paso 6 - MetadataCorrections",           "MetadataCorrections"),
     ("Paso 7 - GenerateSafToImport",           "GenerateSafToImport"),
@@ -98,6 +102,7 @@ _NODE_FUNCTIONS: dict[str, callable] = {
     "MapSediciToGeneric":            map_sedici_to_generic,
     "Deduplicate":                   deduplicate,
     "MetadataReconciliation":        metadata_reconciliation,
+    "GenerateSediciTargetConfig":    generate_sedici_target_crosswalk_config,
     "MapToSediciFormat":             map_to_sedici_format,
     "MetadataCorrections":           metadata_corrections,
     "GenerateSafToImport":           generate_saf_to_import,

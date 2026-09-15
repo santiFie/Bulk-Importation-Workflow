@@ -19,6 +19,7 @@ Topología:
 from langgraph.graph import END, START, StateGraph
 
 from core.state import State
+from core.nodes.target_crosswalk_agent import generate_sedici_target_crosswalk_config
 from core.nodes.pipeline_nodes import (
     generate_saf_to_import,
     import_to_dspace,
@@ -36,15 +37,17 @@ async def build_export_subgraph():
     """
     graph = StateGraph(State)
 
-    graph.add_node("MapToSediciFormat",   map_to_sedici_format)
-    graph.add_node("MetadataCorrections", metadata_corrections)
-    graph.add_node("GenerateSafToImport", generate_saf_to_import)
-    graph.add_node("ImportToDspace",      import_to_dspace)
+    graph.add_node("GenerateSediciTargetConfig", generate_sedici_target_crosswalk_config)
+    graph.add_node("MapToSediciFormat",          map_to_sedici_format)
+    graph.add_node("MetadataCorrections",        metadata_corrections)
+    graph.add_node("GenerateSafToImport",        generate_saf_to_import)
+    graph.add_node("ImportToDspace",             import_to_dspace)
 
-    graph.add_edge(START,                "MapToSediciFormat")
-    graph.add_edge("MapToSediciFormat",  "MetadataCorrections")
-    graph.add_edge("MetadataCorrections","GenerateSafToImport")
-    graph.add_edge("GenerateSafToImport","ImportToDspace")
-    graph.add_edge("ImportToDspace",     END)
+    graph.add_edge(START,                        "GenerateSediciTargetConfig")
+    graph.add_edge("GenerateSediciTargetConfig", "MapToSediciFormat")
+    graph.add_edge("MapToSediciFormat",          "MetadataCorrections")
+    graph.add_edge("MetadataCorrections",        "GenerateSafToImport")
+    graph.add_edge("GenerateSafToImport",        "ImportToDspace")
+    graph.add_edge("ImportToDspace",             END)
 
     return graph.compile(name="ExportSubgraph")
