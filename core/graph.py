@@ -29,7 +29,7 @@ from typing import Any
 
 from langgraph.graph import END, START, StateGraph
 
-from core.nodes.pipeline_nodes import setup_workspace
+from core.nodes.setup_node import setup_workspace
 from core.subgraphs.crosswalk_dedup import build_crosswalk_dedup_subgraph
 from core.subgraphs.enrichment import build_enrichment_subgraph
 from core.subgraphs.export import build_export_subgraph
@@ -41,33 +41,24 @@ from core.subgraphs.ingest import build_ingest_subgraph
 from core.state import State  # noqa: F401
 from core.nodes.crosswalk_agent.node import (  # noqa: F401
     generate_source_crosswalk_config,
-    _generate_fallback_config,
 )
 from core.nodes.target_crosswalk_agent import (  # noqa: F401
     generate_sedici_target_crosswalk_config,
 )
-from core.nodes.crosswalk_agent.helpers import (  # noqa: F401
-    _read_csv_head,
-    _format_csv_head_for_prompt,
-    _create_validation_sample,
-    GENERIC_COLUMNS,
-    _build_generic_columns_description,
-    _validate_separator_with_llm,
-)
-from core.nodes.pipeline_nodes import (  # noqa: F401
-    _run_crosswalk,
-    _save_csv,
-    setup_workspace,
+
+# Re-exportaciones de nodos del pipeline
+# Los módulos fuente están en core/nodes/*_node(s).py
+from core.nodes.setup_node import setup_workspace                                 # noqa: F401
+from core.nodes.crosswalk_nodes import (                                           # noqa: F401
     map_source_to_generic,
     map_sedici_to_generic,
-    deduplicate,
-    metadata_reconciliation,
     map_to_sedici_format,
-    metadata_corrections,
-    get_pdfs,
-    generate_saf_to_import,
-    import_to_dspace,
 )
+from core.nodes.dedup_node import deduplicate                                      # noqa: F401
+from core.nodes.reconciliation_node import metadata_reconciliation                 # noqa: F401
+from core.nodes.correction_node import metadata_corrections                        # noqa: F401
+from core.nodes.saf_node import generate_saf_to_import                            # noqa: F401
+from core.nodes.import_node import import_to_dspace                               # noqa: F401
 
 
 # ---------------------------------------------------------------------------
