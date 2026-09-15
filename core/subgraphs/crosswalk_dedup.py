@@ -20,7 +20,7 @@ import shutil
 from langgraph.graph import END, START, StateGraph
 
 from core.state import State
-from core.nodes.crosswalk_agent.node import generate_source_crosswalk_config
+from core.nodes.source_to_generic.node import generate_source_crosswalk_config
 from core.nodes.pipeline_nodes import (
     deduplicate,
     map_sedici_to_generic,
