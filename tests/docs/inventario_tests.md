@@ -28,7 +28,8 @@ tests/
 └── integration/                          ← Tests de integración (subgrafos, nodos y suites E2E)
     ├── subgraphs/                        ← Tests de integración para subgrafos individuales
     │   ├── test_ingest_subgraph.py          ← Subgrafo IngestSubgraph (bifurcación CSV y buckets MinIO)
-    │   └── test_crosswalk_dedup_subgraph.py ← Subgrafo CrosswalkDedupSubgraph (LLM y backend reales)
+    │   ├── test_crosswalk_dedup_subgraph.py ← Subgrafo CrosswalkDedupSubgraph (LLM y backend reales)
+    │   └── test_export_subgraph.py          ← Subgrafo ExportSubgraph (LLM, Crosswalk, SAF y DSpace reales)
     ├── nodes/                            ← Tests de integración para nodos individuales
     │   ├── test_curation_node.py         ← Nodo curate_metadata_node (PDF curation)
     │   ├── test_pdf_ingest_node.py       ← Nodo pdf_ingest_node (MinIO + Metadata Extractor)
@@ -151,7 +152,24 @@ pytest tests/ -v
 | → `test_flujo_completo_rama_csv_con_llm_y_servicios_reales` | Ejecución E2E del subgrafo en rama CSV usando el **agente LLM real** (`FallbackLLM`), la API REST de **Crosswalk** en Docker, la API REST del **Deduplicador** y reconciliación final. |
 | → `test_flujo_rama_pdf_minio_bypass_crosswalk` | Ejecución del subgrafo en rama PDF/MinIO con `BypassSourceCrosswalk`, MapSedici, Deduplicador real y Reconciliación. |
 | **Dependencias externas** | API Key LLM (Groq / Nvidia), backend Docker `deduplicator_crosswalk_web` (`http://localhost:8000`). |
-| **Veredicto** | ✅ **Conservar** — suite principal de validación del subgrafo de crosswalk y deduplicación. |
+
+#### `integration/subgraphs/test_export_subgraph.py`
+
+| Campo | Detalle |
+|-------|---------|
+| **Tipo** | Tests de integración E2E del subgrafo de exportación con servicios reales (pytest) |
+| **Subgrafo cubierto** | `ExportSubgraph` (`core/subgraphs/export.py`) |
+| **Clases / grupos** | `TestExportSubgraphTopology`, `TestExportServicesHealth`, `TestExportSubgraphDryRun`, `TestExportSubgraphRealImport`, `TestExportSubgraphBypassLLM`, `TestExportSubgraphIdempotency` |
+| **Qué testea** | |
+| → `TestExportSubgraphTopology` | Compilación y presencia de los 5 nodos: `GenerateSediciTargetConfig`, `MapToSediciFormat`, `MetadataCorrections`, `GenerateSafToImport`, `ImportToDspace`. |
+| → `TestExportServicesHealth` | Verificación previa y autenticación JWT de Crosswalk API y DSpace REST API (colección destino). |
+| → `TestExportSubgraphDryRun` | Flujo completo sobre datos con columnas remanentes (PubMed): inferencia de agente LLM, Crosswalk API, correcciones, generación de SAF y validación exitosa en DSpace (`-v`). |
+| → `TestExportSubgraphRealImport` | Ingesta física y persistente en colección DSpace: emisión de `mapfile.txt` con handles y verificación vía búsqueda REST. |
+| → `TestExportSubgraphBypassLLM` | Flujo con esquema canónico curado: resolución 100% determinista en Nivel 1. |
+| → `TestExportSubgraphIdempotency` | Reutilización de configuración previa (`sedici_target_crosswalk_config`), omitiendo llamadas al LLM. |
+| **Dependencias externas** | API Key LLM (OpenRouter / FallbackLLM), backend Docker `deduplicator_crosswalk_web` (`http://localhost:8000`), instancia DSpace 7+ (`http://localhost:8080/server`). |
+| **Documentación técnica** | `tests/docs/integration/test_export_subgraph.md` |
+| **Veredicto** | ✅ **Conservar** — suite principal de validación del subgrafo de exportación e importación a DSpace. |
 
 ---
 
