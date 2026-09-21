@@ -22,7 +22,7 @@ _SAF_FILES_COLUMN = "files"
 
 # Path relativo al directorio del script dspace-csv-archive
 _SAF_SCRIPT_SUBPATH = os.path.join(
-    os.path.dirname(__file__), "..", "..", "scripts", "dspace-csv-archive-master"
+    os.path.dirname(__file__), "..", "scripts", "dspace-csv-archive-master"
 )
 
 

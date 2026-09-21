@@ -156,6 +156,9 @@ def run_pipeline_until_step(state: dict, stop_after: str) -> dict[str, dict]:
             if isinstance(result, dict):
                 state.update(result)
         except Exception as exc:
+            import traceback
+            print(f"\n❌ [run_pipeline_until_step] Error ejecutando nodo '{node_name}': {repr(exc)}")
+            traceback.print_exc()
             results[node_name] = {"__error__": repr(exc)}
             break
 
