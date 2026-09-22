@@ -15,6 +15,9 @@ class Crosswalk():
         try:
             keys_to_delete = []
             for key in item.keys():
+                if key is None or not str(key).strip():
+                    keys_to_delete.append(key)
+                    continue
                 ok = False
                 for col in cols_to_mantain:
                     if fnmatch.fnmatch(key,col) or key==col:

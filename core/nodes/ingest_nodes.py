@@ -87,6 +87,18 @@ async def pdf_ingest_node(state: State) -> dict[str, Any]:
         secure=False
     )
 
+    # Verificar existencia del bucket
+    try:
+        if not minio_client.bucket_exists(minio_bucket):
+            msg = f"[PDFIngest] El bucket '{minio_bucket}' no existe en MinIO."
+            logger.error(msg)
+            raise ValueError(msg)
+    except Exception as exc:
+        if isinstance(exc, ValueError):
+            raise
+        logger.error("[PDFIngest] Error verificando existencia del bucket: %s", exc)
+        raise
+
     # ── 2. Listar objetos PDF en el bucket ───────────────────────────────────
     logger.info("[PDFIngest] Listando PDFs en MinIO...")
     
