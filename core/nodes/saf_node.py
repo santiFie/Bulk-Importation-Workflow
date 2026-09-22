@@ -65,11 +65,18 @@ def generate_saf_to_import(state: dict) -> dict[str, Any]:
 def _prepare_dataframe(csv_path: str) -> pd.DataFrame:
     """
     Lee el CSV y asegura que exista la columna 'files' requerida por DspaceArchive.
+    Descarta cualquier columna de índice residual o espuria generada por pandas o por el backend de Crosswalk.
 
     El DspaceArchive exige una columna 'files' (aunque esté vacía) como primera
     columna del CSV, que lista los bitstreams de cada ítem.
     """
     df = pd.read_csv(csv_path)
+
+    # Descartar columnas de índice residuales o sin nombre (e.g. 'Unnamed: 0', '')
+    unnamed_cols = [c for c in df.columns if str(c).startswith("Unnamed:") or not str(c).strip()]
+    if unnamed_cols:
+        df = df.drop(columns=unnamed_cols)
+
     if _SAF_FILES_COLUMN not in df.columns:
         df.insert(0, _SAF_FILES_COLUMN, "")
     return df
