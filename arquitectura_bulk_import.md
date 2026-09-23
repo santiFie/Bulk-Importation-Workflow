@@ -114,12 +114,13 @@ graph TD
     SW --> RD{RouteInputSource}
 
     subgraph "Subgrafo: Ingesta"
-        RD -- "csv" --> CSVIngest[ParseCSVNode]
+        RD -- "csv" --> VCSV[ValidateInputCSVs]
         RD -- "pdf/minio" --> PDFIngest[MinioDownload → ExtractMetadata → BuildCSV]
+        PDFIngest --> Curate[CurateMetadata]
+        Curate --> VCSV
     end
 
-    CSVIngest --> Crosswalk[CrosswalkSubgraph]
-    PDFIngest --> Crosswalk
+    VCSV --> Crosswalk[CrosswalkSubgraph]
 
     subgraph "Subgrafo: Crosswalk + Dedup"
         Crosswalk --> MapSrc[MapSourceToGeneric]
@@ -206,6 +207,45 @@ La **Opción B (subgrafos)** es la más adecuada para este proyecto porque:
 2. **Facilita la auditoría**: cada subgrafo deja un rastro claro en LangSmith.
 3. **Compatibilidad con el checkpointing existente**: cada subgrafo puede compilarse con su propio saver.
 4. **Escala fácilmente**: agregar una nueva fuente = agregar un nodo en `IngestSubgraph`.
+
+### 4.1 Subgrafo de Ingesta y Validación Temprana (`ValidateInputCSVs`)
+
+El subgrafo `IngestSubgraph` normaliza las fuentes de entrada y asegura la integridad física y estructural de los CSVs antes de que ingresen al pipeline de Crosswalk y Deduplicación.
+
+#### Topología de `IngestSubgraph`
+
+```mermaid
+graph TD
+    START([START]) --> RD{RouteInputSource}
+    RD -- "csv" --> VCSV[ValidateInputCSVs]
+    RD -- "pdf_minio" --> PI[PDFIngest]
+    PI --> CM[CurateMetadata]
+    CM --> VCSV
+    VCSV --> END([END])
+```
+
+#### Nodo `ValidateInputCSVs` (`core/nodes/validation_node.py`)
+
+Aplica una estrategia de **Fallo Temprano (Fail-Fast)** para evitar costos computacionales innecesarios (llamadas a LLMs, procesamiento de crosswalk, deduplicación) si los datos de entrada son inválidos:
+
+1. **Integridad física de `source_csv_path`**:
+   - Comprueba existencia del archivo (`os.path.isfile`) y tamaño no nulo (`os.path.getsize > 0`).
+   - Verifica legibilidad con pandas y que posea al menos 1 fila de datos.
+2. **Reglas de Título y DOI**:
+   - Busca columnas candidatas a título (`title`, `dc.title`, `titulo`, `item title`, etc., insensible a mayúsculas).
+   - Si no hay título, busca columna de DOI (`doi`, `item doi`, `dc.identifier.doi`) para permitir enriquecimiento posterior sin abortar.
+   - Si no existen ni título ni DOI, lanza `ValueError` inmediato.
+3. **Identificador unívoco ('id')**:
+   - Busca columnas identificadoras (`id`, `doi`, `handle`, `uri`, `url`, `pmid`, `sedici.identifier.other`, etc.).
+   - Si no se encuentra ninguna, genera automáticamente una columna `'id'` con valores autoincrementales (1, 2, 3...) y guarda el nuevo archivo en `workspace_dir/source_with_id.csv`, actualizando `state["source_csv_path"]` y emitiendo advertencia informativa.
+4. **Columnas habituales**:
+   - Emite `logger.warning` si se detecta ausencia de campos frecuentes (`author`, `date`, `issn`, `type`).
+5. **Validación de `repository_csv_path` (SEDICI)**:
+   - Si está presente y no vacío, valida su existencia física, tamaño > 0 bytes y >= 1 fila.
+   - Valida la presencia de columna de título SEDICI (`dc.title`, `dc.title[...]` o `title`).
+   - Valida la presencia de columna de identificador SEDICI (`dc.identifier.uri`, `dc.identifier.uri[]` o `sedici.identifier.other`).
+6. **Manejo de Errores Fail-Fast**:
+   - Ante fallos, almacena el error en `state.setdefault("node_errors", {})["ValidateInputCSVs"] = error_msg` y lanza `ValueError(error_msg)`.
 
 ---
 
@@ -334,10 +374,14 @@ graph TD
     S([START]) --> SW[SetupWorkspace + LoadProceduralContext]
     SW --> RD{RouteInputSource}
 
-    RD -- "input_source_type == csv" --> GCC[GenerateSourceCrosswalkConfig]
-    RD -- "input_source_type == pdf_minio" --> PDL[PDFIngestSubgraph\nMinIO → OCR/Extracción → CSV]
-    PDL --> GCC
+    subgraph "Subgrafo: Ingesta"
+        RD -- "input_source_type == csv" --> VCSV[ValidateInputCSVs]
+        RD -- "input_source_type == pdf_minio" --> PDL[PDFIngest\nMinIO → OCR/Extracción → CSV]
+        PDL --> CM[CurateMetadata]
+        CM --> VCSV
+    end
 
+    VCSV --> GCC[GenerateSourceCrosswalkConfig]
     GCC --> MSC[MapSourceToGeneric]
     SW --> MSG[MapSediciToGeneric]
     MSC --> D[Deduplicate]
