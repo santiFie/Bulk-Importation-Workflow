@@ -18,9 +18,14 @@ import os
 import re
 import sys
 import json
+import logging
 import tempfile
+import fnmatch
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
 
 from langchain_core.language_models.chat_models import BaseChatModel
 
@@ -645,3 +650,254 @@ def enrich_source_with_crossref_doi(
         writer.writerows(rows)
 
     return added_columns, output_path, sample_values_by_field
+
+
+# ---------------------------------------------------------------------------
+# Verificación de correspondencia de esquema (Drift Detection) y Reutilización
+# ---------------------------------------------------------------------------
+
+@dataclass
+class DriftReport:
+    """
+    Reporte de correspondencia de esquema entre un archivo CSV y una configuración de crosswalk.
+    """
+    is_valid: bool
+    missing_columns: list[str] = field(default_factory=list)
+    unmapped_columns: list[str] = field(default_factory=list)
+    message: str = ""
+
+
+def _read_csv_headers(csv_path: str) -> list[str]:
+    """
+    Lee las cabeceras del CSV de entrada infiriendo automáticamente el dialecto.
+    """
+    import csv as _csv
+    with open(csv_path, "r", encoding="utf-8-sig") as f:
+        sample = f.read(4096)
+        f.seek(0)
+        try:
+            dialect = _csv.Sniffer().sniff(sample)
+            delimiter = dialect.delimiter
+        except _csv.Error:
+            delimiter = ","
+        reader = _csv.reader(f, delimiter=delimiter)
+        first_row = next(reader, None)
+        if not first_row:
+            return []
+        return [col.strip() for col in first_row if col is not None and col.strip()]
+
+
+def validate_config_against_csv(csv_path: str, config_path: str) -> DriftReport:
+    """
+    Verifica la correspondencia entre las cabeceras del CSV fuente y los mapeos
+    declarados en el crosswalk config JSON (Drift Detection).
+
+    Reglas:
+      - Lee las cabeceras del CSV de entrada.
+      - Lee el JSON de crosswalk en config_path (la lista mappings es el elemento 0).
+      - Extrae las columnas 'left' mapeadas. Si un mapping tiene 'left' compuesto por '+'
+        (ej: 'colA+colB'), para un campo required se considera satisfecho si al menos una
+        de las alternativas está en el CSV. Si ninguna está presente, es una columna faltante
+        ('missing_columns').
+      - Detecta 'unmapped_columns': columnas presentes en el CSV que no están referenciadas
+        en ningún 'left'.
+      - is_valid es True si y solo si missing_columns está vacío.
+
+    Args:
+        csv_path: Ruta al archivo CSV fuente.
+        config_path: Ruta al archivo JSON de crosswalk config.
+
+    Returns:
+        DriftReport con el estado de validación, columnas faltantes, columnas no mapeadas y mensaje.
+    """
+    if not os.path.isfile(config_path):
+        return DriftReport(
+            is_valid=False,
+            missing_columns=[],
+            unmapped_columns=[],
+            message=f"El archivo de configuración no existe: {config_path}",
+        )
+    if not os.path.isfile(csv_path):
+        return DriftReport(
+            is_valid=False,
+            missing_columns=[],
+            unmapped_columns=[],
+            message=f"El archivo CSV no existe: {csv_path}",
+        )
+
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+        if not isinstance(cfg, list) or len(cfg) == 0:
+            return DriftReport(
+                is_valid=False,
+                missing_columns=[],
+                unmapped_columns=[],
+                message="Estructura de configuración inválida: se esperaba una lista [mappings, settings].",
+            )
+        mappings = cfg[0]
+        if not isinstance(mappings, list):
+            return DriftReport(
+                is_valid=False,
+                missing_columns=[],
+                unmapped_columns=[],
+                message="Estructura de configuración inválida: el elemento 0 debe ser una lista de mappings.",
+            )
+    except Exception as exc:
+        return DriftReport(
+            is_valid=False,
+            missing_columns=[],
+            unmapped_columns=[],
+            message=f"Error leyendo la configuración JSON: {exc}",
+        )
+
+    try:
+        csv_columns = _read_csv_headers(csv_path)
+        if not csv_columns:
+            return DriftReport(
+                is_valid=False,
+                missing_columns=[],
+                unmapped_columns=[],
+                message=f"El archivo CSV '{csv_path}' está vacío o no contiene cabeceras válidas.",
+            )
+    except Exception as exc:
+        return DriftReport(
+            is_valid=False,
+            missing_columns=[],
+            unmapped_columns=[],
+            message=f"Error leyendo cabeceras del CSV '{csv_path}': {exc}",
+        )
+
+    def _matches_candidate(candidate: str, available_cols: list[str]) -> bool:
+        for c in available_cols:
+            if c == candidate or ('*' in candidate and fnmatch.fnmatch(c, candidate)):
+                return True
+        return False
+
+    missing_columns: list[str] = []
+    all_mapped_parts: list[str] = []
+
+    for m in mappings:
+        if not isinstance(m, dict):
+            continue
+        left = m.get("left", "")
+        if not left:
+            continue
+
+        parts = [p.strip() for p in left.split("+") if p.strip()]
+        all_mapped_parts.extend(parts)
+
+        is_required = m.get("required") in (True, "true", "True", 1)
+        if is_required:
+            # Para un campo required se considera satisfecho si al menos una de las alternativas está en el CSV.
+            # Si ninguna está presente, es una columna faltante ('missing_columns').
+            satisfied = any(_matches_candidate(p, csv_columns) for p in parts)
+            if not satisfied and left not in missing_columns:
+                missing_columns.append(left)
+
+    # Detectar 'unmapped_columns': columnas presentes en el CSV que no están referenciadas en ningún 'left'.
+    unmapped_columns: list[str] = []
+    for c in csv_columns:
+        referenced = False
+        for part in all_mapped_parts:
+            if c == part or ('*' in part and fnmatch.fnmatch(c, part)):
+                referenced = True
+                break
+        if not referenced and c not in unmapped_columns:
+            unmapped_columns.append(c)
+
+    is_valid = (len(missing_columns) == 0)
+
+    if not is_valid:
+        msg = f"Drift detectado: Faltan columnas requeridas en el CSV: {', '.join(missing_columns)}."
+        if unmapped_columns:
+            msg += f" Columnas no mapeadas: {', '.join(unmapped_columns)}."
+    elif unmapped_columns:
+        msg = f"Configuración válida con advertencia de drift: Columnas no mapeadas en el CSV: {', '.join(unmapped_columns)}."
+    else:
+        msg = "Configuración válida: El esquema del CSV coincide plenamente con los mappings."
+
+    return DriftReport(
+        is_valid=is_valid,
+        missing_columns=missing_columns,
+        unmapped_columns=unmapped_columns,
+        message=msg,
+    )
+
+
+def get_existing_config(state: dict[str, Any]) -> Optional[dict[str, Any]]:
+    """
+    Verifica si existe una configuración de crosswalk previa en disco para la fuente
+    y valida correspondencia de esquema (Drift Detection) y funcionalidad determinista.
+
+    Flujo:
+      - Obtiene config_output_path = os.path.join(base_dir, f"crosswalk_config_{source_name}.json").
+      - Si el archivo no existe, retorna None.
+      - Ejecuta validate_config_against_csv(csv_path, config_output_path).
+      - Si hay missing_columns: loguea advertencia/error de drift y retorna None
+        (invalida la caché para forzar re-generación con LLM).
+      - Si hay unmapped_columns: loguea advertencia detallada (logger.warning) indicando
+        las columnas no mapeadas, pero continúa con la reutilización.
+      - Ejecuta validación determinista obligatoria sobre el config cacheado:
+        '_validate_config_deterministic(csv_path, config_output_path)'. Si la validación
+        falla (ej. faltan columnas críticas 'id', 'title', etc. o falla el crosswalk),
+        loguea advertencia y retorna None (invalida la caché para forzar re-generación).
+      - Si todo es válido, retorna {"source_crosswalk_config": config_output_path}.
+
+    Args:
+        state: Estado del grafo con 'source_csv_path' y opcionalmente 'source_name'.
+
+    Returns:
+        Dict con {"source_crosswalk_config": config_output_path} si el config es válido,
+        o None si se rechaza la caché.
+    """
+    csv_path = state.get("source_csv_path", "")
+    source_name = state.get("source_name", "unknown")
+
+    if not csv_path:
+        logger.warning("[get_existing_config] 'source_csv_path' no fue provisto en el state.")
+        return None
+
+    base_dir = os.path.dirname(csv_path) or "."
+    config_output_path = os.path.join(base_dir, f"crosswalk_config_{source_name}.json")
+
+    if not os.path.isfile(config_output_path):
+        return None
+
+    # 1. Validación de Drift contra el esquema del CSV
+    report = validate_config_against_csv(csv_path, config_output_path)
+
+    if report.missing_columns or not report.is_valid:
+        logger.warning(
+            f"[get_existing_config] Drift detectado en config existente '{config_output_path}': "
+            f"Faltan columnas requeridas en '{csv_path}': {report.missing_columns}. "
+            "Invalidando caché de crosswalk config para forzar re-generación con LLM."
+        )
+        return None
+
+    if report.unmapped_columns:
+        logger.warning(
+            f"[get_existing_config] Advertencia de drift en config existente '{config_output_path}': "
+            f"Columnas no mapeadas detectadas en '{csv_path}': {report.unmapped_columns}. "
+            "Se continúa con la reutilización de la configuración existente."
+        )
+
+    # 2. Validación determinista obligatoria sobre el config cacheado
+    try:
+        validation = _validate_config_deterministic(csv_path, config_output_path)
+        if not validation.get("ok", False):
+            logger.warning(
+                f"[get_existing_config] Validación determinista fallida para '{config_output_path}' "
+                f"con CSV '{csv_path}': {validation.get('message')}. "
+                "Invalidando caché de crosswalk config para forzar re-generación con LLM."
+            )
+            return None
+    except Exception as exc:
+        logger.warning(
+            f"[get_existing_config] Error durante la validación determinista de '{config_output_path}': {exc}. "
+            "Invalidando caché de crosswalk config."
+        )
+        return None
+
+    logger.info(f"[get_existing_config] Configuración existente validada exitosamente: {config_output_path}")
+    return {"source_crosswalk_config": config_output_path}

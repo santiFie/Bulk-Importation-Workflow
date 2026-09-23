@@ -48,6 +48,7 @@ from core.nodes.crosswalk_agent.helpers import (
     detect_separator,
     _validate_config_deterministic,
     enrich_source_with_crossref_doi,
+    get_existing_config,
 )
 
 from core.utils.get_local_model import FallbackLLM
@@ -298,9 +299,10 @@ def generate_source_crosswalk_config(state: dict) -> dict[str, Any]:
     base_dir = os.path.dirname(csv_path) or "."
     config_output_path = os.path.join(base_dir, f"crosswalk_config_{source_name}.json")
 
-    if os.path.isfile(config_output_path):
-        print(f"[generate_source_crosswalk_config] Reusando config existente: {config_output_path}")
-        return {"source_crosswalk_config": config_output_path}
+    existing_config = get_existing_config(state)
+    if existing_config:
+        print(f"[generate_source_crosswalk_config] Reusando config existente: {existing_config['source_crosswalk_config']}")
+        return existing_config
 
     llm = FallbackLLM(groq_model=config.CROSSWALK_MODEL, openrouter_model=config.CROSSWALK_MODEL).resolve()
 
