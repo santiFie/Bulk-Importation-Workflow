@@ -18,9 +18,10 @@ Topología:
 import shutil
 
 from langgraph.graph import END, START, StateGraph
+from langsmith import traceable
 
 from core.state import State
-from core.nodes.crosswalk_agent.node import generate_source_crosswalk_config
+from core.nodes.source_to_generic.node import generate_source_crosswalk_config
 from core.nodes.pipeline_nodes import (
     deduplicate,
     map_sedici_to_generic,
@@ -37,6 +38,7 @@ def route_source_crosswalk(state: State) -> str:
     return "GenerateSourceCrosswalkConfig"
 
 
+@traceable(name="BypassSourceCrosswalk", run_type="chain")
 async def bypass_source_crosswalk(state: State) -> dict:
     """Nodo puente: Si el CSV ya está en formato genérico, simplemente lo copia."""
     source_path = state.get("curated_csv_path") or state["source_csv_path"]

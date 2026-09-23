@@ -39,8 +39,11 @@ from core.subgraphs.ingest import build_ingest_subgraph
 # Re-exportaciones: mantienen compatibilidad con tests e importaciones existentes
 # ---------------------------------------------------------------------------
 from core.state import State  # noqa: F401
-from core.nodes.crosswalk_agent.node import (  # noqa: F401
+from core.nodes.source_to_generic.node import (  # noqa: F401
     generate_source_crosswalk_config,
+)
+from core.nodes.target_crosswalk_agent import (  # noqa: F401
+    generate_sedici_target_crosswalk_config,
 )
 
 # Re-exportaciones de nodos del pipeline
@@ -69,6 +72,7 @@ PIPELINE_STEPS: list[tuple[str, str]] = [
     ("Paso 2b - MapSediciToGeneric",           "MapSediciToGeneric"),
     ("Paso 3 - Deduplicate",                   "Deduplicate"),
     ("Paso 4 - MetadataReconciliation",        "MetadataReconciliation"),
+    ("Paso 4b - GenerateSediciTargetConfig",   "GenerateSediciTargetConfig"),
     ("Paso 5 - MapToSediciFormat",             "MapToSediciFormat"),
     ("Paso 6 - MetadataCorrections",           "MetadataCorrections"),
     ("Paso 7 - GenerateSafToImport",           "GenerateSafToImport"),
@@ -89,6 +93,7 @@ _NODE_FUNCTIONS: dict[str, callable] = {
     "MapSediciToGeneric":            map_sedici_to_generic,
     "Deduplicate":                   deduplicate,
     "MetadataReconciliation":        metadata_reconciliation,
+    "GenerateSediciTargetConfig":    generate_sedici_target_crosswalk_config,
     "MapToSediciFormat":             map_to_sedici_format,
     "MetadataCorrections":           metadata_corrections,
     "GenerateSafToImport":           generate_saf_to_import,
@@ -151,6 +156,9 @@ def run_pipeline_until_step(state: dict, stop_after: str) -> dict[str, dict]:
             if isinstance(result, dict):
                 state.update(result)
         except Exception as exc:
+            import traceback
+            print(f"\n❌ [run_pipeline_until_step] Error ejecutando nodo '{node_name}': {repr(exc)}")
+            traceback.print_exc()
             results[node_name] = {"__error__": repr(exc)}
             break
 

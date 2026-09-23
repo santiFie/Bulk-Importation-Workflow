@@ -2,18 +2,24 @@
 
 PROJECT_ROOT := $(shell pwd)
 COMPOSE := docker compose -f "$(PROJECT_ROOT)/docker-compose.yml"
-DEDUPLICATOR_COMPOSE := docker compose -f "/home/santi/Documentos/Prebi/Backend-Modulo-Nacho/docker-compose.yml"
+DEDUPLICATOR_PATH := /home/santi/Documentos/Prebi/Backend-Modulo-Nacho
+DEDUPLICATOR_COMPOSE := docker compose -f "$(DEDUPLICATOR_PATH)/docker-compose.yml"
 DSPACE_COMPOSE := docker compose -f "/home/santi/Documentos/Prebi/DSpace/docker/docker-compose.yml"
-METADATA_EXTRACTOR_COMPOSE := docker compose -f "/home/santi/Documentos/Prebi/extraccion_metadatos/api/app/docker-compose.yml"
+METADATA_EXTRACTOR_PATH := /home/santi/Documentos/Prebi/extraccion_metadatos
+METADATA_EXTRACTOR_COMPOSE := docker compose -f "$(METADATA_EXTRACTOR_PATH)/api/app/docker-compose.yml"
 
 # ─── Levantar todo ────────────────────────────────────────────────────────────
 up:
 	@echo "▶  Starting DSpace..."
 	$(DSPACE_COMPOSE) up -d
+	@echo "▶  Switching Deduplicator to branch develop..."
+	git -C "$(DEDUPLICATOR_PATH)" checkout develop
 	@echo "▶  Starting external services (Deduplicator)..."
 	$(DEDUPLICATOR_COMPOSE) up -d
 	@echo "▶  Starting MCPs..."
 	$(COMPOSE) up -d
+	@echo "▶  Switching Metadata Extractor to branch develop..."
+	git -C "$(METADATA_EXTRACTOR_PATH)" checkout develop
 	@echo "▶  Starting Metadata Extractor..."
 	$(METADATA_EXTRACTOR_COMPOSE) up -d
 	@echo "▶  Starting local LangGraph Platform..."

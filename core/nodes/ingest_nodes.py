@@ -22,6 +22,7 @@ from minio import Minio
 
 from core.state import State
 from core.utils.config import config
+from langsmith import traceable
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,7 @@ def route_input_source(state: State) -> str:
 # Nodo de ingesta desde MinIO (pdf_minio)
 # ---------------------------------------------------------------------------
 
+@traceable(name="PDFIngest", run_type="chain")
 async def pdf_ingest_node(state: State) -> dict[str, Any]:
     """
     Nodo PDFIngest — Descarga PDFs desde MinIO y extrae sus metadatos.
@@ -86,6 +88,18 @@ async def pdf_ingest_node(state: State) -> dict[str, Any]:
         secret_key=config.MINIO_ROOT_PASSWORD,
         secure=False
     )
+
+    # Verificar existencia del bucket
+    try:
+        if not minio_client.bucket_exists(minio_bucket):
+            msg = f"[PDFIngest] El bucket '{minio_bucket}' no existe en MinIO."
+            logger.error(msg)
+            raise ValueError(msg)
+    except Exception as exc:
+        if isinstance(exc, ValueError):
+            raise
+        logger.error("[PDFIngest] Error verificando existencia del bucket: %s", exc)
+        raise
 
     # ── 2. Listar objetos PDF en el bucket ───────────────────────────────────
     logger.info("[PDFIngest] Listando PDFs en MinIO...")

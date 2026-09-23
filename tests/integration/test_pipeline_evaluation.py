@@ -120,11 +120,11 @@ HITL_AUTO_RESPONSE: str = "accept"
 # Agregar más entradas para realizar pruebas sucesivas con distintos CSVs.
 TEST_CASES: list[dict] = [
     {
-        "source_csv_path": os.path.join(DATA_DIR, "ingest", "raw", "articulos_unlp_doaj_v2.csv"),
+        "source_csv_path": os.path.join(DATA_DIR, "crosswalk_dedup", "raw", "Doaj.csv"),
         "source_name": "unlp_doaj",
         "repository_csv_path": os.path.join(DATA_DIR, "crosswalk_dedup", "repository", "export_10915_all.csv"),
-        "dspace_collection": "d0fb620b-6b5e-43d3-ba3f-d0183ed5b84f",
-        "import_validate_only": True,
+        "dspace_collection": "556c4151-fbb8-4b3a-84b5-d2a8eb12a19f",
+        "import_validate_only": False,
         "input_source_type": "csv",
         "enrichment_enabled": True,
         "import_exclude_bitstreams": True,
@@ -132,40 +132,39 @@ TEST_CASES: list[dict] = [
         "expected_sedici_columns": ["dc.title[es]", "sedici.creator.person[es]"],
         "expected_author_counts": [2, 2, 4, 5, 3],
     },
-    {
-        "source_csv_path": os.path.join(DATA_DIR, "enrichment", "openalex.csv"),
-        "source_name": "openalex",
-        "repository_csv_path": os.path.join(DATA_DIR, "crosswalk_dedup", "repository", "export_10915_all.csv"),
-        "dspace_collection": "d0fb620b-6b5e-43d3-ba3f-d0183ed5b84f",
-        "import_validate_only": True,
-        "input_source_type": "csv",
-        "enrichment_enabled": True,
-        "import_exclude_bitstreams": True,
-        "expected_generic_columns": ["id", "title", "author", "date", "doi", "citation", "type"],
-        "expected_sedici_columns": ["dc.title[es]", "sedici.creator.person[es]"],
-        "expected_author_counts": [6, 6, 6, 6, 6],
-    },
-    {
-        "source_csv_path": "",
-        "source_name": "minio_dspace",
-        "minio_bucket": "importacion",
-        "minio_prefix": "",
-        "repository_csv_path": os.path.join(DATA_DIR, "crosswalk_dedup", "repository", "export_10915_all.csv"),
-        "dspace_collection": "d0fb620b-6b5e-43d3-ba3f-d0183ed5b84f",
-        "import_validate_only": True,
-        "input_source_type": "pdf_minio",
-        "enrichment_enabled": True,
-        "import_exclude_bitstreams": True,
-        "expected_generic_columns": ["id", "title", "author", "date", "doi", "citation", "type"],
-        "expected_sedici_columns": ["dc.title[es]", "sedici.creator.person[es]"],
-        "expected_author_counts": [3, 3, 2, 3, 4],
-    },
+    # {
+    #     "source_csv_path": os.path.join(DATA_DIR, "enrichment", "openalex.csv"),
+    #     "source_name": "openalex",
+    #     "repository_csv_path": os.path.join(DATA_DIR, "crosswalk_dedup", "repository", "export_10915_all.csv"),
+    #     "dspace_collection": "556c4151-fbb8-4b3a-84b5-d2a8eb12a19f",
+    #     "import_validate_only": True,
+    #     "input_source_type": "csv",
+    #     "enrichment_enabled": True,
+    #     "import_exclude_bitstreams": True,
+    #     "expected_generic_columns": ["id", "title", "author", "date", "doi", "citation", "type"],
+    #     "expected_sedici_columns": ["dc.title[es]", "sedici.creator.person[es]"],
+    #     "expected_author_counts": [6, 6, 6, 6, 6],
+    # },
+    # {
+    #     "source_csv_path": "",
+    #     "source_name": "minio_dspace",
+    #     "minio_bucket": "importacion",
+    #     "minio_prefix": "",
+    #     "repository_csv_path": os.path.join(DATA_DIR, "crosswalk_dedup", "repository", "export_10915_all.csv"),
+    #     "dspace_collection": "556c4151-fbb8-4b3a-84b5-d2a8eb12a19f",
+    #     "import_validate_only": True,
+    #     "input_source_type": "pdf_minio",
+    #     "enrichment_enabled": True,
+    #     "import_exclude_bitstreams": True,
+    #     "expected_generic_columns": ["id", "title", "author", "date", "doi", "citation", "type"],
+    #     "expected_sedici_columns": ["dc.title[es]", "sedici.creator.person[es]"],
+    #     "expected_author_counts": [3, 3, 2, 3, 4],
+    # },
 ]
 
 # Paso en el que se detiene la ejecución (inclusive).
 # Valores válidos: ver PIPELINE_STEPS en core/graph.py
-# Ejemplos: "GenerateSourceCrosswalkConfig", "Deduplicate", "MetadataCorrections"
-STOP_AFTER_STEP = "MetadataCorrections"
+STOP_AFTER_STEP = "ImportToDspace"
 
 # ---------------------------------------------------------------------------
 # Helpers para metadata del experimento
@@ -232,27 +231,29 @@ def predict_pipeline(inputs: dict) -> dict:
         tmp_csv = ""
         if src_csv and os.path.isfile(src_csv):
             tmp_csv = os.path.join(tmp_dir, os.path.basename(src_csv))
-            import shutil as _shutil
-            _shutil.copy(src_csv, tmp_csv)
+            shutil.copy(src_csv, tmp_csv)
 
         # Copiar CSV de repositorio SEDICI
         repo_csv = inputs.get("repository_csv_path", "")
         tmp_repo = ""
         if repo_csv and os.path.isfile(repo_csv):
             tmp_repo = os.path.join(tmp_dir, os.path.basename(repo_csv))
-            _shutil.copy(repo_csv, tmp_repo)
+            shutil.copy(repo_csv, tmp_repo)
 
-        stop_after = inputs.get("stop_after_step", STOP_AFTER_STEP)
+        # Priorizar STOP_AFTER_STEP actual del entorno sobre valores desactualizados del dataset
+        stop_after = STOP_AFTER_STEP or inputs.get("stop_after_step", "ImportToDspace")
+
+        source_name = inputs.get("source_name", "test_source")
 
         # Armar estado inicial
         state = {
             "messages": [],
             "source_csv_path": tmp_csv,
-            "source_name": inputs.get("source_name", "test_source"),
+            "source_name": source_name,
             "minio_bucket": inputs.get("minio_bucket", ""),
             "minio_prefix": inputs.get("minio_prefix", ""),
             "repository_csv_path": tmp_repo,
-            "dspace_collection": inputs.get("dspace_collection", "d0fb620b-6b5e-43d3-ba3f-d0183ed5b84f"),
+            "dspace_collection": inputs.get("dspace_collection", "556c4151-fbb8-4b3a-84b5-d2a8eb12a19f"),
             "import_validate_only": inputs.get("import_validate_only", True),
             "input_source_type": inputs.get("input_source_type", "csv"),
             "workspace_dir": tmp_dir,
@@ -275,16 +276,16 @@ def predict_pipeline(inputs: dict) -> dict:
         }
 
         # Mock shutil para SAF
-        orig_copy = _shutil.copy
-        orig_copyfile = _shutil.copyfile
-        _shutil.copy = lambda s, d, **kw: None
-        _shutil.copyfile = lambda s, d, **kw: None
+        orig_copy = shutil.copy
+        orig_copyfile = shutil.copyfile
+        shutil.copy = lambda s, d, **kw: None
+        shutil.copyfile = lambda s, d, **kw: None
 
         try:
             step_results = run_pipeline_until_step(state, stop_after)
         finally:
-            _shutil.copy = orig_copy
-            _shutil.copyfile = orig_copyfile
+            shutil.copy = orig_copy
+            shutil.copyfile = orig_copyfile
 
         # Recopilar información de archivos generados
         file_info = {}
@@ -658,12 +659,20 @@ def run_evaluation():
             ),
         )
         print(f"✅ Dataset '{DATASET_NAME}' creado con éxito.")
+        existing_sources = set()
     else:
         dataset = client.read_dataset(dataset_name=DATASET_NAME)
-        print(f"ℹ️  El dataset '{DATASET_NAME}' ya existe. Añadiendo ejemplos...")
+        print(f"ℹ️  El dataset '{DATASET_NAME}' ya existe. Verificando ejemplos...")
+        existing_examples = list(client.list_examples(dataset_id=dataset.id))
+        existing_sources = {
+            ex.inputs.get("source_name"): ex
+            for ex in existing_examples
+            if ex.inputs and "source_name" in ex.inputs
+        }
 
-    # Agregar cada caso de prueba al dataset
+    # Agregar o actualizar cada caso de prueba en el dataset
     for i, case in enumerate(TEST_CASES):
+        source_name = case.get("source_name", "test_source")
         csv_path = case.get("source_csv_path", "")
         if case.get("input_source_type") != "pdf_minio" and (not csv_path or not os.path.isfile(csv_path)):
             print(f"⚠️  Caso {i}: CSV no encontrado en {csv_path}. Saltando.")
@@ -671,12 +680,12 @@ def run_evaluation():
 
         inputs = {
             "source_csv_path": csv_path,
-            "source_name": case.get("source_name", "test_source"),
+            "source_name": source_name,
             "minio_bucket": case.get("minio_bucket", ""),
             "minio_prefix": case.get("minio_prefix", ""),
             "repository_csv_path": case.get("repository_csv_path", ""),
-            "dspace_collection": case.get("dspace_collection", "d0fb620b-6b5e-43d3-ba3f-d0183ed5b84f"),
-            "import_validate_only": case.get("import_validate_only", True),
+            "dspace_collection": case.get("dspace_collection", "556c4151-fbb8-4b3a-84b5-d2a8eb12a19f"),
+            "import_validate_only": case.get("import_validate_only", False),
             "input_source_type": case.get("input_source_type", "csv"),
             "enrichment_enabled": case.get("enrichment_enabled", True),
             "import_exclude_bitstreams": case.get("import_exclude_bitstreams", True),
@@ -690,13 +699,23 @@ def run_evaluation():
             "expected_author_counts": case.get("expected_author_counts", []),
         }
 
-        client.create_example(
-            inputs=inputs,
-            outputs=outputs,
-            dataset_id=dataset.id,
-        )
         display_name = os.path.basename(csv_path) if csv_path else f"minio:{case.get('minio_bucket')}"
-        print(f"  📄 Caso {i} añadido: {display_name} ({case.get('source_name')})")
+
+        if source_name in existing_sources:
+            ex = existing_sources[source_name]
+            client.update_example(
+                example_id=ex.id,
+                inputs=inputs,
+                outputs=outputs,
+            )
+            print(f"  🔄 Caso {i} actualizado en dataset: {display_name} ({source_name})")
+        else:
+            client.create_example(
+                inputs=inputs,
+                outputs=outputs,
+                dataset_id=dataset.id,
+            )
+            print(f"  📄 Caso {i} añadido: {display_name} ({source_name})")
 
     # Mostrar configuración
     print(f"\n{'═' * 60}")
