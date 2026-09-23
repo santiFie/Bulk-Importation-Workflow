@@ -27,6 +27,7 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 import pandas as pd
+from langsmith import traceable
 
 from core.clients.enrichers.base_enricher import BaseEnricher, BaseEnricherError
 from core.clients.enrichers.provider_factory import EnricherFactory
@@ -265,6 +266,7 @@ def _build_default_chain(providers: dict[str, BaseEnricher], health: dict[str, b
 # Nodo principal de enriquecimiento
 # ---------------------------------------------------------------------------
 
+@traceable(name="EnrichMetadata", run_type="chain")
 def enrich_metadata_node(state: State) -> dict[str, Any]:
     """
     Nodo EnrichMetadata — Enriquece los metadatos del CSV en formato genérico.

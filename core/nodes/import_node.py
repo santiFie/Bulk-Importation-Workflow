@@ -13,6 +13,8 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
+from langsmith import traceable
+
 logger = logging.getLogger(__name__)
 
 # Parámetros del script de importación de DSpace
@@ -53,6 +55,7 @@ class DSpaceImportConfig:
         return params
 
 
+@traceable(name="ImportToDspace", run_type="chain")
 def import_to_dspace(state: dict) -> dict[str, Any]:
     """
     Paso 9 — Importación a DSpace/SEDICI via Scripts API.

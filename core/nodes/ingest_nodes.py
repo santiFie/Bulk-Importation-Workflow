@@ -22,6 +22,7 @@ from minio import Minio
 
 from core.state import State
 from core.utils.config import config
+from langsmith import traceable
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,7 @@ def route_input_source(state: State) -> str:
 # Nodo de ingesta desde MinIO (pdf_minio)
 # ---------------------------------------------------------------------------
 
+@traceable(name="PDFIngest", run_type="chain")
 async def pdf_ingest_node(state: State) -> dict[str, Any]:
     """
     Nodo PDFIngest — Descarga PDFs desde MinIO y extrae sus metadatos.

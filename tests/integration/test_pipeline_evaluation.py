@@ -243,11 +243,13 @@ def predict_pipeline(inputs: dict) -> dict:
         # Priorizar STOP_AFTER_STEP actual del entorno sobre valores desactualizados del dataset
         stop_after = STOP_AFTER_STEP or inputs.get("stop_after_step", "ImportToDspace")
 
+        source_name = inputs.get("source_name", "test_source")
+
         # Armar estado inicial
         state = {
             "messages": [],
             "source_csv_path": tmp_csv,
-            "source_name": inputs.get("source_name", "test_source"),
+            "source_name": source_name,
             "minio_bucket": inputs.get("minio_bucket", ""),
             "minio_prefix": inputs.get("minio_prefix", ""),
             "repository_csv_path": tmp_repo,
@@ -663,18 +665,14 @@ def run_evaluation():
         print(f"ℹ️  El dataset '{DATASET_NAME}' ya existe. Verificando ejemplos...")
         existing_examples = list(client.list_examples(dataset_id=dataset.id))
         existing_sources = {
-            ex.inputs.get("source_name")
+            ex.inputs.get("source_name"): ex
             for ex in existing_examples
             if ex.inputs and "source_name" in ex.inputs
         }
 
-    # Agregar cada caso de prueba al dataset solo si no existe previamente
+    # Agregar o actualizar cada caso de prueba en el dataset
     for i, case in enumerate(TEST_CASES):
         source_name = case.get("source_name", "test_source")
-        if source_name in existing_sources:
-            print(f"  ℹ️  Caso {i} ('{source_name}') ya existe en el dataset. Omitiendo creación.")
-            continue
-
         csv_path = case.get("source_csv_path", "")
         if case.get("input_source_type") != "pdf_minio" and (not csv_path or not os.path.isfile(csv_path)):
             print(f"⚠️  Caso {i}: CSV no encontrado en {csv_path}. Saltando.")
@@ -687,7 +685,7 @@ def run_evaluation():
             "minio_prefix": case.get("minio_prefix", ""),
             "repository_csv_path": case.get("repository_csv_path", ""),
             "dspace_collection": case.get("dspace_collection", "556c4151-fbb8-4b3a-84b5-d2a8eb12a19f"),
-            "import_validate_only": case.get("import_validate_only", True),
+            "import_validate_only": case.get("import_validate_only", False),
             "input_source_type": case.get("input_source_type", "csv"),
             "enrichment_enabled": case.get("enrichment_enabled", True),
             "import_exclude_bitstreams": case.get("import_exclude_bitstreams", True),
@@ -701,13 +699,23 @@ def run_evaluation():
             "expected_author_counts": case.get("expected_author_counts", []),
         }
 
-        client.create_example(
-            inputs=inputs,
-            outputs=outputs,
-            dataset_id=dataset.id,
-        )
         display_name = os.path.basename(csv_path) if csv_path else f"minio:{case.get('minio_bucket')}"
-        print(f"  📄 Caso {i} añadido: {display_name} ({source_name})")
+
+        if source_name in existing_sources:
+            ex = existing_sources[source_name]
+            client.update_example(
+                example_id=ex.id,
+                inputs=inputs,
+                outputs=outputs,
+            )
+            print(f"  🔄 Caso {i} actualizado en dataset: {display_name} ({source_name})")
+        else:
+            client.create_example(
+                inputs=inputs,
+                outputs=outputs,
+                dataset_id=dataset.id,
+            )
+            print(f"  📄 Caso {i} añadido: {display_name} ({source_name})")
 
     # Mostrar configuración
     print(f"\n{'═' * 60}")

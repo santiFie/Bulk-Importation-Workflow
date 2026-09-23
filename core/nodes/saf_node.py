@@ -14,6 +14,7 @@ import sys
 from typing import Any
 
 import pandas as pd
+from langsmith import traceable
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,7 @@ _SAF_SCRIPT_SUBPATH = os.path.join(
 )
 
 
+@traceable(name="GenerateSafToImport", run_type="chain")
 def generate_saf_to_import(state: dict) -> dict[str, Any]:
     """
     Paso 8 — Generación del SAF a importar.
