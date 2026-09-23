@@ -33,8 +33,9 @@ from core.utils.config import config
 # Configuración y constantes de prueba
 # ---------------------------------------------------------------------------
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-RAW_DATA_DIR = os.path.join(PROJECT_ROOT, "tests", "data", "ingest", "raw")
-SAMPLE_CSV_PATH = os.path.join(RAW_DATA_DIR, "SearchResults.csv")
+SAMPLE_CSV_PATH = os.path.join(
+    PROJECT_ROOT, "tests", "data", "crosswalk_dedup", "source_inputs", "springer_sample.csv"
+)
 
 # Lista de buckets a evaluar de forma consecutiva
 # Puede sobreescribirse mediante la variable de entorno TEST_MINIO_BUCKETS (ej: "BUCKET_A,BUCKET_B")
@@ -73,7 +74,7 @@ class TestIngestSubgraphTopology:
         assert subgraph is not None
         node_names = set(subgraph.nodes.keys())
 
-        expected_nodes = {"PDFIngest", "CurateMetadata"}
+        expected_nodes = {"PDFIngest", "CurateMetadata", "ValidateInputCSVs"}
         for node in expected_nodes:
             assert node in node_names, f"El nodo '{node}' debe estar registrado en IngestSubgraph."
 
@@ -95,17 +96,16 @@ class TestIngestSubgraphTopology:
 class TestIngestSubgraphCsvBifurcation:
     """
     Evalúa la ejecución del subgrafo en la rama CSV.
-    Dado que cuando el contenido proviene de un CSV no se realiza procesamiento,
-    se valida que el flujo vaya directo a END sin invocar PDFIngest ni CurateMetadata.
+    Valida que el flujo pase por ValidateInputCSVs sin invocar PDFIngest ni CurateMetadata.
     """
 
     @pytest.mark.asyncio
     async def test_flujo_bifurcacion_csv_pasa_directo_a_end(self, tmp_path):
         """
         Al ingresar input_source_type='csv':
-          - El subgrafo debe terminar inmediatamente en END.
+          - El subgrafo ejecuta ValidateInputCSVs y termina en END.
           - No debe generar archivos temporales de PDFs ni invocar curación.
-          - El estado de salida conserva inalterado el source_csv_path de entrada.
+          - El estado de salida conserva inalterado el source_csv_path de entrada si es válido.
         """
         subgraph = await build_ingest_subgraph()
 
@@ -124,9 +124,12 @@ class TestIngestSubgraphCsvBifurcation:
         # 2. No se debió ejecutar CurateMetadata (no debe existir curated_csv_path)
         assert "curated_csv_path" not in final_state
 
-        # 3. No se debió crear ningún archivo en el workspace temporal
+        # 3. No hubo errores en ValidateInputCSVs
+        assert "ValidateInputCSVs" not in final_state.get("node_errors", {})
+
+        # 4. No se debió crear ningún archivo en el workspace temporal (springer_sample tiene id y doi)
         workspace_files = list(tmp_path.iterdir())
-        assert len(workspace_files) == 0, "La rama CSV no debe generar archivos en el workspace."
+        assert len(workspace_files) == 0, "La rama CSV válida no debe generar archivos en el workspace."
 
 
 # ===========================================================================
