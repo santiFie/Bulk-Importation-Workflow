@@ -32,6 +32,7 @@ from core.state import State
 from core.utils.config import config
 from core.utils.heuristic_detectors import triar_registros
 from core.utils.text_fixers import aplicar_correctores_programaticos
+from langsmith import traceable
 
 logger = logging.getLogger(__name__)
 
@@ -487,6 +488,7 @@ def _calcular_anomalias_restantes(
 # Nodo principal: curate_metadata_node
 # ---------------------------------------------------------------------------
 
+@traceable(name="CurateMetadata", run_type="chain")
 async def curate_metadata_node(state: State) -> dict[str, Any]:
     """
     Nodo CurateMetadata — Cura los metadatos del CSV generado por PDFIngest.

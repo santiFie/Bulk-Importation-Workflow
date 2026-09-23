@@ -12,10 +12,12 @@ import os
 from typing import Any
 
 import pandas as pd
+from langsmith import traceable
 
 logger = logging.getLogger(__name__)
 
 
+@traceable(name="MetadataCorrections", run_type="chain")
 def metadata_corrections(state: dict) -> dict[str, Any]:
     """
     Paso 6 — Corrección programática de metadatos.
