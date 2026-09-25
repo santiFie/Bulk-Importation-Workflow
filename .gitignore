@@ -12,3 +12,4 @@ AGENTS.md
 .vscode/
 *.csv
 *.json
+*.bin
