@@ -2,7 +2,7 @@
 
 PROJECT_ROOT := $(shell pwd)
 COMPOSE := docker compose -f "$(PROJECT_ROOT)/docker-compose.yml"
-DEDUPLICATOR_PATH := /home/santi/Documentos/Prebi/Backend-Modulo-Nacho
+DEDUPLICATOR_PATH := /home/santi/Documentos/Prebi/Modulo-Nacho/Backend
 DEDUPLICATOR_COMPOSE := docker compose -f "$(DEDUPLICATOR_PATH)/docker-compose.yml"
 DSPACE_COMPOSE := docker compose -f "/home/santi/Documentos/Prebi/DSpace/docker/docker-compose.yml"
 METADATA_EXTRACTOR_PATH := /home/santi/Documentos/Prebi/extraccion_metadatos
