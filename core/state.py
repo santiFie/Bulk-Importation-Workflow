@@ -72,6 +72,10 @@ class State(TypedDict):
 
     # --- Paso 3: Deduplicación ---
     dedup_output_csv_path: NotRequired[str]         # CSV de resultado del deduplicador
+    dedup_retry_count: NotRequired[int]             # Cantidad de reintentos ejecutados tras fallos
+    dedup_recovery_diagnosis: NotRequired[dict]     # Diagnóstico del error y propuesta de recuperación
+    dedup_error: NotRequired[str]                  # Mensaje de error capturado en deduplicación
+    applied_corrections: NotRequired[list[dict]]    # Registro de correcciones y normalizaciones aplicadas
 
     # --- Paso 4: Reconciliación de metadatos ---
     reconciled_csv_path: NotRequired[str]           # CSV con ítems a importar reconciliados
