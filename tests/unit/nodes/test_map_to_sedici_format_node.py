@@ -207,8 +207,9 @@ def test_crosswalk_script_delete_absent_cols_handles_none_key():
     elimine de forma segura la clave None (generada por DictReader ante
     comas no escapadas) sin lanzar TypeError por fnmatch.
     """
+    from pathlib import Path
     import sys
-    script_dir = os.path.join(os.path.dirname(__file__), "..", "..", "core", "scripts", "crosswalk")
+    script_dir = str(Path(__file__).resolve().parents[3] / "core" / "scripts" / "crosswalk")
     if script_dir not in sys.path:
         sys.path.insert(0, script_dir)
 

@@ -28,6 +28,8 @@ from core.nodes.pipeline_nodes import (
     map_source_to_generic,
     metadata_reconciliation,
 )
+from core.nodes.sanitizer_node import pre_dedup_sanitizer
+from core.agent.dedup_recovery.agent import dedup_recovery_node
 from core.subgraphs.enrichment import build_enrichment_subgraph
 
 
@@ -36,6 +38,30 @@ def route_source_crosswalk(state: State) -> str:
     if state.get("input_source_type") == "pdf_minio":
         return "BypassSourceCrosswalk"
     return "GenerateSourceCrosswalkConfig"
+
+
+def route_post_deduplicate(state: State) -> str:
+    """
+    Evalúa el resultado de la deduplicación.
+    Si falló y aún no superó el reintento permitido (1), encamina a recuperación reactiva.
+    """
+    if state.get("node_errors", {}).get("Deduplicate"):
+        if state.get("dedup_retry_count", 0) < 1:
+            return "DedupRecoveryNode"
+        return END
+    return "MetadataReconciliation"
+
+
+def route_post_recovery(state: State) -> str:
+    """
+    Evalúa el resultado del agente de recuperación.
+    Si la anomalía fue subsanada, reintenta Deduplicate; caso contrario, finaliza.
+    """
+    if state.get("pipeline_status") == "failed":
+        return END
+    if not state.get("node_errors", {}).get("Deduplicate"):
+        return "Deduplicate"
+    return END
 
 
 @traceable(name="BypassSourceCrosswalk", run_type="chain")
@@ -48,7 +74,8 @@ async def bypass_source_crosswalk(state: State) -> dict:
 
 async def build_crosswalk_dedup_subgraph():
     """
-    Construye y compila el subgrafo de crosswalk y deduplicación con enriquecimiento.
+    Construye y compila el subgrafo de crosswalk y deduplicación con enriquecimiento,
+    sanitización preventiva y recuperación reactiva con memoria episódica.
 
     Returns:
         Grafo compilado listo para ser añadido como nodo al grafo principal.
@@ -62,7 +89,9 @@ async def build_crosswalk_dedup_subgraph():
     graph.add_node("BypassSourceCrosswalk",         bypass_source_crosswalk)
     graph.add_node("EnrichmentSubgraph",            enrichment_sg)
     graph.add_node("MapSediciToGeneric",            map_sedici_to_generic)
+    graph.add_node("PreDedupSanitizer",             pre_dedup_sanitizer)
     graph.add_node("Deduplicate",                   deduplicate)
+    graph.add_node("DedupRecoveryNode",             dedup_recovery_node)
     graph.add_node("MetadataReconciliation",        metadata_reconciliation)
 
     # Rutas Condicionales para el flujo de la fuente
@@ -77,11 +106,34 @@ async def build_crosswalk_dedup_subgraph():
     graph.add_edge("MapSourceToGeneric",    "EnrichmentSubgraph")
     graph.add_edge("BypassSourceCrosswalk", "EnrichmentSubgraph")
 
-    # Tras procesar y enriquecer la fuente, se mapea SEDICI y convergen en Deduplicate
+    # Tras procesar y enriquecer la fuente, se mapea SEDICI
     graph.add_edge("EnrichmentSubgraph",    "MapSediciToGeneric")
-    graph.add_edge("MapSediciToGeneric",    "Deduplicate")
+    
+    # Capa preventiva: sanitiza generic_source antes de la deduplicación
+    graph.add_edge("MapSediciToGeneric",    "PreDedupSanitizer")
+    graph.add_edge("PreDedupSanitizer",     "Deduplicate")
 
-    graph.add_edge("Deduplicate",            "MetadataReconciliation")
+    # Borde condicional reactivo post-deduplicación
+    graph.add_conditional_edges(
+        "Deduplicate",
+        route_post_deduplicate,
+        {
+            "MetadataReconciliation": "MetadataReconciliation",
+            "DedupRecoveryNode":      "DedupRecoveryNode",
+            END:                      END,
+        },
+    )
+
+    # Borde condicional post-recuperación (reintento o abortar)
+    graph.add_conditional_edges(
+        "DedupRecoveryNode",
+        route_post_recovery,
+        {
+            "Deduplicate": "Deduplicate",
+            END:           END,
+        },
+    )
+
     graph.add_edge("MetadataReconciliation", END)
 
     return graph.compile(name="CrosswalkDedupSubgraph")
