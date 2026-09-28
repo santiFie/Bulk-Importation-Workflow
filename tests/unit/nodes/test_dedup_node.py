@@ -38,7 +38,8 @@ class TestDeduplicateNode:
 
             result = deduplicate(state)
 
-            assert result == {}
+            assert result["dedup_error"] is None
+            assert result["node_errors"] == {}
             mock_client.detect_duplicates.assert_called_once_with(
                 csv_file1_path=str(sedici_csv),
                 csv_file2_path=str(source_csv),
@@ -72,5 +73,6 @@ class TestDeduplicateNode:
             mock_client.detect_duplicates.side_effect = ConnectionError("Deduplicator backend down")
             mock_client_cls.return_value = mock_client
 
-            with pytest.raises(ConnectionError, match="Deduplicator backend down"):
-                deduplicate(state)
+            result = deduplicate(state)
+            assert "Deduplicate" in result["node_errors"]
+            assert "Deduplicator backend down" in result["dedup_error"]

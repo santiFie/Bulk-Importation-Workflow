@@ -383,6 +383,20 @@ def metadata_reconciliation(state: dict) -> dict[str, Any]:
                 "[MetadataReconciliation] Advertencia al propagar metadatos enriquecidos: %s", exc
             )
 
+    # Propagación de correcciones aplicadas (sanitizador y recuperación reactiva)
+    applied_corrections = state.get("applied_corrections", [])
+    if applied_corrections:
+        id_col_rec = reconciler._resolve_id_column(df_reconciled)
+        if id_col_rec:
+            for corr in applied_corrections:
+                col = corr.get("column")
+                row_id = str(corr.get("row_id", ""))
+                cleaned = corr.get("cleaned")
+                target_col = col if col in df_reconciled.columns else reconciler._generic_to_source.get(col)
+                if target_col and target_col in df_reconciled.columns and cleaned is not None:
+                    mask = df_reconciled[id_col_rec].astype(str) == row_id
+                    df_reconciled.loc[mask, target_col] = cleaned
+
     output_dir = os.path.dirname(state["reconciled_csv_path"])
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)

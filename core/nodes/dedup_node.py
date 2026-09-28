@@ -38,14 +38,26 @@ def deduplicate(state: dict) -> dict[str, Any]:
     _log_csv_columns(state["generic_source_csv_path"], "origen")
 
     client = DeduplicatorClient()
-    csv_bytes = client.detect_duplicates(
-        csv_file1_path=state["generic_sedici_csv_path"],
-        csv_file2_path=state["generic_source_csv_path"],
-        source_name=source_name,
-    )
-    result = _save_csv(csv_bytes, state["dedup_output_csv_path"])
-    logger.info("[Deduplicate] %s", result)
-    return {}
+    try:
+        csv_bytes = client.detect_duplicates(
+            csv_file1_path=state["generic_sedici_csv_path"],
+            csv_file2_path=state["generic_source_csv_path"],
+            source_name=source_name,
+        )
+        result = _save_csv(csv_bytes, state["dedup_output_csv_path"])
+        logger.info("[Deduplicate] %s", result)
+
+        node_errors = dict(state.get("node_errors", {}))
+        node_errors.pop("Deduplicate", None)
+        return {"node_errors": node_errors, "dedup_error": None}
+    except Exception as exc:
+        logger.error("[Deduplicate] Fallo en el servicio de deduplicación: %s", exc)
+        node_errors = dict(state.get("node_errors", {}))
+        node_errors["Deduplicate"] = str(exc)
+        return {
+            "node_errors": node_errors,
+            "dedup_error": str(exc),
+        }
 
 
 # ---------------------------------------------------------------------------
