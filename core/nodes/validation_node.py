@@ -54,16 +54,11 @@ DOI_PREFIX_CANDIDATES = ("dc.identifier.doi",)
 # Columnas candidatas para Identificador (ID)
 ID_EXACT_CANDIDATES = {
     "id",
-    "doi",
     "handle",
     "uri",
     "url",
     "pmid",
-    "item doi",
-    "item_doi",
-    "dc.identifier.doi",
     "dc.identifier.uri",
-    "dc.identifier",
     "sedici.identifier.other",
     "identifier",
     "item id",
@@ -71,7 +66,23 @@ ID_EXACT_CANDIDATES = {
     "document id",
     "document_id",
 }
-ID_PREFIX_CANDIDATES = ("dc.identifier", "sedici.identifier")
+ID_PREFIX_CANDIDATES = ("dc.identifier.uri", "sedici.identifier.other")
+
+
+def _is_valid_id_series(series: pd.Series) -> bool:
+    """
+    Verifica determinísticamente si una serie puede actuar como identificador único y no nulo.
+    Condiciones:
+      - No contiene valores nulos, vacíos o literales nulos ('nan', 'none').
+      - Todos los valores son estrictamente únicos (sin repetidos).
+    """
+    if series.empty:
+        return False
+    clean_series = series.astype(str).str.strip()
+    has_empty = series.isna() | (clean_series == "") | clean_series.str.lower().isin(["nan", "none"])
+    if has_empty.any():
+        return False
+    return clean_series.is_unique
 
 
 def _find_matching_column(
@@ -156,28 +167,45 @@ def validate_input_csvs_node(state: State) -> dict[str, Any]:
         )
 
     # ── 3. Reglas de Identificador ('id') para source_csv_path ─────────────────
-    has_id = _find_matching_column(columns, ID_EXACT_CANDIDATES, ID_PREFIX_CANDIDATES) is not None
+    valid_id_col = None
+    for col in columns:
+        col_clean = str(col).strip().lower()
+        if "doi" in col_clean:
+            continue
+        is_candidate = (
+            col_clean in ID_EXACT_CANDIDATES
+            or any(col_clean.startswith(p) for p in ID_PREFIX_CANDIDATES)
+        )
+        if is_candidate and _is_valid_id_series(df_source[col]):
+            valid_id_col = col
+            break
 
-    if not has_id:
+    if valid_id_col is None:
         workspace_dir = state.get("workspace_dir")
         if not workspace_dir:
             workspace_dir = os.path.dirname(os.path.abspath(source_csv_path))
         os.makedirs(workspace_dir, exist_ok=True)
         new_csv_path = os.path.join(workspace_dir, "source_with_id.csv")
 
+        # Seleccionar nombre seguro para la columna sintética
+        syn_col_name = "id" if "id" not in columns else "synthetic_id"
+
         logger.warning(
-            "[ValidateInputCSVs] No se encontró ninguna columna candidata a identificador en '%s'. "
-            "Se genera automáticamente la columna 'id' autoincremental en '%s'.",
+            "[ValidateInputCSVs] No se encontró ninguna columna candidata a identificador válida (única y sin nulos) en '%s'. "
+            "Se genera automáticamente la columna '%s' autoincremental en '%s'.",
             source_csv_path,
+            syn_col_name,
             new_csv_path,
         )
 
         df_with_id = df_source.copy()
-        df_with_id.insert(0, "id", range(1, len(df_with_id) + 1))
+        df_with_id.insert(0, syn_col_name, range(1, len(df_with_id) + 1))
         df_with_id.to_csv(new_csv_path, index=False)
 
         state["source_csv_path"] = new_csv_path
         updates["source_csv_path"] = new_csv_path
+        state["synthetic_id_column"] = syn_col_name
+        updates["synthetic_id_column"] = syn_col_name
 
     # ── 4. Advertencia de columnas habituales faltantes ─────────────────────────
     cols_lower = [str(c).strip().lower() for c in columns]

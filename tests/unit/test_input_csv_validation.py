@@ -282,3 +282,87 @@ class TestValidateInputCSVsNode:
 
         updates = validate_input_csvs_node(state)
         assert updates == {}
+
+    def test_source_with_doi_only_generates_synthetic_id(self, tmp_path):
+        """Un CSV con columna 'doi' pero sin ID genera 'id' sintético y marca synthetic_id_column."""
+        csv_file = tmp_path / "doi_source.csv"
+        df = pd.DataFrame([
+            {"title": "Paper 1", "doi": "10.1000/1", "author": "Author A"},
+            {"title": "Paper 2", "doi": "", "author": "Author B"},
+        ])
+        df.to_csv(csv_file, index=False)
+
+        state: State = {
+            "source_csv_path": str(csv_file),
+            "workspace_dir": str(tmp_path),
+        }
+
+        updates = validate_input_csvs_node(state)
+        assert updates.get("synthetic_id_column") == "id"
+        assert state.get("synthetic_id_column") == "id"
+
+        df_res = pd.read_csv(updates["source_csv_path"])
+        assert "id" in df_res.columns
+        assert list(df_res["id"]) == [1, 2]
+        assert "doi" in df_res.columns
+
+    def test_source_with_nulls_in_existing_id_generates_synthetic_id_column(self, tmp_path):
+        """Si la columna 'id' preexistente tiene nulos, genera 'synthetic_id' sin pisar la original."""
+        csv_file = tmp_path / "dirty_id.csv"
+        df = pd.DataFrame([
+            {"id": "doc-1", "title": "Paper 1", "author": "Author A"},
+            {"id": "", "title": "Paper 2", "author": "Author B"},
+        ])
+        df.to_csv(csv_file, index=False)
+
+        state: State = {
+            "source_csv_path": str(csv_file),
+            "workspace_dir": str(tmp_path),
+        }
+
+        updates = validate_input_csvs_node(state)
+        assert updates.get("synthetic_id_column") == "synthetic_id"
+
+        df_res = pd.read_csv(updates["source_csv_path"])
+        assert "synthetic_id" in df_res.columns
+        assert "id" in df_res.columns
+        assert list(df_res["synthetic_id"]) == [1, 2]
+
+    def test_source_with_duplicate_candidate_id_generates_synthetic_id(self, tmp_path):
+        """Si una columna candidata como 'url' tiene duplicados, no se acepta y se crea columna sintética."""
+        csv_file = tmp_path / "duplicate_url.csv"
+        df = pd.DataFrame([
+            {"title": "Part 1", "url": "https://repo.org/issue/1", "author": "Author A"},
+            {"title": "Part 2", "url": "https://repo.org/issue/1", "author": "Author B"},
+        ])
+        df.to_csv(csv_file, index=False)
+
+        state: State = {
+            "source_csv_path": str(csv_file),
+            "workspace_dir": str(tmp_path),
+        }
+
+        updates = validate_input_csvs_node(state)
+        assert updates.get("synthetic_id_column") == "id"
+
+        df_res = pd.read_csv(updates["source_csv_path"])
+        assert "id" in df_res.columns
+        assert "url" in df_res.columns
+        assert list(df_res["id"]) == [1, 2]
+
+    def test_source_with_clean_candidate_id_does_not_generate_synthetic_id(self, tmp_path):
+        """Si una columna candidata como 'handle' es 100% única y sin nulos, se acepta y no se inyecta synthetic_id."""
+        csv_file = tmp_path / "clean_handle.csv"
+        df = pd.DataFrame([
+            {"title": "Paper 1", "handle": "hdl:100/1", "author": "Author A"},
+            {"title": "Paper 2", "handle": "hdl:100/2", "author": "Author B"},
+        ])
+        df.to_csv(csv_file, index=False)
+
+        state: State = {
+            "source_csv_path": str(csv_file),
+            "workspace_dir": str(tmp_path),
+        }
+
+        updates = validate_input_csvs_node(state)
+        assert "synthetic_id_column" not in updates

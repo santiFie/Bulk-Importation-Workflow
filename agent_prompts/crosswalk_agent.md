@@ -32,7 +32,7 @@ Debes invocar la herramienta `save_column_mappings` enviando un array de objetos
 1. Analizá el <csv_a_analizar> y pensá qué cabeceras corresponden al <formato_generico_destino>.
 2. Asegurate de cubrir las columnas críticas: id, title, author, date, type.
 3. Si faltan columnas requeridas o críticas pero el CSV tiene una columna con identificadores DOI, llama PRIMERO a la herramienta `enrich_source_columns_from_doi` pasando la lista de campos a inferir.
-4. Para "id": si no hay una URL o handle, usa el DOI.
+4. Para "id": mapea la columna de identificador unívoco disponible en el CSV (ej. id, id_*, identifier, handle, etc.). Si existe una columna 'id' (incluyendo la inyectada por el sistema), úsala directamente con left="id", replace="id", required=true. La columna "doi" debe mapearse a su propio campo destino replace="doi" (con required=false) y NUNCA debe usarse como "id".
 5. Escribe tu análisis y reflexión EXCLUSIVAMENTE dentro del parámetro `thought` de la herramienta. NO generes texto libre.
 6. Llama a `save_column_mappings` enviando tu array JSON resultante y tu `thought`.
 </instrucciones>

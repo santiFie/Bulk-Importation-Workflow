@@ -3,11 +3,13 @@ Subgrafo de Crosswalk y Deduplicación.
 
 Encapsula los pasos 1 a 4 del pipeline:
   Paso 1  — GenerateSourceCrosswalkConfig (agente LLM, si no viene de PDFs)
-  Paso 2a — MapSourceToGeneric           (crosswalk fuente → genérico)
-  Paso 2b — MapSediciToGeneric           (crosswalk SEDICI → genérico, paralelo)
-  Paso 2c — EnrichmentSubgraph          (enriquecimiento opcional sobre formato genérico)
-  Paso 3  — Deduplicate                  (detección de duplicados sobre genéricos enriquecidos)
-  Paso 4  — MetadataReconciliation       (filtrado y join con metadatos originales)
+  Paso 2a — MapSourceToGeneric            (crosswalk fuente → genérico)
+  Paso 2b — MapSediciToGeneric            (crosswalk SEDICI → genérico, paralelo)
+  Paso 2c — EnrichmentSubgraph            (enriquecimiento opcional sobre formato genérico)
+  Paso 3a — PreDedupSanitizer             (sanitización sobre genéricos enriquecidos)
+  Paso 3b — Deduplicate                   (detección de duplicados sobre genéricos enriquecidos)
+  Paso 3c — DedupRecoveryNode             (recuperación reactiva de errores de deduplicación)
+  Paso 4  — MetadataReconciliation        (filtrado y join con metadatos originales)
 
 Topología:
   START
