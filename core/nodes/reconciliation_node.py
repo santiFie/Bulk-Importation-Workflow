@@ -397,6 +397,15 @@ def metadata_reconciliation(state: dict) -> dict[str, Any]:
                     mask = df_reconciled[id_col_rec].astype(str) == row_id
                     df_reconciled.loc[mask, target_col] = cleaned
 
+    # Eliminación de columna identificadora sintética temporal antes de exportar a SEDICI
+    synthetic_id_col = state.get("synthetic_id_column")
+    if synthetic_id_col and synthetic_id_col in df_reconciled.columns:
+        df_reconciled = df_reconciled.drop(columns=[synthetic_id_col])
+        logger.info(
+            "[MetadataReconciliation] Columna sintética temporal '%s' eliminada antes de exportar.",
+            synthetic_id_col,
+        )
+
     output_dir = os.path.dirname(state["reconciled_csv_path"])
     if output_dir:
         os.makedirs(output_dir, exist_ok=True)

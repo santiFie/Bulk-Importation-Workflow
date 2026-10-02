@@ -194,7 +194,7 @@ class SourceToGenericCrosswalkGenerator(BaseCrosswalkGenerator):
     y la validación funcional contra la API de Crosswalk.
     """
 
-    max_llm_iterations = 5
+    max_llm_iterations = 3
 
     def get_existing_config(self, state: dict[str, Any]) -> Optional[dict[str, Any]]:
         csv_path = state.get("source_csv_path", "")
