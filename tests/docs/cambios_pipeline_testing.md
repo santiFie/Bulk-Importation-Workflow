@@ -37,11 +37,11 @@ from core.agent.dspace_agent import build_dspace_agent_workflow
 
 # Re-exportaciones: permiten que los tests existentes importen desde core.graph
 from core.state import State  # noqa: F401
-from core.nodes.crosswalk_agent.node import (  # noqa: F401
+from core.nodes.source_to_generic.node import (  # noqa: F401
     generate_source_crosswalk_config,
     _generate_fallback_config,
 )
-from core.nodes.crosswalk_agent.helpers import (  # noqa: F401
+from core.nodes.source_to_generic.helpers import (  # noqa: F401
     _read_csv_head,
     _format_csv_head_for_prompt,
     _create_validation_sample,
@@ -203,11 +203,11 @@ from core.agent.dspace_agent import build_dspace_agent_workflow
 
 # Re-exportaciones: permiten que los tests existentes importen desde core.graph
 from core.state import State  # noqa: F401
-from core.nodes.crosswalk_agent.node import (  # noqa: F401
+from core.nodes.source_to_generic.node import (  # noqa: F401
     generate_source_crosswalk_config,
     _generate_fallback_config,
 )
-from core.nodes.crosswalk_agent.helpers import (  # noqa: F401
+from core.nodes.source_to_generic.helpers import (  # noqa: F401
     _read_csv_head,
     _format_csv_head_for_prompt,
     _create_validation_sample,

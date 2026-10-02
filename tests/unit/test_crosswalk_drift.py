@@ -10,12 +10,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.nodes.crosswalk_agent.helpers import (
+from core.nodes.source_to_generic.helpers import (
     DriftReport,
     validate_config_against_csv,
     get_existing_config,
 )
-from core.nodes.crosswalk_agent.node import generate_source_crosswalk_config
+from core.nodes.source_to_generic.node import generate_source_crosswalk_config
 
 
 # ---------------------------------------------------------------------------
@@ -232,7 +232,7 @@ class TestGetExistingConfig:
         res = get_existing_config(state)
         assert res is None
 
-    @patch("core.nodes.crosswalk_agent.helpers._validate_config_deterministic")
+    @patch("core.nodes.source_to_generic.helpers._validate_config_deterministic")
     def test_successful_reuse_when_schema_matches_and_validation_passes(
         self, mock_deterministic, setup_test_files
     ):
@@ -257,7 +257,7 @@ class TestGetExistingConfig:
             setup_test_files["csv_path"], setup_test_files["config_path"]
         )
 
-    @patch("core.nodes.crosswalk_agent.helpers._validate_config_deterministic")
+    @patch("core.nodes.source_to_generic.helpers._validate_config_deterministic")
     def test_rejects_cache_on_missing_required_columns(
         self, mock_deterministic, setup_test_files, tmp_path, caplog
     ):
@@ -283,7 +283,7 @@ class TestGetExistingConfig:
         assert any("Drift detectado" in record.message for record in caplog.records)
         assert any("Authors" in record.message for record in caplog.records)
 
-    @patch("core.nodes.crosswalk_agent.helpers._validate_config_deterministic")
+    @patch("core.nodes.source_to_generic.helpers._validate_config_deterministic")
     def test_warns_on_unmapped_columns_and_reuses_if_valid(
         self, mock_deterministic, setup_test_files, tmp_path, caplog
     ):
@@ -319,7 +319,7 @@ class TestGetExistingConfig:
         warning_records = [r for r in caplog.records if r.levelno == logging.WARNING]
         assert any("NewColumn1" in r.message and "NewColumn2" in r.message for r in warning_records)
 
-    @patch("core.nodes.crosswalk_agent.helpers._validate_config_deterministic")
+    @patch("core.nodes.source_to_generic.helpers._validate_config_deterministic")
     def test_rejects_cache_when_deterministic_validation_fails(
         self, mock_deterministic, setup_test_files, caplog
     ):
@@ -350,8 +350,8 @@ class TestGetExistingConfig:
 # ---------------------------------------------------------------------------
 
 class TestGenerateSourceCrosswalkConfigNode:
-    @patch("core.nodes.crosswalk_agent.node.get_existing_config")
-    @patch("core.nodes.crosswalk_agent.node.FallbackLLM")
+    @patch("core.nodes.source_to_generic.node.get_existing_config")
+    @patch("core.nodes.source_to_generic.node.FallbackLLM")
     def test_node_returns_cached_config_without_calling_llm(
         self, mock_llm_cls, mock_get_existing_config, setup_test_files
     ):

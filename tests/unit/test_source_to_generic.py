@@ -5,6 +5,7 @@ Tests unitarios para el generador de crosswalk source_to_generic y crosswalk_bas
 import json
 import os
 import tempfile
+from unittest.mock import patch
 import pytest
 
 from core.nodes.crosswalk_base.models import CrosswalkColumnMapping
@@ -66,9 +67,19 @@ class TestCrosswalkBaseModelsAndHelpers:
 class TestSourceToGenericGenerator:
     """Verifica la especialización de SourceToGenericCrosswalkGenerator."""
 
-    def test_get_existing_config(self, tmp_path):
+    @patch("core.nodes.source_to_generic.helpers._validate_config_deterministic")
+    def test_get_existing_config(self, mock_deterministic, tmp_path):
+        mock_deterministic.return_value = {"ok": True, "message": "Validación OK."}
         cfg_file = tmp_path / "crosswalk_config_springer.json"
-        cfg_file.write_text("[]")
+        cfg_file.write_text(
+            json.dumps([
+                [
+                    {"left": "colA", "replace": "title", "required": True},
+                    {"left": "colB", "replace": "author", "required": True},
+                ],
+                {"file_delimiter": ","},
+            ])
+        )
 
         csv_file = tmp_path / "data.csv"
         csv_file.write_text("colA,colB\n1,2\n")
