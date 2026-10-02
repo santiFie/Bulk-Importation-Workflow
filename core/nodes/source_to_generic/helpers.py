@@ -193,7 +193,7 @@ def _create_validation_sample(
 # ---------------------------------------------------------------------------
 
 GENERIC_COLUMNS = {
-    "id": "Identificador único del documento (URI, handle, URL, etc.). OBLIGATORIO. Si no hay columna de URL, usá el DOI como identificador.",
+    "id": "Identificador único del documento (id nativo, handle, etc. OBLIGATORIO para el deduplicador). Usar siempre la columna 'id' presente en el CSV.",
     "title": "Título del documento (OBLIGATORIO para la deduplicación)",
     "author": "Autor/es",
     "date": "Fecha de publicación (generalmente año)",

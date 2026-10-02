@@ -61,6 +61,7 @@ class State(TypedDict):
     curated_csv_path: NotRequired[str]              # CSV con ítems aptos (limpios + curados exitosamente); continúa el pipeline
     pending_to_review_csv_path: NotRequired[str]    # CSV de cuarentena con ítems que requieren revisión manual (curation_needed=True o sin_datos)
     curation_stats: NotRequired[dict]               # Estadísticas del proceso de curación: {total, limpias, curadas, marcadas, errores}
+    synthetic_id_column: NotRequired[Optional[str]] # Nombre de la columna sintética inyectada en ingesta si no había ID válido
     
     # --- Paso 2: Crosswalk configs y outputs intermedios (Opcionales / Derivados) ---
     source_crosswalk_config: NotRequired[str]        # JSON de crosswalk para el repositorio origen → formato genérico (puede ser generado por agente)

@@ -54,6 +54,7 @@ from core.nodes.crosswalk_nodes import (                                        
     map_sedici_to_generic,
     map_to_sedici_format,
 )
+from core.nodes.sanitizer_node import pre_dedup_sanitizer                        # noqa: F401
 from core.nodes.dedup_node import deduplicate                                      # noqa: F401
 from core.nodes.reconciliation_node import metadata_reconciliation                 # noqa: F401
 from core.nodes.correction_node import metadata_corrections                        # noqa: F401
@@ -70,6 +71,7 @@ PIPELINE_STEPS: list[tuple[str, str]] = [
     ("Paso 1 - GenerateSourceCrosswalkConfig", "GenerateSourceCrosswalkConfig"),
     ("Paso 2a - MapSourceToGeneric",           "MapSourceToGeneric"),
     ("Paso 2b - MapSediciToGeneric",           "MapSediciToGeneric"),
+    ("Paso 2c - PreDedupSanitizer",            "PreDedupSanitizer"),
     ("Paso 3 - Deduplicate",                   "Deduplicate"),
     ("Paso 4 - MetadataReconciliation",        "MetadataReconciliation"),
     ("Paso 4b - GenerateSediciTargetConfig",   "GenerateSediciTargetConfig"),
@@ -91,6 +93,7 @@ _NODE_FUNCTIONS: dict[str, callable] = {
     "GenerateSourceCrosswalkConfig": generate_source_crosswalk_config,
     "MapSourceToGeneric":            map_source_to_generic,
     "MapSediciToGeneric":            map_sedici_to_generic,
+    "PreDedupSanitizer":             pre_dedup_sanitizer,
     "Deduplicate":                   deduplicate,
     "MetadataReconciliation":        metadata_reconciliation,
     "GenerateSediciTargetConfig":    generate_sedici_target_crosswalk_config,
@@ -155,6 +158,12 @@ def run_pipeline_until_step(state: dict, stop_after: str) -> dict[str, dict]:
             results[node_name] = result if isinstance(result, dict) else {}
             if isinstance(result, dict):
                 state.update(result)
+
+            node_err = state.get("node_errors", {}).get(node_name)
+            if node_err:
+                print(f"\n❌ [run_pipeline_until_step] El nodo '{node_name}' reportó un error funcional: {node_err}")
+                results[node_name]["__error__"] = node_err
+                break
         except Exception as exc:
             import traceback
             print(f"\n❌ [run_pipeline_until_step] Error ejecutando nodo '{node_name}': {repr(exc)}")

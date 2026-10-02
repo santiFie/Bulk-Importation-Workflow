@@ -1,7 +1,7 @@
 [
     [
         {
-            "left":"dc.date.issued+dc.date.issued[]+dc.date.issued[es]+dc.date[]+dc.date[es]",
+            "left":"dc.date.issued+dc.date.issued[]+dc.date.issued[es]+dc.date[]+dc.date[es]+dc.date+dc.date.created+sedici.date.exposure+sedici.date.exposure[]+sedici.date.exposure[es]",
             "replace":"date",
             "default":"",
             "required":false,
@@ -20,7 +20,7 @@
             "required":false
         },
         {
-            "left":"sedici.creator.person[es]",
+            "left":"sedici.creator.person[es]+sedici.creator.corporate[es]+sedici.creator.interprete[es]+sedici.contributor.compiler[es]",
             "replace":"author",
             "default":null,
             "required":false,

@@ -123,3 +123,32 @@ class TestMetadataReconciliationNode:
         assert s2g["Item Title"] == "title"
         assert g2s["title"] == "Item Title"
         assert g2s["author"] == "Author List"
+
+    def test_metadata_reconciliation_drops_synthetic_id_column(self, tmp_path):
+        """Verifica que si synthetic_id_column está presente en state, se elimina del CSV final reconciliado."""
+        source_csv = tmp_path / "source_syn.csv"
+        source_csv.write_text("id,title,author\nitem_A,Paper A,Author A\nitem_B,Paper B,Author B\n")
+
+        dedup_csv = tmp_path / "dedup_syn.csv"
+        dedup_csv.write_text("id_document1,id_document2,similarity\nsedici_1,item_A,99.0\n")
+
+        reconciled_csv = tmp_path / "reconciled_syn.csv"
+
+        state = {
+            "source_csv_path": str(source_csv),
+            "dedup_output_csv_path": str(dedup_csv),
+            "reconciled_csv_path": str(reconciled_csv),
+            "umbral_seguro": 10,
+            "synthetic_id_column": "id",
+        }
+
+        res = metadata_reconciliation(state)
+        assert res == {}
+        assert os.path.isfile(reconciled_csv)
+
+        df_res = pd.read_csv(reconciled_csv)
+        assert len(df_res) == 1
+        # La columna 'id' fue eliminada
+        assert "id" not in df_res.columns
+        assert "title" in df_res.columns
+        assert df_res.iloc[0]["title"] == "Paper B"
