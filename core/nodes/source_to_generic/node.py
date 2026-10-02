@@ -22,6 +22,8 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langsmith import traceable
 from langgraph.types import interrupt
 
+from core.utils.config import config
+from core.utils.get_local_model import FallbackLLM
 from core.utils.prompt_loader import load_agent_prompt
 from core.nodes.crosswalk_base.models import CrosswalkColumnMapping
 from core.nodes.crosswalk_base.base import BaseCrosswalkGenerator
@@ -33,6 +35,7 @@ from core.nodes.source_to_generic.helpers import (
     detect_separator,
     _validate_config_deterministic,
     enrich_source_with_crossref_doi,
+    get_existing_config,
     is_known_regex,
     save_custom_regex,
 )
@@ -197,15 +200,7 @@ class SourceToGenericCrosswalkGenerator(BaseCrosswalkGenerator):
     max_llm_iterations = 3
 
     def get_existing_config(self, state: dict[str, Any]) -> Optional[dict[str, Any]]:
-        csv_path = state.get("source_csv_path", "")
-        source_name = state.get("source_name", "unknown")
-        base_dir = os.path.dirname(csv_path) or "."
-        config_output_path = os.path.join(base_dir, f"crosswalk_config_{source_name}.json")
-
-        if os.path.isfile(config_output_path):
-            print(f"[generate_source_crosswalk_config] Reusando config existente: {config_output_path}")
-            return {"source_crosswalk_config": config_output_path}
-        return None
+        return get_existing_config(state)
 
     def prepare_context(self, state: dict[str, Any]) -> dict[str, Any]:
         csv_path = state["source_csv_path"]
@@ -347,8 +342,6 @@ class SourceToGenericCrosswalkGenerator(BaseCrosswalkGenerator):
         separator_info: dict[str, str] = {"type": "unknown", "value": ""}
         print(f"[Fase 2] Columnas multivaluadas detectadas (author/subject): {multi_value_cols or '(ninguna)'}")
 
-        from core.utils.config import config
-        from core.utils.get_local_model import FallbackLLM
         llm = FallbackLLM(groq_model=config.CROSSWALK_MODEL, openrouter_model=config.CROSSWALK_MODEL).resolve()
 
         if multi_value_cols and head_rows:
