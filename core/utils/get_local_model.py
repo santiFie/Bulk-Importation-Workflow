@@ -51,7 +51,7 @@ def get_local_model_with_tools(tools):
 
 # Modelos por defecto por proveedor cuando no se especifica ninguno.
 DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
-DEFAULT_NVIDIA_MODEL = "openai/gpt-oss-120b"
+DEFAULT_NVIDIA_MODEL = "nvidia/nemotron-3-super-120b-a12b"
 DEFAULT_OPENROUTER_MODEL = "openai/gpt-oss-20b"
 
 
@@ -128,6 +128,7 @@ class FallbackLLM:
         openrouter_model: str | None = None,
         temperature: float = 0,
         timeout: float = _TIMEOUT_SEGUNDOS,
+        max_completion_tokens: int = 4096,
     ) -> None:
         """Configura los nombres de modelo por proveedor y construye la cadena.
 
@@ -137,12 +138,14 @@ class FallbackLLM:
             openrouter_model: Nombre del modelo para OpenRouter. Usa el default si es None.
             temperature: Temperatura común aplicada a todos los proveedores.
             timeout: Tiempo máximo (segundos) por llamada a cada proveedor.
+            max_completion_tokens: Límite máximo de tokens de completitud (razonamiento + salida).
         """
         self.groq_model = groq_model or DEFAULT_GROQ_MODEL
         self.nvidia_model = nvidia_model or DEFAULT_NVIDIA_MODEL
         self.openrouter_model = openrouter_model or DEFAULT_OPENROUTER_MODEL
         self.temperature = temperature
         self._timeout = timeout
+        self.max_completion_tokens = max_completion_tokens
         self._proveedores = self._construir_cadena()
 
     def _construir_cadena(self) -> list[FallbackModelWrapper]:
@@ -168,6 +171,7 @@ class FallbackLLM:
                         model=self.nvidia_model,
                         api_key=config.NVIDIA_API_KEY,
                         temperature=self.temperature,
+                        max_completion_tokens=self.max_completion_tokens,
                     )
                 )
             )
@@ -388,6 +392,7 @@ def get_model(use_local = False, provider="groq", model="llama-3.1-8b-instant"):
           model=model,
           api_key=config.NVIDIA_API_KEY,
           temperature=0.01,
+          max_completion_tokens=4096,
         )
       else:
           raise ValueError(f"Unknown provider: {provider}")
