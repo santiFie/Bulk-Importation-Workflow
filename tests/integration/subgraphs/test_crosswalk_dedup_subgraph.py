@@ -107,11 +107,12 @@ class TestCrosswalkDedupSubgraphE2E:
         """
         # Flag para truncar el dataset fuente y ahorrar costos/tokens de LLM en cada ejecución.
         # Cambiar a False para procesar el CSV completo.
-        TRUNCATE_SOURCE_CSV: bool = False
-        TRUNCATE_ROWS: int = 3
+        TRUNCATE_SOURCE_CSV: bool = True
+        TRUNCATE_ROWS: int = 10
 
         source_sample_path = str(tmp_path / "export_10915_all.csv")
-        source_csv_path = os.path.join(RAW_DIR, "Pubmed_sin_citation.csv")
+        #source_csv_path = os.path.join(RAW_DIR, "Pubmed_sin_citation.csv")
+        source_csv_path = os.path.join(RAW_DIR, "Unpaywall.csv")
         if TRUNCATE_SOURCE_CSV:
             pd.read_csv(source_csv_path).head(TRUNCATE_ROWS).to_csv(source_sample_path, index=False)
         else:
