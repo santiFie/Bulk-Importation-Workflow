@@ -19,9 +19,9 @@ import pytest
 # ---------------------------------------------------------------------------
 # Configuración de paths para importar los módulos del proyecto sin instalarlo
 # ---------------------------------------------------------------------------
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 CROSSWALK_MODULE_PATH = os.path.join(PROJECT_ROOT, "core", "scripts", "crosswalk")
-DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
+DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data"))
 CONFIGS_DIR = os.path.abspath(os.path.join(CROSSWALK_MODULE_PATH, "configs"))
 
 

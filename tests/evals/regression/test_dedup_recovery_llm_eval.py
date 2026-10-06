@@ -11,9 +11,9 @@ Diseñada para inspección visual y análisis experimental de tesis:
 
 Modo de uso:
   - Vía pytest mostrando stdout en tiempo real:
-      pytest -s tests/llm_evals/test_dedup_recovery_llm_eval.py
+      pytest -s tests/evals/regression/test_dedup_recovery_llm_eval.py
   - Como script ejecutable directo:
-      python -m tests.llm_evals.test_dedup_recovery_llm_eval
+      python -m tests.evals.regression.test_dedup_recovery_llm_eval
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from typing import Any
 import pytest
 
 # Asegurar importación de core desde la raíz
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
