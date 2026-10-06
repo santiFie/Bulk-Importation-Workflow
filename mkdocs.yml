@@ -1,0 +1,89 @@
+site_name: "Bulk Importation Workflow - Testing & Evaluation Documentation"
+site_description: "Documentación técnica de la suite de pruebas y evaluación agéntica para el pipeline de importación a SEDICI / DSpace"
+site_author: "Equipo de Desarrollo - SEDICI / DSpace"
+site_url: "https://santifie.github.io/Bulk-Importation-Workflow/"
+repo_url: "https://github.com/santiFie/Bulk-Importation-Workflow"
+repo_name: "santiFie/Bulk-Importation-Workflow"
+
+docs_dir: tests
+site_dir: site
+
+theme:
+  name: material
+  language: es
+  palette:
+    # Esquema claro
+    - scheme: default
+      primary: teal
+      accent: deep orange
+      toggle:
+        icon: material/weather-night
+        name: Cambiar a modo oscuro
+    # Esquema oscuro
+    - scheme: slate
+      primary: teal
+      accent: deep orange
+      toggle:
+        icon: material/weather-sunny
+        name: Cambiar a modo claro
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Visión General: README.md
+  - Pruebas Unitarias:
+      - Introducción y Principios: unit/README.md
+      - Clientes y Resiliencia HTTP: unit/clients/README.md
+      - Nodos LangGraph: unit/nodes/README.md
+      - Herramientas y Motores Locales: unit/tools/README.md
+      - Utilidades y Heurísticas: unit/utils/README.md
+      - Agente de Recuperación Reactiva: unit/agent/README.md
+      - Enriquecedores Bibliográficos: unit/enrichers/README.md
+      - Memoria Episódica (CBR): unit/memory/README.md
+  - Pruebas de Integración:
+      - Arquitectura de Integración: integration/README.md
+      - Subgrafos Modulares: integration/subgraphs/README.md
+      - Nodos con Servicios: integration/nodes/README.md
+      - Persistencia y Checkpointers: integration/checkpointer_and_threads/README.md
+      - Integración Extremo a Extremo (E2E): integration/e2e/README.md
+  - Evaluación Agéntica y Evals:
+      - Marco de Evaluación: evals/README.md
+      - Datasets y Ground Truth: evals/datasets/README.md
+      - Agentes Individuales: evals/single_agent/README.md
+      - Regresión y Schema Drift: evals/regression/README.md
+      - Métricas Cuantitativas y Jueces: evals/metrics/README.md
+  - Recursos y Entorno:
+      - Fixtures y Mocks: fixtures/README.md
+      - Datos y Benchmarks: data/README.md
+      - Entradas Reconciliadas: data/export/reconciled_inputs/README.md
+      - LangGraph Studio y Debugging: studio/README.md
+  - Guías y Registros Técnicos:
+      - Inventario Completo de Tests: docs/inventario_tests.md
+      - Guía de Testing de Curación: docs/guia_testing_curacion.md
+      - Integración de Export Subgraph: docs/integration/test_export_subgraph.md
+      - Evaluación de Pasos del Pipeline: docs/pipeline_steps_evaluation.md
+      - Historial de Cambios: docs/cambios_pipeline_testing.md
