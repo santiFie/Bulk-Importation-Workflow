@@ -251,3 +251,14 @@ class TestAplicarCorrectoresProgramaticos:
         resultado = aplicar_correctores_programaticos(fila, anomalias)
         assert resultado["title"] == "Título limpio"
         assert resultado["author"] == "Autor Correcto"
+
+    def test_texto_pegado_en_title_no_aplica_fix_glued_words(self):
+        """fix_glued_words() NO se aplica a campos de título (solo desc/citation)."""
+        fila = {
+            "id": "test3.pdf",
+            "title": "LaTransformadaDiscretadeKarhunenLoève",
+            "_curation": {"anomalias": {"title": ["TEXTO_PEGADO"]}}
+        }
+        fila_corregida = aplicar_correctores_programaticos(fila, fila["_curation"]["anomalias"])
+        assert "title:TEXTO_PEGADO" not in fila_corregida.get("_corrections_applied", [])
+
