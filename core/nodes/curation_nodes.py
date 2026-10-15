@@ -17,6 +17,7 @@ El CSV original `source_from_pdfs.csv` nunca se sobreescribe.
 
 from __future__ import annotations
 
+import asyncio
 import csv
 import logging
 import os
@@ -330,14 +331,53 @@ class CurationOrchestrator:
     # Capa 2b: agente curador LLM
     # ------------------------------------------------------------------
 
+    async def _curate_single_row(
+        self,
+        agente: Any,
+        fila: dict,
+        semaphore: asyncio.Semaphore,
+    ) -> tuple[dict, dict | None, str | None]:
+        """
+        Invoca al MetadataCuratorAgent para una sola fila bajo control de concurrencia.
+
+        Args:
+            agente:    Grafo del agente curador compilado.
+            fila:      Fila de metadatos sospechosa a curar.
+            semaphore: Semáforo para limitar concurrencia de requests al LLM.
+
+        Returns:
+            Tupla (fila_original, correccion_o_None, error_str_o_None).
+        """
+        async with semaphore:
+            try:
+                mensaje = construir_mensaje_curacion([fila])
+                resultado = await agente.ainvoke(
+                    {"messages": [mensaje]},
+                    config={"recursion_limit": 15},
+                )
+                respuesta_texto = self._extract_agent_response(resultado)
+                correcciones = parsear_respuesta_agente(respuesta_texto)
+                corr = next((c for c in correcciones if c.get("id") == fila.get("id")), None)
+                if not corr and correcciones:
+                    corr = correcciones[0]
+                return fila, corr, None
+            except Exception as exc:
+                logger.error(
+                    "[CurationOrchestrator] Error en curación de fila id='%s': %s",
+                    fila.get("id", "?"),
+                    exc,
+                )
+                return fila, None, str(exc)
+
     async def _invoke_agent(
         self,
         filas_sospechosas: list[dict],
         stats: CurationStats,
     ) -> tuple[list[dict], list[dict]]:
         """
-        Invoca al MetadataCuratorAgent con las filas que no pudieron corregirse
-        programáticamente. Procesa todas en un único batch para minimizar overhead.
+        Invoca al MetadataCuratorAgent procesando cada fila de forma individual
+        y concurrente (Scatter-Gather) mediante asyncio.gather y control de semáforo.
+        Aísla los fallos por fila para que un error en un registro no afecte a los demás.
 
         Args:
             filas_sospechosas: Filas pre-procesadas por los correctores.
@@ -346,67 +386,46 @@ class CurationOrchestrator:
         Returns:
             Tupla (curadas, marcadas_revision).
         """
+        if not filas_sospechosas:
+            return [], []
+
         try:
             agente = await build_metadata_curator_agent()
-            mensaje = construir_mensaje_curacion(filas_sospechosas)
-
-            logger.info(
-                "[CurationOrchestrator] Invocando agente curador con %d filas...",
-                len(filas_sospechosas),
-            )
-
-            resultado = await agente.ainvoke(
-                {"messages": [mensaje]},
-                config={"recursion_limit": 15},
-            )
-
-            respuesta_texto = self._extract_agent_response(resultado)
-            correcciones = parsear_respuesta_agente(respuesta_texto)
-
-            return self._apply_agent_corrections(filas_sospechosas, correcciones, stats)
-
         except Exception as exc:
-            logger.error(
-                "[CurationOrchestrator] Error invocando agente curador: %s", exc, exc_info=True
-            )
+            logger.error("[CurationOrchestrator] Error inicializando agente curador: %s", exc)
             stats.errores += len(filas_sospechosas)
             return [], self._mark_all_as_error(filas_sospechosas, exc)
 
-    @staticmethod
-    def _extract_agent_response(resultado: dict) -> str:
-        """Extrae el último mensaje de texto de la respuesta del agente."""
-        mensajes = resultado.get("messages", [])
-        for msg in reversed(mensajes):
-            if hasattr(msg, "content") and isinstance(msg.content, str):
-                return msg.content
-        return ""
+        max_concurrency = getattr(config, "CURATION_MAX_CONCURRENCY", 5)
+        semaphore = asyncio.Semaphore(max_concurrency)
 
-    def _apply_agent_corrections(
-        self,
-        filas_sospechosas: list[dict],
-        correcciones: list[dict],
-        stats: CurationStats,
-    ) -> tuple[list[dict], list[dict]]:
-        """
-        Aplica las correcciones del agente sobre las filas originales.
+        logger.info(
+            "[CurationOrchestrator] Invocando agente curador para %d filas (concurrencia máx: %d)...",
+            len(filas_sospechosas),
+            max_concurrency,
+        )
 
-        Para cada fila, busca la corrección correspondiente por ID y la aplica.
-        Las filas sin corrección o con campos marcados como `_curation_needed`
-        se envían a cuarentena.
-        """
-        correcciones_por_id = {c.get("id", ""): c for c in correcciones if c.get("id")}
+        tasks = [
+            self._curate_single_row(agente, fila, semaphore)
+            for fila in filas_sospechosas
+        ]
+        resultados = await asyncio.gather(*tasks)
+
         curadas: list[dict] = []
         marcadas: list[dict] = []
 
-        for fila in filas_sospechosas:
+        for fila, correccion, error in resultados:
             fila_resultado = dict(fila)
             _limpiar_metadatos_internos(fila_resultado)
 
-            correccion = correcciones_por_id.get(fila.get("id", ""), {})
-
-            if correccion:
+            if error:
+                fila_resultado["curation_needed"] = True
+                fila_resultado["correction_notes"] = f"Error en agente curador: {error}"
+                marcadas.append(fila_resultado)
+                stats.marcadas_revision += 1
+                stats.errores += 1
+            elif correccion:
                 fila_resultado = self._merge_correction(fila_resultado, correccion)
-
                 if self._has_curation_needed_flags(correccion):
                     fila_resultado["curation_needed"] = True
                     marcadas.append(fila_resultado)
@@ -425,6 +444,15 @@ class CurationOrchestrator:
         return curadas, marcadas
 
     @staticmethod
+    def _extract_agent_response(resultado: dict) -> str:
+        """Extrae el último mensaje de texto de la respuesta del agente."""
+        mensajes = resultado.get("messages", [])
+        for msg in reversed(mensajes):
+            if hasattr(msg, "content") and isinstance(msg.content, str):
+                return msg.content
+        return ""
+
+    @staticmethod
     def _merge_correction(fila: dict, correccion: dict) -> dict:
         """Aplica los campos corregidos por el agente sobre la fila, preservando las notas."""
         _EXCLUIR = {"id", "correction_notes", "_curation"}
@@ -440,9 +468,12 @@ class CurationOrchestrator:
     @staticmethod
     def _has_curation_needed_flags(correccion: dict) -> bool:
         """Verifica si el agente marcó algún campo como pendiente de revisión."""
-        return any(
-            k.endswith("_curation_needed") and v
-            for k, v in correccion.items()
+        return bool(
+            correccion.get("curation_needed", False)
+            or any(
+                k.endswith("_curation_needed") and v
+                for k, v in correccion.items()
+            )
         )
 
     @staticmethod
