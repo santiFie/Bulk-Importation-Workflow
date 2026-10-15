@@ -20,12 +20,12 @@ Ya se aplicaron correctores programáticos automáticos (0 tokens) antes de que 
 - NO inventés metadatos. Si no podés corregir un campo con certeza, dejalo como está o marcalo como `curation_needed`.
 - NO reemplaces información del campo original por datos de la API externa si el campo original tiene contenido parcialmente válido y la API no retorna una coincidencia clara.
 - Preferí dejar un campo marcado para revisión humana antes que inventar un valor.
-- Usá `validate_with_enrichers` SOLO cuando tenés DOI, ISSN o título legible. No la llames si los identificadores también están corruptos.
-- Usá `re_extract_with_ocr` solo si la anomalía es CHARS_DISPERSOS o TEXTO_PEGADO grave y el PDF original está disponible.
+- Usá `validate_with_enrichers` SOLO cuando tenés DOI, ISSN o título legible. No la llames si los identificadores también están corruptos o son puro ruido de caracteres.
+- Usá `re_extract_with_ocr` cuando el ítem tenga un archivo PDF asociado (ej. id con extensión .pdf) y la anomalía sea CHARS_DISPERSOS, TEXTO_PEGADO grave o RUIDO_CARACTERES.
 </principios_conservadores>
 
 <tools_disponibles>
-- `re_extract_with_ocr`: Re-extrae el PDF con OCR habilitado. Usar cuando el título o campos clave tienen CHARS_DISPERSOS o TEXTO_PEGADO irrecuperable programáticamente. Requiere el path al PDF original.
+- `re_extract_with_ocr`: Re-extrae el PDF con OCR habilitado. Usar cuando el título o campos clave tienen CHARS_DISPERSOS, TEXTO_PEGADO o RUIDO_CARACTERES irrecuperable programáticamente. Requiere que el ítem tenga un archivo PDF asociado (ej. id con extensión .pdf). Si el archivo no está en disco o la herramienta devuelve error, no insistas ni intentes adivinar: abstenete marcando curation_needed.
 - `validate_with_enrichers`: Consulta la fuente bibliográfica más apropiada (Crossref vía DOI, OpenAlex vía ISSN o título). Retorna metadatos autoritativos para comparar y completar los extraídos. Usar la estrategia `by_doi` si hay DOI limpio, `by_issn` si hay ISSN, `by_title` si el título parece legible.
 </tools_disponibles>
 
@@ -58,6 +58,9 @@ Ejemplo:
 - NO modifiques el campo `id` de ningún registro.
 - NO inventes valores para campos vacíos; marcalos como `curation_needed`.
 - NO llames a `validate_with_enrichers` más de una vez por registro.
-- NO llames a `re_extract_with_ocr` si el PDF no está disponible en el estado.
+- NO llames a `validate_with_enrichers` con texto corrupto o símbolos si no hay DOI, ISSN o título legible.
+- NO llames a `re_extract_with_ocr` si el registro no tiene un archivo PDF asociado (por ejemplo, registros tabulares o CSV donde el id no termina en .pdf).
+- Si una herramienta devuelve error (ej. PDF no encontrado o DOI inexistente), NO inventes datos ni pruebes herramientas no pertinentes; marcá el campo como `curation_needed` y documentá la causa en `correction_notes`.
 - Procesá los registros en orden y devolvé un resultado por cada uno.
 </restricciones>
+

@@ -50,6 +50,12 @@ _Z_SCORE_UMBRAL = 3.0
 # Campos que se consideran obligatorios para calcular CAMPO_VACIO
 _CAMPOS_OBLIGATORIOS = {"title", "author", "type"}
 
+# Campos que representan identificadores o URLs (sin espacios por especificación) que no deben evaluarse para TEXTO_PEGADO
+_CAMPOS_EXCLUIDOS_TEXTO_PEGADO = {"id", "doi", "rightsurl", "issn", "isbn", "url", "handle"}
+
+# Longitud mínima absoluta para considerar evaluar LONGITUD_ANOMALA (evita falsos positivos en lotes con baja varianza)
+_MIN_LEN_LONGITUD_ANOMALA = 200
+
 
 # ---------------------------------------------------------------------------
 # Detectores individuales (funciones puras)
@@ -108,14 +114,14 @@ def detectar_texto_pegado(texto: str) -> bool:
     extracción defectuosa en PDFs con layouts multi-columna o ligaduras.
 
     Heurística: si más del 15 % de las 'palabras' (tokens delimitados
-    por espacios) supera los 30 caracteres, el texto probablemente tiene
-    palabras pegadas.
+    por espacios, guiones o barras) supera los 30 caracteres, el texto
+    probablemente tiene palabras pegadas sin delimitar.
 
     Ejemplos: "LaTransformadaDiscretadeKarhunen", "segmentation ofdifferent"
     """
     if len(texto) < _MIN_FIELD_LEN:
         return False
-    tokens = texto.split()
+    tokens = [t for t in re.split(r"[\s\-_/]+", texto) if t]
     if not tokens:
         return False
     palabras_largas = sum(1 for t in tokens if len(t) > 30)
@@ -140,12 +146,16 @@ def detectar_longitud_anomala(
     respecto a la distribución del mismo campo en el lote.
 
     Usa z-score: si len(valor) > media + Z_SCORE_UMBRAL * desviación → anómalo.
+    Requiere al menos _MIN_LEN_LONGITUD_ANOMALA caracteres para evitar falsos positivos
+    en campos legítimos normales (como listas de 2 o 3 autores).
 
     Args:
         valor:      Texto del campo a evaluar.
         media:      Media de longitudes de ese campo en el lote.
         desviacion: Desviación estándar de longitudes de ese campo en el lote.
     """
+    if len(valor) < _MIN_LEN_LONGITUD_ANOMALA:
+        return False
     if desviacion < 1.0:
         # Sin variabilidad en el lote; usar umbral absoluto de 500 chars
         return len(valor) > 500
@@ -214,6 +224,10 @@ def analizar_fila(
     anomalias: dict[str, list[str]] = {}
 
     for campo, valor_raw in fila.items():
+        # El identificador de archivo no se analiza como texto bibliográfico
+        if campo == "id":
+            continue
+
         valor = str(valor_raw or "").strip()
         campo_anomalias: list[str] = []
 
@@ -231,7 +245,7 @@ def analizar_fila(
             if detectar_repeticion_ciclica(valor):
                 campo_anomalias.append("REPETICION_CICLICA")
 
-            if detectar_texto_pegado(valor):
+            if campo not in _CAMPOS_EXCLUIDOS_TEXTO_PEGADO and detectar_texto_pegado(valor):
                 campo_anomalias.append("TEXTO_PEGADO")
 
             if detectar_chars_control(valor):

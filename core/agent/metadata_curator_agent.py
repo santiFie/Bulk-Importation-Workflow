@@ -75,6 +75,7 @@ def re_extract_with_ocr(pdf_path: str) -> dict[str, Any]:
     Usar cuando:
       - El título o campos clave tienen CHARS_DISPERSOS (texto en columnas OCR).
       - El abstract tiene TEXTO_PEGADO grave irrecuperable con heurísticas.
+      - El texto presenta RUIDO_CARACTERES o artefactos de extracción en un archivo PDF.
 
     Args:
         pdf_path: Ruta absoluta o nombre del archivo PDF (ej. "39-jaiio-ast-06.pdf-PDFA.pdf").
