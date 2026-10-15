@@ -50,40 +50,47 @@ def _tiene_api_key_llm() -> bool:
     return bool(config.GROQ_API_KEY or config.NVIDIA_API_KEY or config.OPEN_ROUTER_API_KEY)
 
 
+CURATION_DATA_DIR = (
+    Path(__file__).parent.parent.parent.parent / "data" / "ingest" / "curation"
+)
+
+
 @pytest.fixture(scope="module", autouse=True)
 def sample_pdf_ocr_fixture():
     """
-    Genera un archivo PDF sintético en /tmp/sample_ruidoso_ocr.pdf para que
-    la tool `re_extract_with_ocr` pueda ser evaluada de extremo a extremo sin mocks.
+    Copia los archivos PDF reales y de prueba desde tests/data/ingest/curation a /tmp
+    para que la tool `re_extract_with_ocr` evalúe los documentos completos de forma realista.
     """
-    tmp_pdf_path = "/tmp/sample_ruidoso_ocr.pdf"
-    try:
-        import fitz
-        doc = fitz.open()
-        page = doc.new_page()
-        page.insert_text(
-            (50, 72),
-            "Estimación de Texturas y Facciones en Imágenes Médicas\n"
-            "Gonzalez, Maria; Perez, Juan\n"
-            "Facultad de Ingeniería, Universidad Nacional de La Plata\n"
-            "Resumen: Este trabajo analiza técnicas de estimación de texturas..."
-        )
-        doc.save(tmp_pdf_path)
-        doc.close()
-    except Exception:
-        pass
-    yield tmp_pdf_path
-    if os.path.exists(tmp_pdf_path):
-        with contextlib.suppress(OSError):
-            os.remove(tmp_pdf_path)
+    import shutil
+    target_files = [
+        "39-jaiio-ast-03.pdf-PDFA.pdf",
+        "39-jaiio-ast-06.pdf-PDFA.pdf",
+        "sample_ocr_paper_sin_autor.pdf",
+        "sample_ocr_corrupto.pdf",
+    ]
+    generated_files: list[str] = []
+
+    for fname in target_files:
+        src = CURATION_DATA_DIR / fname
+        dst = Path("/tmp") / fname
+        if src.exists():
+            shutil.copy2(src, dst)
+            generated_files.append(str(dst))
+
+    yield generated_files
+
+    for f_path in generated_files:
+        if os.path.exists(f_path):
+            with contextlib.suppress(OSError):
+                os.remove(f_path)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def agente_curador_real():
     """Instancia el agente curador conectado al LLM real sin mocks."""
     if not _tiene_api_key_llm():
         pytest.skip("No hay API key de LLM disponible para evaluación.")
-    return asyncio.run(build_metadata_curator_agent())
+    return True
 
 
 @pytest.mark.eval
@@ -121,7 +128,11 @@ def test_curator_llm_decisions_on_anomalies(caso: dict[str, Any], agente_curador
     mensaje = construir_mensaje_curacion([fila_input])
     state = {"messages": [mensaje]}
 
-    final_state = asyncio.run(agente_curador_real.ainvoke(state, config={"recursion_limit": 15}))
+    async def _ejecutar_agente():
+        agente = await build_metadata_curator_agent()
+        return await agente.ainvoke(state, config={"recursion_limit": 15})
+
+    final_state = asyncio.run(_ejecutar_agente())
     ultima_respuesta = final_state["messages"][-1]
     correcciones = parsear_respuesta_agente(ultima_respuesta.content)
 
@@ -137,7 +148,8 @@ def test_curator_llm_decisions_on_anomalies(caso: dict[str, Any], agente_curador
     for msg in final_state.get("messages", []):
         if hasattr(msg, "tool_calls") and msg.tool_calls:
             for tc in msg.tool_calls:
-                tools_ejecutadas.append(tc.get("name", ""))
+                t_name = tc.get("name", "").split("<|")[0].strip()
+                tools_ejecutadas.append(t_name)
 
     if not expected_tools:
         tool_accuracy = 1.0 if len(tools_ejecutadas) == 0 else 0.0
@@ -215,6 +227,11 @@ def test_curator_llm_decisions_on_anomalies(caso: dict[str, Any], agente_curador
             f"El caso '{caso['id_caso']}' debía ser reparado con éxito pero fue marcado a revisión. "
             f"Decisión del agente: {corr}"
         )
+        # Si el autor también estaba corrupto en el input, verificar que se haya recuperado
+        if "author" in fila_input and "RUIDO_CARACTERES" in fila_input.get("_curation", {}).get("anomalias", {}).get("author", []):
+            assert "author" in corr and corr["author"] != fila_input["author"] and corr["author"].strip(), (
+                f"El caso '{caso['id_caso']}' debía reparar también el campo 'author'. Decisión: {corr}"
+            )
         assert not marcado_revision, (
             f"El caso '{caso['id_caso']}' no debía ser enviado a cuarentena. "
             f"Decisión del agente: {corr}"

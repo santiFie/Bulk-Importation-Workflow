@@ -28,11 +28,11 @@ from typing import Any
 from dotenv import load_dotenv
 
 # Asegurar path raíz del proyecto
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 load_dotenv(PROJECT_ROOT / ".env")
 
-from langsmith import Client, evaluate
+from langsmith import Client, evaluate, aevaluate
 
 from core.agent.metadata_curator_agent import (
     build_metadata_curator_agent,
@@ -45,27 +45,25 @@ DATASET_NAME = "Metadata_Curator_Decision_Cases"
 CASES_FILE_PATH = (
     PROJECT_ROOT / "tests" / "evals" / "datasets" / "curator" / "curator_decision_cases.json"
 )
-SAMPLE_PDF_PATH = "/tmp/sample_ruidoso_ocr.pdf"
+CURATION_DATA_DIR = PROJECT_ROOT / "tests" / "data" / "ingest" / "curation"
+
+SAMPLE_PDF_PATHS = [
+    "/tmp/39-jaiio-ast-03.pdf-PDFA.pdf",
+    "/tmp/39-jaiio-ast-06.pdf-PDFA.pdf",
+    "/tmp/sample_ocr_paper_sin_autor.pdf",
+    "/tmp/sample_ocr_corrupto.pdf",
+]
 
 
 def ensure_sample_pdf_exists() -> None:
-    """Genera el PDF sintético en /tmp si no existe, necesario para la tool OCR."""
-    if not os.path.exists(SAMPLE_PDF_PATH):
-        try:
-            import fitz
-            doc = fitz.open()
-            page = doc.new_page()
-            page.insert_text(
-                (50, 72),
-                "Estimación de Texturas y Facciones en Imágenes Médicas\n"
-                "Gonzalez, Maria; Perez, Juan\n"
-                "Facultad de Ingeniería, Universidad Nacional de La Plata\n"
-                "Resumen: Este trabajo analiza técnicas de estimación de texturas..."
-            )
-            doc.save(SAMPLE_PDF_PATH)
-            doc.close()
-        except Exception as e:
-            print(f"Advertencia: No se pudo generar {SAMPLE_PDF_PATH}: {e}")
+    """Copia los PDFs de prueba a /tmp si no existen, necesarios para la tool OCR."""
+    import shutil
+
+    for dst_path in SAMPLE_PDF_PATHS:
+        fname = os.path.basename(dst_path)
+        src_path = CURATION_DATA_DIR / fname
+        if not os.path.exists(dst_path) and src_path.exists():
+            shutil.copy2(src_path, dst_path)
 
 
 def sync_dataset_to_langsmith(client: Client, dataset_name: str = DATASET_NAME) -> Any:
@@ -153,19 +151,19 @@ async def predict(inputs: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def run_evaluation(experiment_prefix: str = "Metadata_Curator_Decision") -> Any:
+async def run_evaluation(experiment_prefix: str = "Metadata_Curator_Decision_Agent_Test_Few_Shot") -> Any:
     """Ejecuta la evaluación nativa en LangSmith."""
     ensure_sample_pdf_exists()
     client = Client()
     sync_dataset_to_langsmith(client, DATASET_NAME)
 
     print(f"\nIniciando corrida de evaluación nativa: {experiment_prefix}...")
-    results = evaluate(
+    results = await aevaluate(
         predict,
         data=DATASET_NAME,
         evaluators=CURATOR_EVALUATORS,
         experiment_prefix=experiment_prefix,
-        description="Evaluación experimental de decisiones conservadoras y llamadas a tools sin mocks.",
+        description="Evaluación de decisiones conservadoras y llamadas a tools (Usando Few-Shot).",
         max_concurrency=1,  # Serial o acotado para respetar rate limits de proveedores
         client=client,
     )
@@ -174,4 +172,4 @@ def run_evaluation(experiment_prefix: str = "Metadata_Curator_Decision") -> Any:
 
 
 if __name__ == "__main__":
-    run_evaluation()
+    asyncio.run(run_evaluation())
