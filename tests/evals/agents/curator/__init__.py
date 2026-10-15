@@ -1,0 +1,1 @@
+"""Evaluaciones semánticas para MetadataCuratorAgent."""
