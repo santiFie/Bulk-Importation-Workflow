@@ -241,9 +241,9 @@ Re-extrae el PDF habilitando OCR. Estrategia de dos pasos:
 1. **PyMuPDF** con extracción por bloques (preserva el layout).
 2. **Tesseract** (fallback) si PyMuPDF no produce texto legible.
 
-**Cuándo usarla:** `CHARS_DISPERSOS` o `TEXTO_PEGADO` grave irrecuperable programáticamente, siempre que el PDF esté disponible localmente.
+**Cuándo usarla:** `CHARS_DISPERSOS`, `TEXTO_PEGADO` grave o `RUIDO_CARACTERES` irrecuperable programáticamente, siempre que el registro tenga un archivo PDF asociado localmente.
 
-**Cuándo NO usarla:** si el PDF no está disponible, o si los identificadores del ítem permiten obtener los metadatos desde una fuente autoritativa.
+**Cuándo NO usarla:** si el registro no tiene archivo PDF asociado (por ejemplo, fuentes tabulares/CSV), si el PDF no está disponible localmente, o si los identificadores del ítem permiten obtener los metadatos desde una fuente autoritativa.
 
 ```json
 {

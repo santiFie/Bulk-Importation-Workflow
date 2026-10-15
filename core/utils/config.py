@@ -117,6 +117,7 @@ class Config:
     METADATA_EXTRACTOR_MODEL = "openai/gpt-oss-120b"
     METADATA_CURATOR_MODEL = "openai/gpt-oss-20b"  # Modelo para el agente curador de metadatos PDF
     CURATION_ANOMALY_THRESHOLD: float = 0.3         # Score mínimo para enviar una fila al agente curador
+    CURATION_MAX_CONCURRENCY: int = int(os.getenv("CURATION_MAX_CONCURRENCY", "5")) # Concurrencia máxima para procesar filas sospechosas
     
     OPEN_ROUTER_API_KEY = os.getenv("OPEN_ROUTER_API_KEY")
     OPEN_ROUTER_BASE_URL = "https://openrouter.ai/api/v1"
