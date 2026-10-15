@@ -65,43 +65,65 @@ def _get_org() -> str | None:
 
 
 def push_to_langsmith(
-    prompt_id: str, content: str, org: str | None, dry_run: bool
+    prompt_id: str,
+    content: str,
+    org: str | None,
+    dry_run: bool,
+    tags: list[str] | None = None,
+    description: str | None = None,
 ) -> None:
     """
     Sube un prompt a LangSmith Hub como ChatPromptTemplate con un mensaje de sistema.
 
-    El contenido del .md se convierte en un ChatPromptTemplate con un único
-    mensaje de sistema. Las variables {placeholder} presentes en el texto son
-    detectadas automáticamente como input_variables del template.
-
     Args:
-        prompt_id: Nombre del prompt (sin extensión, ej. "crosswalk_agent").
-        content:   Texto completo del archivo .md.
-        org:       Handle de org en LangSmith, o None para workspace personal.
-        dry_run:   Si es True, imprime qué se haría sin ejecutar nada.
+        prompt_id:   Nombre del prompt (sin extensión, ej. "crosswalk_agent").
+        content:     Texto completo del archivo .md.
+        org:         Handle de org en LangSmith, o None para workspace personal.
+        dry_run:     Si es True, imprime qué se haría sin ejecutar nada.
+        tags:        Lista de tags para asociar al prompt y al commit.
+        description: Descripción del commit para LangSmith Hub.
     """
     # Para workspace personal no se usa prefijo de org.
     full_id = f"{org}/{prompt_id}" if org else prompt_id
     workspace = org if org else "personal"
 
+    tag_str = f" [tags: {', '.join(tags)}]" if tags else ""
     if dry_run:
-        print(f"  [dry-run] Se publicaría: {full_id} (workspace: {workspace})")
+        print(f"  [dry-run] Se publicaría: {full_id} (workspace: {workspace}){tag_str}")
         return
 
     from langsmith import Client
     from langchain_core.prompts import ChatPromptTemplate
+    from langchain_core.messages import SystemMessage
 
-    # Envuelve el contenido .md como mensaje de sistema.
-    template = ChatPromptTemplate.from_messages([("system", content)])
+    # Se usa una instancia de SystemMessage para evitar que LangChain intente
+    # interpretar los bloques JSON {...} del Markdown como variables f-string.
+    template = ChatPromptTemplate.from_messages([SystemMessage(content=content)])
 
     # langchain.hub fue deprecado en langchain>=0.2.
     # La API correcta es langsmith.Client().push_prompt().
-    # Se pasa la API key explícitamente porque el SDK busca LANGSMITH_API_KEY
-    # pero este proyecto la almacena como LANGCHAIN_API_KEY.
     api_key = os.getenv("LANGCHAIN_API_KEY") or os.getenv("LANGSMITH_API_KEY")
     client = Client(api_key=api_key)
-    url = client.push_prompt(full_id, object=template, is_public=False)
-    print(f"  ✅ Publicado: {url}")
+
+    # Si se especifican tags, eliminar versiones previas de esas etiquetas
+    # para permitir reasignarlas/moverlas al nuevo commit sin conflicto HTTP 409.
+    if tags:
+        repo_name = full_id if "/" in full_id else f"-/{full_id}"
+        for tag in tags:
+            try:
+                client.request_with_retries("DELETE", f"/repos/{repo_name}/tags/{tag}")
+            except Exception:
+                pass
+
+    url = client.push_prompt(
+        full_id,
+        object=template,
+        is_public=False,
+        tags=tags,
+        commit_tags=tags,
+        commit_description=description,
+    )
+    print(f"  ✅ Publicado: {url}{tag_str}")
 
 
 def main() -> None:
@@ -114,6 +136,18 @@ def main() -> None:
         metavar="NOMBRE",
         help="Publicar solo este prompt (nombre sin extensión .md). "
              "Si no se especifica, se publican todos.",
+    )
+    parser.add_argument(
+        "--tags",
+        "--tag",
+        nargs="+",
+        default=None,
+        help="Tags para asociar al prompt y al commit en LangSmith Hub (ej. --tag few-shot).",
+    )
+    parser.add_argument(
+        "--description",
+        default=None,
+        help="Descripción explicativa del commit para LangSmith Hub.",
     )
     parser.add_argument(
         "--dry-run",
@@ -148,7 +182,14 @@ def main() -> None:
             continue
         try:
             contenido = md_file.read_text(encoding="utf-8")
-            push_to_langsmith(nombre, contenido, org, dry_run=args.dry_run)
+            push_to_langsmith(
+                nombre,
+                contenido,
+                org,
+                dry_run=args.dry_run,
+                tags=args.tags,
+                description=args.description,
+            )
         except Exception as exc:
             print(f"  ❌ Error al publicar '{nombre}': {exc}")
             errores += 1
