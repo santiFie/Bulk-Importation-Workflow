@@ -204,7 +204,7 @@ GENERIC_COLUMNS = {
     "issn": "ISSN",
     "doi": "DOI",
     "isbn": "ISBN",
-    "citation": "Representa el nombre de la revista o el título del libro en el que se publicó",
+    "citation": "Cita bibliográfica completa del documento (ej. columna 'Citation'), o en su defecto el nombre de la revista o título del libro en el que se publicó",
 }
 
 
