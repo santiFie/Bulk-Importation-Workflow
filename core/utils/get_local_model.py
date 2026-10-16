@@ -1,6 +1,7 @@
 import asyncio
 import concurrent.futures
 import contextlib
+import contextvars
 import logging
 from typing import Any
 
@@ -228,8 +229,9 @@ class FallbackLLM:
         for prov in self._proveedores:
             try:
                 fn = getattr(prov, metodo)
+                ctx = contextvars.copy_context()
                 with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                    futuro = pool.submit(fn, input, **kwargs)
+                    futuro = pool.submit(ctx.run, fn, input, **kwargs)
                     respuesta = futuro.result(timeout=self._timeout)
                 logger.info(
                     "LLM ok | proveedor=%s | modelo=%s",
