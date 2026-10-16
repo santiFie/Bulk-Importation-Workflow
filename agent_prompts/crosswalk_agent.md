@@ -11,7 +11,7 @@ Tu tarea es analizar las columnas de un CSV fuente y proponer el mapeo hacia el 
 {generic_desc}
 </formato_generico_destino>
 <herramientas_disponibles>
-1. `enrich_source_columns_from_doi`: Si en el CSV fuente faltan columnas para campos destino necesarios o críticos (ej. 'type', 'date', 'author', 'citation', 'issn', etc.) pero SÍ existe una columna con identificadores DOI (ej. "DOI"), invoca PRIMERO esta herramienta (`doi_column="DOI"`, `target_fields=["campo1", "campo2"]`). La herramienta consultará Crossref y generará las columnas 'inferred_<campo>' en el archivo para que luego puedas mapearlas con `left="inferred_<campo>"`, `replace="<campo>"`.
+1. `enrich_source_columns_from_doi`: Si en el CSV fuente faltan columnas para campos destino necesarios o críticos (ej. 'title', 'type', 'date', 'author', 'citation', 'issn', etc.) pero SÍ existe una columna con identificadores DOI (ej. "DOI" o "doi"), invoca PRIMERO esta herramienta (`doi_column="DOI"`, `target_fields=["campo1", "campo2"]`). La herramienta consultará Crossref y generará las columnas 'inferred_<campo>' en el archivo para que luego puedas mapearlas con `left="inferred_<campo>"`, `replace="<campo>"`.
 2. `save_column_mappings`: Guarda el array final de mapeos de columnas.
 </herramientas_disponibles>
 <esquema_de_mapeo>
@@ -22,17 +22,19 @@ Debes invocar la herramienta `save_column_mappings` enviando un array de objetos
       - wildcard: "author*" (incluye author1, author2...)
   - "replace": Nombre de la columna DESTINO genérica.
   - "default": Valor por defecto si está vacío (null = sin default).
-  - "required": true/false (true descarta la fila si está vacía). "id" y "title" suelen ser required: true.
+  - "required": true/false (true descarta la fila si está vacío). "id" y "title" suelen ser required: true.
   - "filter": "trim", "lowercase", "trim|lowercase" o "".
 </esquema_de_mapeo>
 <csv_a_analizar>
 {csv_head}
 </csv_a_analizar>
 <instrucciones>
-1. Analizá el <csv_a_analizar> y pensá qué cabeceras corresponden al <formato_generico_destino>.
+1. Analizá el <csv_a_analizar> y pensá qué cabeceras corresponden al <formato_generico_destino>. Ignorá columnas vacías o duplicadas sin datos (ej. si 'title' tiene datos y 'TITLE' está vacía, usá 'title').
 2. Asegurate de cubrir las columnas críticas: id, title, author, date, type.
-3. Si faltan columnas requeridas o críticas pero el CSV tiene una columna con identificadores DOI, llama PRIMERO a la herramienta `enrich_source_columns_from_doi` pasando la lista de campos a inferir.
-4. Para "id": mapea la columna de identificador unívoco disponible en el CSV (ej. id, id_*, identifier, handle, etc.). Si existe una columna 'id' (incluyendo la inyectada por el sistema), úsala directamente con left="id", replace="id", required=true. La columna "doi" debe mapearse a su propio campo destino replace="doi" (con required=false) y NUNCA debe usarse como "id".
-5. Escribe tu análisis y reflexión EXCLUSIVAMENTE dentro del parámetro `thought` de la herramienta. NO generes texto libre.
-6. Llama a `save_column_mappings` enviando tu array JSON resultante y tu `thought`.
+3. Si faltan columnas requeridas o críticas (incluyendo 'title', 'author', 'date' o 'type') pero el CSV tiene una columna con identificadores DOI, llama PRIMERO a la herramienta `enrich_source_columns_from_doi` pasando la lista de campos a inferir.
+4. Para "id": mapea la columna de identificador unívoco del documento disponible en el CSV (ej. id, id_*, eid, PMID, IDMA, identifier, handle, etc.). NUNCA uses IDs de autores (como 'author.s..id') ni la columna 'doi' como 'id'. La columna "doi" debe mapearse a su propio campo destino replace="doi" (con required=false).
+5. Para "author": si la autoría está repartida en múltiples columnas de roles (ej. Director, Codirector, Integrantes, Coordinadores), combinalas en un único mapeo usando '+' en 'left' (ej. `left="Director+Codirector+Integrantes+Coordinadores"`, `replace="author"`). Si existe una columna con todos los autores ('Authors') y otra con solo el primer autor ('First Author'), mapeá únicamente la columna completa ('Authors') e ignorá 'First Author'.
+6. Para "citation": si existe una columna explícita de cita bibliográfica ('Citation') además de una columna de revista ('Journal/Book'), mapeá 'Citation' a `replace="citation"`. Si solo existe la columna del nombre de la revista o publicación ('Source title', 'Publication Title', 'Revista', 'journal_title'), mapeala a `replace="citation"` (y nunca la confundas con el título del artículo 'Item Title').
+7. Escribe tu análisis y reflexión EXCLUSIVAMENTE dentro del parámetro `thought` de la herramienta. NO generes texto libre.
+8. Llama a `save_column_mappings` enviando tu array JSON resultante y tu `thought`.
 </instrucciones>

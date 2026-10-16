@@ -8,6 +8,7 @@ from typing import Any, Callable, Optional
 
 from langchain_core.messages import SystemMessage, ToolMessage
 from langchain_core.tools import tool, BaseTool
+from langsmith import traceable
 
 from core.utils.config import config
 from core.utils.get_local_model import FallbackLLM
@@ -126,6 +127,7 @@ class BaseCrosswalkGenerator(ABC):
 
         return merged
 
+    @traceable(name="execute_llm_mapping", run_type="chain")
     def execute_llm_mapping(
         self,
         context: dict[str, Any],
