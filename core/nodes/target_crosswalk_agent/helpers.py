@@ -9,11 +9,18 @@ Implementa:
 """
 
 import csv
+import itertools
 import json
 import logging
 import os
 import re
 from typing import Any, Optional
+
+from core.nodes.crosswalk_base.helpers import (
+    build_mapping_entry,
+    read_crosswalk_config,
+    save_crosswalk_config_json,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -60,37 +67,6 @@ def get_valid_sedici_fields(catalog: list[dict[str, Any]]) -> tuple[dict[str, di
     return schema_by_field, valid_base_fields, allow_lang_fields
 
 
-def _read_source_crosswalk_config(config_path_or_dict: Any) -> tuple[list[dict], dict]:
-    """Carga el config de crosswalk origen (Paso 1) devolviendo (mappings, options)."""
-    if not config_path_or_dict:
-        return [], {}
-
-    data = None
-    if isinstance(config_path_or_dict, dict):
-        # Si es un dict, puede tener keys {"mappings": [...], "options": {...}}
-        return config_path_or_dict.get("mappings", []), config_path_or_dict.get("options", {})
-    elif isinstance(config_path_or_dict, list):
-        data = config_path_or_dict
-    elif isinstance(config_path_or_dict, str):
-        if not os.path.isfile(config_path_or_dict):
-            logger.warning("[TargetCrosswalk] Config de origen no encontrado en '%s'", config_path_or_dict)
-            return [], {}
-        try:
-            with open(config_path_or_dict, "r", encoding="utf-8") as f:
-                data = json.load(f)
-        except Exception as exc:
-            logger.error("[TargetCrosswalk] Error al leer config de origen '%s': %s", config_path_or_dict, exc)
-            return [], {}
-
-    if isinstance(data, list):
-        if len(data) >= 2 and isinstance(data[0], list) and isinstance(data[1], dict):
-            return data[0], data[1]
-        elif len(data) >= 1 and isinstance(data[0], list):
-            return data[0], {}
-        elif len(data) >= 1 and isinstance(data[0], dict):
-            return data, {}
-
-    return [], {}
 
 
 def map_generic_to_sedici_level1(
@@ -109,54 +85,53 @@ def map_generic_to_sedici_level1(
     """
     level1_mappings: list[dict[str, Any]] = []
     covered_source_cols: set[str] = set()
+    reconciled_set = set(reconciled_columns)
 
-    mappings_p1, _ = _read_source_crosswalk_config(source_crosswalk_cfg)
+    mappings_p1, _ = read_crosswalk_config(source_crosswalk_cfg)
 
-    # 1. Analizar mappings del Paso 1: cada mapping asigna left -> generic (replace)
+    # 1. Proyectar mappings previos (Paso 1: source -> generic -> SEDICI)
     for m in mappings_p1:
-        left = m.get("left", "")
-        generic_field = m.get("replace", "")
+        left = m.get("left", "").strip()
+        generic_field = m.get("replace", "").strip().lower()
         if not left or not generic_field:
             continue
 
-        # Si el campo genérico tiene correspondencia canónica en SEDICI
-        if generic_field in CANONICAL_GENERIC_TO_SEDICI:
-            sedici_target = CANONICAL_GENERIC_TO_SEDICI[generic_field]
+        sedici_target = CANONICAL_GENERIC_TO_SEDICI.get(generic_field)
+        if not sedici_target:
+            continue
 
-            # Verificar si las columnas de 'left' están en reconciled_columns
-            # 'left' puede contener '+' o '*'
-            parts = [p.strip() for p in left.split("+")]
-            # Coincidencia si todas las partes existen en reconciled_columns
-            if all(p in reconciled_columns for p in parts):
-                level1_mappings.append({
-                    "left": left,
-                    "replace": sedici_target,
-                    "default": m.get("default", ""),
-                    "required": m.get("required", generic_field in ("title",)),
-                    "filter": m.get("filter", "trim"),
-                })
-                for p in parts:
-                    covered_source_cols.add(p)
+        # Columnas compuestas (soporta concatenaciones con '+')
+        parts = {p.strip() for p in left.split("+")}
+        if parts.issubset(reconciled_set):
+            level1_mappings.append(
+                build_mapping_entry(
+                    left=left,
+                    replace=sedici_target,
+                    default=m.get("default", ""),
+                    required=m.get("required", generic_field == "title"),
+                    filter_rule=m.get("filter", "trim"),
+                )
+            )
+            covered_source_cols.update(parts)
 
-    # 2. Cobertura de columnas inyectadas o propagadas por enriquecimiento
-    # Si existen columnas directamente nombradas como campos genéricos ('doi', 'issn', etc.)
-    # y aún no fueron cubiertas
+    # 2. Cobertura de columnas remanentes con nombre genérico directo (ej: 'doi', 'issn')
     for col in reconciled_columns:
         if col in covered_source_cols:
             continue
-        col_lower = col.lower().strip()
-        if col_lower in CANONICAL_GENERIC_TO_SEDICI:
-            sedici_target = CANONICAL_GENERIC_TO_SEDICI[col_lower]
-            level1_mappings.append({
-                "left": col,
-                "replace": sedici_target,
-                "default": "",
-                "required": False,
-                "filter": "trim",
-            })
+
+        sedici_target = CANONICAL_GENERIC_TO_SEDICI.get(col.strip().lower())
+        if sedici_target:
+            level1_mappings.append(
+                build_mapping_entry(
+                    left=col,
+                    replace=sedici_target,
+                    required=False,
+                )
+            )
             covered_source_cols.add(col)
 
     return level1_mappings, covered_source_cols
+
 
 
 def identify_remnant_columns(
@@ -271,13 +246,15 @@ def validate_and_filter_target_mappings(
                 )
                 continue
 
-        validated.append({
-            "left": left,
-            "replace": replace_final,
-            "default": m.get("default", ""),
-            "required": bool(m.get("required", False)),
-            "filter": m.get("filter", "trim"),
-        })
+        validated.append(
+            build_mapping_entry(
+                left=left,
+                replace=replace_final,
+                default=m.get("default", ""),
+                required=bool(m.get("required", False)),
+                filter_rule=m.get("filter", "trim"),
+            )
+        )
 
     return validated
 
@@ -290,38 +267,28 @@ def build_and_save_target_config(
 ) -> str:
     """
     Fusiona mappings del Nivel 1 y Nivel 2, extrae opciones de separador y delimitador,
-    y guarda el archivo JSON compatible con CrosswalkClient.
+    y guarda el archivo JSON compatible con CrosswalkClient reutilizando la utilidad base.
     """
     merged_mappings: list[dict[str, Any]] = []
     seen_lefts: set[str] = set()
 
-    # Nivel 1 tiene precedencia para los campos troncales
-    for m in level1_mappings:
-        left = m["left"]
-        if left not in seen_lefts:
-            merged_mappings.append(m)
-            seen_lefts.add(left)
-
-    # Nivel 2 añade campos remanentes
-    for m in level2_mappings:
+    # level1_mappings se procesa primero
+    for m in itertools.chain(level1_mappings, level2_mappings):
         left = m["left"]
         if left not in seen_lefts:
             merged_mappings.append(m)
             seen_lefts.add(left)
 
     # Extraer opciones de separador
-    _, source_opts = _read_source_crosswalk_config(source_config_path_or_dict)
+    _, source_opts = read_crosswalk_config(source_config_path_or_dict)
     options = {
         "original_separator": source_opts.get("original_separator", "||"),
         "replace_separator": source_opts.get("replace_separator", "||"),
         "file_delimiter": source_opts.get("file_delimiter", ","),
     }
 
-    config_data = [merged_mappings, options]
-
-    os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
-    with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(config_data, f, ensure_ascii=False, indent=2)
-
-    logger.info("[TargetCrosswalk] Config guardado exitosamente en '%s'", output_path)
-    return output_path
+    return save_crosswalk_config_json(
+        mappings=merged_mappings,
+        settings=options,
+        output_path=output_path,
+    )
