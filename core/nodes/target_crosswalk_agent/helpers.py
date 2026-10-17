@@ -292,3 +292,184 @@ def build_and_save_target_config(
         settings=options,
         output_path=output_path,
     )
+
+
+def validate_target_config_compatibility(
+    config_source: Any,
+    reconciled_columns: list[str],
+    catalog: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """
+    Valida si una configuración de crosswalk hacia SEDICI es compatible con
+    las columnas del CSV reconciliado actual y el catálogo oficial de SEDICI.
+
+    Detecta:
+      - Columnas 'left' faltantes en reconciled_columns.
+      - Metadatos 'replace' inexistentes o inválidos en SEDICI.
+      - Mapeos válidos que pueden ser preservados.
+
+    Returns:
+        Dict con:
+          - is_valid (bool): True si todos los mappings son 100% compatibles.
+          - incompatible_mappings (list): Mappings cuya columna 'left' no existe.
+          - invalid_target_fields (list): Mappings cuyo metadato 'replace' no es válido en SEDICI.
+          - valid_mappings (list): Mappings conformes que no requieren corrección.
+          - settings (dict): Opciones de separador y delimitador leídas.
+          - message (str): Resumen diagnóstico del análisis.
+    """
+    try:
+        mappings, settings = read_crosswalk_config(config_source)
+    except Exception as exc:
+        return {
+            "is_valid": False,
+            "incompatible_mappings": [],
+            "invalid_target_fields": [],
+            "valid_mappings": [],
+            "settings": {},
+            "message": f"Error al leer la configuración de crosswalk: {exc}",
+        }
+
+    if not mappings:
+        return {
+            "is_valid": False,
+            "incompatible_mappings": [],
+            "invalid_target_fields": [],
+            "valid_mappings": [],
+            "settings": settings,
+            "message": "La configuración provista no contiene mapeos de columnas válidos.",
+        }
+
+    _, valid_base_fields, allow_lang_fields = get_valid_sedici_fields(catalog)
+    reconciled_set = set(reconciled_columns)
+
+    incompatible_mappings: list[dict[str, Any]] = []
+    invalid_target_fields: list[dict[str, Any]] = []
+    valid_mappings: list[dict[str, Any]] = []
+
+    for m in mappings:
+        if not isinstance(m, dict):
+            continue
+        left = str(m.get("left", "")).strip()
+        replace = str(m.get("replace", "")).strip()
+
+        if not left or not replace:
+            incompatible_mappings.append({
+                "mapping": m,
+                "reason": "Mapeo incompleto (falta 'left' o 'replace')",
+            })
+            continue
+
+        # Validar columnas origen (left), soportando concatenaciones con '+'
+        parts = [p.strip() for p in left.split("+") if p.strip()]
+        missing_parts = [p for p in parts if p not in reconciled_set]
+
+        if missing_parts:
+            incompatible_mappings.append({
+                "mapping": m,
+                "missing_parts": missing_parts,
+                "reason": f"Columna(s) no encontradas en el CSV reconciliado: {missing_parts}",
+            })
+            continue
+
+        # Validar campo destino (replace)
+        match = re.match(r"^([a-zA-Z0-9\._\-]+)(?:\[([a-zA-Z]{2})\])?$", replace)
+        if not match:
+            invalid_target_fields.append({
+                "mapping": m,
+                "reason": f"Sintaxis de metadato SEDICI inválida: '{replace}'",
+            })
+            continue
+
+        base_field = match.group(1)
+        if base_field not in valid_base_fields:
+            invalid_target_fields.append({
+                "mapping": m,
+                "reason": f"Metadato '{replace}' no existe en el catálogo formal de SEDICI",
+            })
+            continue
+
+        valid_mappings.append(m)
+
+    is_valid = (len(incompatible_mappings) == 0 and len(invalid_target_fields) == 0)
+
+    if is_valid:
+        msg = f"Configuración 100% compatible ({len(valid_mappings)} mapeos verificados)."
+    else:
+        msg = (
+            f"Incompatibilidades detectadas: {len(incompatible_mappings)} mapeos con columnas inexistentes, "
+            f"{len(invalid_target_fields)} mapeos con metadatos de destino inválidos."
+        )
+
+    return {
+        "is_valid": is_valid,
+        "incompatible_mappings": incompatible_mappings,
+        "invalid_target_fields": invalid_target_fields,
+        "valid_mappings": valid_mappings,
+        "settings": settings,
+        "message": msg,
+    }
+
+
+def format_repair_prompt(
+    catalog: list[dict[str, Any]],
+    incompatible_mappings: list[dict[str, Any]],
+    invalid_target_fields: list[dict[str, Any]],
+    valid_mappings: list[dict[str, Any]],
+    csv_path: str,
+    available_columns: list[str],
+) -> str:
+    """
+    Construye el prompt especializado para que el LLM repare las incompatibilidades
+    detectadas en la configuración provista por el usuario.
+    """
+    catalog_text = format_sedici_catalog_for_prompt(catalog)
+    samples_text = read_remnant_samples(csv_path, available_columns, max_rows=3)
+
+    incompatibles_lines: list[str] = []
+    for item in incompatible_mappings:
+        m = item.get("mapping", {})
+        reason = item.get("reason", "")
+        incompatibles_lines.append(
+            f"- Mapeo fallido: `left='{m.get('left')}'` -> `replace='{m.get('replace')}'` | Causa: {reason}"
+        )
+    for item in invalid_target_fields:
+        m = item.get("mapping", {})
+        reason = item.get("reason", "")
+        incompatibles_lines.append(
+            f"- Metadato destino inválido: `left='{m.get('left')}'` -> `replace='{m.get('replace')}'` | Causa: {reason}"
+        )
+
+    valid_lines: list[str] = [
+        f"- `left='{m.get('left')}'` -> `replace='{m.get('replace')}'`"
+        for m in valid_mappings
+    ]
+
+    incompatibles_str = "\n".join(incompatibles_lines) if incompatibles_lines else "(Ninguno)"
+    valid_str = "\n".join(valid_lines) if valid_lines else "(Ninguno)"
+
+    return (
+        "Sos un experto en catalogación y mapeo de metadatos bibliográficos para el repositorio SEDICI / DSpace de la UNLP.\n"
+        "El usuario proporcionó una configuración personalizada de crosswalk que presenta incompatibilidades "
+        "con el archivo CSV reconciliado actual. Tu tarea es CORREGIR ÚNICAMENTE los mapeos incompatibles.\n\n"
+        "<mapeos_incompatibles_a_corregir>\n"
+        f"{incompatibles_str}\n"
+        "</mapeos_incompatibles_a_corregir>\n\n"
+        "<mapeos_validos_preservados>\n"
+        "Los siguientes mapeos ya son válidos y serán conservados automáticamente. NO los dupliques:\n"
+        f"{valid_str}\n"
+        "</mapeos_validos_preservados>\n\n"
+        "<columnas_disponibles_en_el_csv_con_muestras>\n"
+        f"{samples_text}\n"
+        "</columnas_disponibles_en_el_csv_con_muestras>\n\n"
+        "<catalogo_sedici>\n"
+        f"{catalog_text}\n"
+        "</catalogo_sedici>\n\n"
+        "<instrucciones>\n"
+        "1. Para cada mapeo en <mapeos_incompatibles_a_corregir>, analiza cuál de las columnas disponibles en el CSV "
+        "corresponde según su semántica y muestras de valores.\n"
+        "2. Si la columna original del mapeo no tiene equivalente en el CSV o es superflua, omítela.\n"
+        "3. Si el problema era un metadato 'replace' inválido, busca en el <catalogo_sedici> el metadato formal exacto.\n"
+        "4. Llama a la herramienta `save_column_mappings` enviando la lista de mapeos corregidos con tu razonamiento en `thought`.\n"
+        "</instrucciones>\n"
+    )
+
