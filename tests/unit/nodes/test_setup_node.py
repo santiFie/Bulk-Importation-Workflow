@@ -35,7 +35,7 @@ class TestSetupWorkspaceNode:
         assert updates["umbral_seguro"] == 10
         assert updates["umbral_revision"] == 30
         assert updates["sedici_crosswalk_config"].endswith(".json")
-        assert updates["sedici_target_crosswalk_config"].endswith(".json")
+        assert updates["sedici_target_crosswalk_config"] is None
 
     def test_setup_workspace_generates_default_dir(self, tmp_path, monkeypatch):
         """Si workspace_dir no se provee, debe crearse bajo runs/{source}_{fecha}_1."""
@@ -77,6 +77,7 @@ class TestSetupWorkspaceNode:
             "umbral_seguro": 18,
             "umbral_revision": 45,
             "sedici_crosswalk_config": "/opt/custom_sedici.json",
+            "sedici_target_crosswalk_config": "/opt/custom_target_sedici.json",
         }
 
         updates = setup_workspace(state)
@@ -85,3 +86,4 @@ class TestSetupWorkspaceNode:
         assert updates["umbral_seguro"] == 18
         assert updates["umbral_revision"] == 45
         assert updates["sedici_crosswalk_config"] == "/opt/custom_sedici.json"
+        assert updates["sedici_target_crosswalk_config"] == "/opt/custom_target_sedici.json"

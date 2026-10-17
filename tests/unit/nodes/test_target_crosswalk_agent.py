@@ -15,6 +15,7 @@ from core.nodes.target_crosswalk_agent.helpers import (
     load_sedici_catalog,
     map_generic_to_sedici_level1,
     validate_and_filter_target_mappings,
+    validate_target_config_compatibility,
 )
 from core.nodes.target_crosswalk_agent.node import (
     generate_sedici_target_crosswalk_config,
@@ -123,6 +124,91 @@ class TestLevel1DeterministicMapping:
         remnants = identify_remnant_columns(reconciled_cols, covered)
         assert remnants == ["PMID", "PMCID"]
 
+    def test_map_generic_pure_format(self):
+        """Verifica la resolución directa determinista para formato canónico genérico puro (MinIO/PDF)."""
+        reconciled_cols = ["id", "title", "author", "date", "type", "doi", "issn", "citation"]
+        level1_mappings, covered_cols = map_generic_to_sedici_level1(
+            reconciled_columns=reconciled_cols,
+            source_crosswalk_cfg=None,
+        )
+        mapped_targets = {m["left"]: m["replace"] for m in level1_mappings}
+        assert mapped_targets["title"] == "dc.title[es]"
+        assert mapped_targets["author"] == "sedici.creator.person[es]"
+        assert mapped_targets["date"] == "dc.date.issued"
+        assert mapped_targets["type"] == "dc.type"
+        assert mapped_targets["doi"] == "sedici.identifier.doi"
+        assert mapped_targets["issn"] == "sedici.identifier.issn"
+        assert mapped_targets["citation"] == "sedici.relation.journalTitle[es]"
+        # 'id' no está en el catálogo canónico genérico, por lo que queda remanente
+        assert "id" not in covered_cols
+        remnants = identify_remnant_columns(reconciled_cols, covered_cols)
+        assert remnants == ["id"]
+
+    def test_map_hybrid_enriched_format(self, sample_source_crosswalk_config):
+        """Verifica la resolución híbrida: columnas de la fuente + columnas inyectadas por enriquecimiento."""
+        reconciled_cols = [
+            "Title", "Authors", "Journal/Book", "Publication Year", "DOI",
+            "doi", "issn", "Volume", "Issue"
+        ]
+        level1_mappings, covered_cols = map_generic_to_sedici_level1(
+            reconciled_columns=reconciled_cols,
+            source_crosswalk_cfg=sample_source_crosswalk_config,
+        )
+        mapped_targets = {m["left"]: m["replace"] for m in level1_mappings}
+        # Columnas de la fuente mapeadas vía config
+        assert mapped_targets["Title"] == "dc.title[es]"
+        assert mapped_targets["Authors"] == "sedici.creator.person[es]"
+        assert mapped_targets["DOI"] == "sedici.identifier.doi"
+        # Columnas genéricas inyectadas en minúsculas resueltas directamente
+        assert mapped_targets["issn"] == "sedici.identifier.issn"
+        # Remanentes esperados
+        remnants = identify_remnant_columns(reconciled_cols, covered_cols)
+        assert set(remnants) == {"Volume", "Issue"}
+
+    def test_map_composite_plus_columns_both_present(self, tmp_path):
+        """Verifica que si la config tiene columnas compuestas con '+' y ambas están en el CSV, se cubran."""
+        cfg_path = tmp_path / "composite_cfg.json"
+        content = [
+            [
+                {"left": "Family_Name + Given_Names", "replace": "author", "required": False},
+                {"left": "Article_Title", "replace": "title", "required": True},
+            ],
+            {"replace_separator": "||"},
+        ]
+        cfg_path.write_text(json.dumps(content))
+
+        reconciled_cols = ["Family_Name", "Given_Names", "Article_Title", "Extra"]
+        level1_mappings, covered_cols = map_generic_to_sedici_level1(
+            reconciled_columns=reconciled_cols,
+            source_crosswalk_cfg=str(cfg_path),
+        )
+        mapped_targets = {m["left"]: m["replace"] for m in level1_mappings}
+        assert mapped_targets["Family_Name + Given_Names"] == "sedici.creator.person[es]"
+        assert mapped_targets["Article_Title"] == "dc.title[es]"
+        assert "Family_Name" in covered_cols
+        assert "Given_Names" in covered_cols
+        assert identify_remnant_columns(reconciled_cols, covered_cols) == ["Extra"]
+
+    def test_map_composite_plus_columns_partial_missing(self, tmp_path):
+        """Verifica que si falta alguna columna de una expresión compuesta '+', no se genere el mapeo."""
+        cfg_path = tmp_path / "composite_cfg.json"
+        content = [
+            [
+                {"left": "Family_Name + Given_Names", "replace": "author", "required": False},
+            ],
+            {},
+        ]
+        cfg_path.write_text(json.dumps(content))
+
+        reconciled_cols = ["Family_Name", "Article_Title"]  # Falta Given_Names
+        level1_mappings, covered_cols = map_generic_to_sedici_level1(
+            reconciled_columns=reconciled_cols,
+            source_crosswalk_cfg=str(cfg_path),
+        )
+        assert len(level1_mappings) == 0
+        assert "Family_Name" not in covered_cols
+        assert "Family_Name" in identify_remnant_columns(reconciled_cols, covered_cols)
+
 
 class TestLevel3GuardrailValidation:
     """Verifica el filtrado y blindaje contra alucinaciones del Nivel 3."""
@@ -163,6 +249,30 @@ class TestLevel3GuardrailValidation:
         ]
         validated = validate_and_filter_target_mappings(raw_mappings, sample_catalog, reconciled_cols)
         assert len(validated) == 0
+
+    def test_guardrail_strips_disallowed_lang_qualifier(self, sample_catalog):
+        """Verifica que el guardrail remueva [es] si el campo no permite calificador lingüístico."""
+        reconciled_cols = ["DOI_Col", "Date_Col"]
+        raw_mappings = [
+            {"left": "DOI_Col", "replace": "sedici.identifier.doi[es]"},
+            {"left": "Date_Col", "replace": "dc.date.issued[es]"},
+        ]
+        validated = validate_and_filter_target_mappings(raw_mappings, sample_catalog, reconciled_cols)
+        assert len(validated) == 2
+        assert validated[0]["replace"] == "sedici.identifier.doi"
+        assert validated[1]["replace"] == "dc.date.issued"
+
+    def test_guardrail_preserves_allowed_lang_qualifier(self, sample_catalog):
+        """Verifica que el guardrail conserve [es] cuando el metadato sí admite calificador lingüístico."""
+        reconciled_cols = ["Title", "Authors"]
+        raw_mappings = [
+            {"left": "Title", "replace": "dc.title[es]"},
+            {"left": "Authors", "replace": "sedici.creator.person[es]"},
+        ]
+        validated = validate_and_filter_target_mappings(raw_mappings, sample_catalog, reconciled_cols)
+        assert len(validated) == 2
+        assert validated[0]["replace"] == "dc.title[es]"
+        assert validated[1]["replace"] == "sedici.creator.person[es]"
 
 
 class TestConfigSerializationAndNode:
@@ -224,3 +334,178 @@ class TestConfigSerializationAndNode:
         assert targets["DOI"] == "sedici.identifier.doi"
         assert targets["Publication Year"] == "dc.date.issued"
         assert targets["Journal/Book"] == "sedici.relation.journalTitle[es]"
+
+
+class TestUserConfigCompatibilityAndResilience:
+    """Verifica la validación de compatibilidad y resiliencia con LLM ante configs provistas por el usuario."""
+
+    def test_validate_compatibility_success(self, sample_catalog, tmp_path):
+        cfg_file = tmp_path / "custom_valid.json"
+        content = [
+            [
+                {"left": "Title", "replace": "dc.title[es]", "required": True},
+                {"left": "Authors", "replace": "sedici.creator.person[es]", "required": False},
+            ],
+            {"replace_separator": "||"},
+        ]
+        cfg_file.write_text(json.dumps(content))
+
+        reconciled_cols = ["Title", "Authors", "ExtraCol"]
+        res = validate_target_config_compatibility(str(cfg_file), reconciled_cols, sample_catalog)
+
+        assert res["is_valid"] is True
+        assert len(res["valid_mappings"]) == 2
+        assert len(res["incompatible_mappings"]) == 0
+        assert len(res["invalid_target_fields"]) == 0
+
+    def test_validate_compatibility_detects_missing_column(self, sample_catalog, tmp_path):
+        cfg_file = tmp_path / "custom_missing.json"
+        content = [
+            [
+                {"left": "NonExistentCol", "replace": "dc.title[es]"},
+                {"left": "Authors", "replace": "sedici.creator.person[es]"},
+            ],
+            {},
+        ]
+        cfg_file.write_text(json.dumps(content))
+
+        reconciled_cols = ["Title", "Authors"]
+        res = validate_target_config_compatibility(str(cfg_file), reconciled_cols, sample_catalog)
+
+        assert res["is_valid"] is False
+        assert len(res["incompatible_mappings"]) == 1
+        assert res["incompatible_mappings"][0]["mapping"]["left"] == "NonExistentCol"
+        assert len(res["valid_mappings"]) == 1
+
+    def test_validate_compatibility_detects_invalid_target_field(self, sample_catalog, tmp_path):
+        cfg_file = tmp_path / "custom_invalid_field.json"
+        content = [
+            [
+                {"left": "Title", "replace": "sedici.invented.field"},
+            ],
+            {},
+        ]
+        cfg_file.write_text(json.dumps(content))
+
+        reconciled_cols = ["Title"]
+        res = validate_target_config_compatibility(str(cfg_file), reconciled_cols, sample_catalog)
+
+        assert res["is_valid"] is False
+        assert len(res["invalid_target_fields"]) == 1
+        assert res["invalid_target_fields"][0]["mapping"]["replace"] == "sedici.invented.field"
+
+    def test_node_reuses_compatible_user_config(self, tmp_path):
+        """Verifica que si la config provista por el usuario es 100% compatible, se reutilice directamente."""
+        csv_file = tmp_path / "reconciled.csv"
+        csv_file.write_text("Title,Authors\nTest Title,Author 1\n")
+
+        cfg_file = tmp_path / "user_config.json"
+        content = [
+            [
+                {"left": "Title", "replace": "dc.title[es]"},
+                {"left": "Authors", "replace": "sedici.creator.person[es]"},
+            ],
+            {"replace_separator": "||", "file_delimiter": ","},
+        ]
+        cfg_file.write_text(json.dumps(content))
+
+        state = {
+            "source_name": "scopus_test",
+            "workspace_dir": str(tmp_path),
+            "reconciled_csv_path": str(csv_file),
+            "sedici_target_crosswalk_config": str(cfg_file),
+        }
+        res = generate_sedici_target_crosswalk_config(state)
+        assert res["sedici_target_crosswalk_config"] == str(cfg_file)
+
+    def test_node_resilience_repairs_incompatible_user_config(self, tmp_path, monkeypatch):
+        """
+        Verifica que ante una incompatibilidad en la config provista por el usuario,
+        el agente invoque al LLM para corregirla y guarde la configuración reparada.
+        """
+        csv_file = tmp_path / "reconciled.csv"
+        csv_file.write_text("Title,Author_Names\nSample Title,Sample Author\n")
+
+        # Config de usuario con una columna 'Authors' inexistente en el CSV (en el CSV se llama Author_Names)
+        cfg_file = tmp_path / "broken_user_config.json"
+        content = [
+            [
+                {"left": "Title", "replace": "dc.title[es]"},
+                {"left": "Authors", "replace": "sedici.creator.person[es]"},
+            ],
+            {"replace_separator": "||", "file_delimiter": ","},
+        ]
+        cfg_file.write_text(json.dumps(content))
+
+        # Simulamos la corrección del LLM que mapea Author_Names
+        def mock_execute_llm(self, context, remaining_cols, feedback=None):
+            return [{"left": "Author_Names", "replace": "sedici.creator.person[es]"}]
+
+        from core.nodes.target_crosswalk_agent.node import TargetSediciCrosswalkGenerator
+        monkeypatch.setattr(TargetSediciCrosswalkGenerator, "execute_llm_mapping", mock_execute_llm)
+
+        state = {
+            "source_name": "broken_source",
+            "workspace_dir": str(tmp_path),
+            "reconciled_csv_path": str(csv_file),
+            "sedici_target_crosswalk_config": str(cfg_file),
+        }
+        res = generate_sedici_target_crosswalk_config(state)
+        repaired_path = res["sedici_target_crosswalk_config"]
+
+        assert os.path.isfile(repaired_path)
+        assert repaired_path != str(cfg_file)
+
+        with open(repaired_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        mappings = data[0]
+        mapped_dict = {m["left"]: m["replace"] for m in mappings}
+
+        # Debe conservar el mapping válido (Title) y añadir el reparado (Author_Names)
+        assert mapped_dict["Title"] == "dc.title[es]"
+        assert mapped_dict["Author_Names"] == "sedici.creator.person[es]"
+        assert "Authors" not in mapped_dict
+
+    def test_validate_compatibility_composite_columns(self, sample_catalog, tmp_path):
+        """Verifica la validación de compatibilidad cuando el usuario incluye columnas compuestas '+'."""
+        cfg_file = tmp_path / "custom_composite.json"
+        content = [
+            [
+                {"left": "Family_Name + Given_Names", "replace": "sedici.creator.person[es]"},
+                {"left": "Title", "replace": "dc.title[es]"},
+            ],
+            {"replace_separator": "||"},
+        ]
+        cfg_file.write_text(json.dumps(content))
+
+        # Caso exitoso: ambas columnas presentes en el CSV
+        res_ok = validate_target_config_compatibility(
+            str(cfg_file), ["Family_Name", "Given_Names", "Title"], sample_catalog
+        )
+        assert res_ok["is_valid"] is True
+        assert len(res_ok["valid_mappings"]) == 2
+
+        # Caso fallido: falta Given_Names en el CSV
+        res_fail = validate_target_config_compatibility(
+            str(cfg_file), ["Family_Name", "Title"], sample_catalog
+        )
+        assert res_fail["is_valid"] is False
+        assert len(res_fail["incompatible_mappings"]) == 1
+        assert res_fail["incompatible_mappings"][0]["missing_parts"] == ["Given_Names"]
+
+    def test_validate_compatibility_empty_or_missing_file(self, sample_catalog, tmp_path):
+        """Verifica el manejo de error cuando el archivo de configuración no existe o está vacío."""
+        # Archivo inexistente
+        res_missing = validate_target_config_compatibility(
+            str(tmp_path / "non_existent.json"), ["Title"], sample_catalog
+        )
+        assert res_missing["is_valid"] is False
+
+        # Archivo con mappings vacíos
+        empty_cfg = tmp_path / "empty_cfg.json"
+        empty_cfg.write_text("[]")
+        res_empty = validate_target_config_compatibility(str(empty_cfg), ["Title"], sample_catalog)
+        assert res_empty["is_valid"] is False
+
+
