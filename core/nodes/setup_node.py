@@ -61,7 +61,6 @@ def _build_workspace_dir(source_name: str, fecha: str) -> str:
 def _build_defaults(state: dict, workspace_dir: str) -> dict[str, Any]:
     """Construye el dict de updates con todos los paths y umbrales por defecto."""
     default_sedici_config = os.path.join(DEFAULT_CONFIGS_DIR, "export_10915_crosswalkconfig.json")
-    default_sedici_target_config = os.path.join(DEFAULT_CONFIGS_DIR, "config_romero_to_sedici.json")
 
     def _path(key: str, filename: str) -> str:
         return state.get(key) or os.path.join(workspace_dir, filename)
@@ -69,7 +68,7 @@ def _build_defaults(state: dict, workspace_dir: str) -> dict[str, Any]:
     return {
         "workspace_dir":                workspace_dir,
         "sedici_crosswalk_config":       state.get("sedici_crosswalk_config")        or default_sedici_config,
-        "sedici_target_crosswalk_config":state.get("sedici_target_crosswalk_config") or default_sedici_target_config,
+        "sedici_target_crosswalk_config":state.get("sedici_target_crosswalk_config"),
         "generic_source_csv_path":       _path("generic_source_csv_path",  "generic_source.csv"),
         "generic_sedici_csv_path":       _path("generic_sedici_csv_path",  "generic_sedici.csv"),
         "dedup_output_csv_path":         _path("dedup_output_csv_path",    "dedup.csv"),

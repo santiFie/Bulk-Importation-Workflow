@@ -141,6 +141,7 @@ class BaseCrosswalkGenerator(ABC):
         extra_tools = self.get_extra_tools(context)
 
         mappings_draft: list[dict[str, Any]] = []
+        tool_called = False
 
         @tool
         def save_column_mappings(mappings: list[CrosswalkColumnMapping], thought: str = "") -> str:
@@ -151,7 +152,8 @@ class BaseCrosswalkGenerator(ABC):
                 mappings: Lista de objetos de mapeo con 'left' y 'replace'.
                 thought: Razonamiento sobre la selección de metadatos o descarte.
             """
-            nonlocal mappings_draft
+            nonlocal mappings_draft, tool_called
+            tool_called = True
             print(f"[{self.__class__.__name__} - LLM thought]: {thought}")
             mappings_draft = [m.model_dump() for m in mappings]
             return f"OK: {len(mappings)} mapeos guardados."
@@ -181,7 +183,7 @@ class BaseCrosswalkGenerator(ABC):
                             res = f"Tool desconocida: {name}"
                         messages.append(ToolMessage(content=str(res), tool_call_id=tc["id"]))
 
-                    if mappings_draft:
+                    if tool_called:
                         break
                 else:
                     break
