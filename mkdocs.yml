@@ -73,7 +73,7 @@ nav:
   - Evaluación Agéntica y Evals:
       - Marco de Evaluación: evals/README.md
       - Datasets y Ground Truth: evals/datasets/README.md
-      - Agentes Individuales: evals/single_agent/README.md
+      - Agentes Evaluados (Suites Duales): evals/agents/README.md
       - Regresión y Schema Drift: evals/regression/README.md
       - Métricas Cuantitativas y Jueces: evals/metrics/README.md
   - Recursos y Entorno:
