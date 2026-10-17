@@ -1,0 +1,261 @@
+[
+  {
+    "id_caso": "recovery_01_missing_title_fixed",
+    "descripcion": "El mapeo inicial omitió la columna del título. Tras recibir el feedback de validación determinista, el agente debe incorporar el mapeo de title.",
+    "inputs": {
+      "columns": ["id_doc", "Art_Title", "Creator_Name", "Pub_Year", "Doc_Type"],
+      "sample_rows": [
+        {
+          "id_doc": "doc-1",
+          "Art_Title": "Avances en Robótica Autónoma",
+          "Creator_Name": "Gómez, A.",
+          "Pub_Year": "2022",
+          "Doc_Type": "Artículo"
+        },
+        {
+          "id_doc": "doc-2",
+          "Art_Title": "Visión por Computadora en Medicina",
+          "Creator_Name": "López, B.",
+          "Pub_Year": "2023",
+          "Doc_Type": "Artículo"
+        },
+        {
+          "id_doc": "doc-3",
+          "Art_Title": "Sensores LiDAR para Vehículos",
+          "Creator_Name": "Díaz, C.",
+          "Pub_Year": "2024",
+          "Doc_Type": "Informe"
+        }
+      ],
+      "prior_mappings": [
+        {"left": "id_doc", "replace": "id", "required": true},
+        {"left": "Creator_Name", "replace": "author", "required": false},
+        {"left": "Pub_Year", "replace": "date", "required": false},
+        {"left": "Doc_Type", "replace": "type", "required": false}
+      ],
+      "feedback": "Validación fallida. Faltan las siguientes columnas críticas en el resultado: title.\nMensaje detallado del sistema: La columna obligatoria 'title' no está presente en los datos transformados.\n\n⚠️ ANÁLISIS DE CAUSAS COMUNES ⚠️\n1. CONFUSIÓN VALOR-CABECERA: Usaste un valor de celda de las muestras en lugar del NOMBRE EXACTO de la cabecera en el campo 'left'.\n2. COLUMNA INEXISTENTE: Inventaste una columna o la escribiste mal. Verificá la lista de columnas proporcionada.\n\nINSTRUCCIÓN CRÍTICA: Analiza el error y coloca tu reflexión EXCLUSIVAMENTE en el parámetro 'thought' de la herramienta. Luego, pasa la lista COMPLETA de TODOS los mapeos corregidos en el parámetro 'mappings'."
+    },
+    "reference_outputs": {
+      "fixed_fields": ["title"],
+      "expected_left_mappings": {
+        "id": "id_doc",
+        "title": "Art_Title",
+        "author": "Creator_Name",
+        "date": "Pub_Year",
+        "type": "Doc_Type"
+      },
+      "must_contain_fields": ["id", "title", "author", "date", "type"]
+    },
+    "tags": ["positive", "recovery_missing"]
+  },
+  {
+    "id_caso": "recovery_02_cell_value_corrected",
+    "descripcion": "El mapeo previo confundió el valor de una celda ('Pérez, Juan || Rossi, María') con el nombre de cabecera en 'left' para author. El feedback advierte sobre este problema y el agente debe corregir el 'left' a 'Autores'.",
+    "inputs": {
+      "columns": ["item_id", "Titulo", "Autores", "Anio", "Tipo"],
+      "sample_rows": [
+        {
+          "item_id": "10",
+          "Titulo": "Química Orgánica Experimental",
+          "Autores": "Pérez, Juan || Rossi, María",
+          "Anio": "2020",
+          "Tipo": "Libro"
+        },
+        {
+          "item_id": "20",
+          "Titulo": "Fisicoquímica de Superficies",
+          "Autores": "Bianchi, Roberto",
+          "Anio": "2021",
+          "Tipo": "Artículo"
+        },
+        {
+          "item_id": "30",
+          "Titulo": "Bioquímica Celular",
+          "Autores": "Castro, Elena",
+          "Anio": "2022",
+          "Tipo": "Artículo"
+        }
+      ],
+      "prior_mappings": [
+        {"left": "item_id", "replace": "id", "required": true},
+        {"left": "Titulo", "replace": "title", "required": true},
+        {"left": "Pérez, Juan", "replace": "author", "required": false},
+        {"left": "Anio", "replace": "date", "required": false},
+        {"left": "Tipo", "replace": "type", "required": false}
+      ],
+      "feedback": "Validación fallida. Faltan las siguientes columnas críticas en el resultado: author.\nMensaje detallado del sistema: Columna origen 'Pérez, Juan' no existe en el archivo CSV.\n\n⚠️ ANÁLISIS DE CAUSAS COMUNES ⚠️\n1. CONFUSIÓN VALOR-CABECERA: Usaste un valor de celda de las muestras en lugar del NOMBRE EXACTO de la cabecera en el campo 'left'. Verificá las cabeceras exactas: ['item_id', 'Titulo', 'Autores', 'Anio', 'Tipo'].\n\nINSTRUCCIÓN CRÍTICA: Pasa la lista COMPLETA de TODOS los mapeos corregidos en el parámetro 'mappings'."
+    },
+    "reference_outputs": {
+      "fixed_fields": ["author"],
+      "expected_left_mappings": {
+        "id": "item_id",
+        "title": "Titulo",
+        "author": "Autores",
+        "date": "Anio",
+        "type": "Tipo"
+      },
+      "forbidden_lefts": ["Pérez, Juan", "Rossi, María", "Bianchi, Roberto", "Pérez, Juan || Rossi, María"],
+      "must_contain_fields": ["id", "title", "author", "date", "type"]
+    },
+    "tags": ["positive", "recovery_cell_value"]
+  },
+  {
+    "id_caso": "recovery_03_multiple_errors_fixed",
+    "descripcion": "El mapeo previo omitió tanto id como date. El agente debe corregir ambas columnas simultáneamente sin perder title, author ni type.",
+    "inputs": {
+      "columns": ["record_key", "paper_name", "contributors", "published_year", "doc_category"],
+      "sample_rows": [
+        {
+          "record_key": "k1",
+          "paper_name": "Algoritmos Genéticos",
+          "contributors": "Silva, L.",
+          "published_year": "2019",
+          "doc_category": "Artículo"
+        },
+        {
+          "record_key": "k2",
+          "paper_name": "Optimización por Enjambre",
+          "contributors": "Mora, F.",
+          "published_year": "2020",
+          "doc_category": "Artículo"
+        },
+        {
+          "record_key": "k3",
+          "paper_name": "Redes Neuronales Recurrentes",
+          "contributors": "Ruiz, G.",
+          "published_year": "2021",
+          "doc_category": "Conferencia"
+        }
+      ],
+      "prior_mappings": [
+        {"left": "paper_name", "replace": "title", "required": true},
+        {"left": "contributors", "replace": "author", "required": false},
+        {"left": "doc_category", "replace": "type", "required": false}
+      ],
+      "feedback": "Validación fallida. Faltan las siguientes columnas críticas en el resultado: id, date.\nMensaje detallado del sistema: Las columnas obligatorias 'id' y 'date' no fueron encontradas en el resultado del crosswalk.\n\nINSTRUCCIÓN CRÍTICA: Analiza el error y pasa la lista COMPLETA de TODOS los mapeos corregidos."
+    },
+    "reference_outputs": {
+      "fixed_fields": ["id", "date"],
+      "expected_left_mappings": {
+        "id": "record_key",
+        "title": "paper_name",
+        "author": "contributors",
+        "date": "published_year",
+        "type": "doc_category"
+      },
+      "must_contain_fields": ["id", "title", "author", "date", "type"]
+    },
+    "tags": ["edge_case", "multiple_feedback"]
+  },
+  {
+    "id_caso": "recovery_04_unresolvable_feedback",
+    "descripcion": "El feedback sugiere mapear issn si está disponible, pero el CSV es de tesis y no posee ninguna columna de revista o ISSN. El agente debe mantener el mapeo válido y no alucinar cabeceras ni mapear columnas erróneas a issn.",
+    "inputs": {
+      "columns": ["id", "titulo_tesis", "autor_tesis", "fecha_defensa", "tipo_tesis"],
+      "sample_rows": [
+        {
+          "id": "tesis_1",
+          "titulo_tesis": "Tesis Doctoral en Informática",
+          "autor_tesis": "Herrera, M.",
+          "fecha_defensa": "2023",
+          "tipo_tesis": "Tesis de doctorado"
+        },
+        {
+          "id": "tesis_2",
+          "titulo_tesis": "Tesis de Maestría en Redes",
+          "autor_tesis": "Ponce, S.",
+          "fecha_defensa": "2022",
+          "tipo_tesis": "Tesis de maestría"
+        },
+        {
+          "id": "tesis_3",
+          "titulo_tesis": "Tesis de Licenciatura en Sistemas",
+          "autor_tesis": "Suárez, T.",
+          "fecha_defensa": "2024",
+          "tipo_tesis": "Tesis de grado"
+        }
+      ],
+      "prior_mappings": [
+        {"left": "id", "replace": "id", "required": true},
+        {"left": "titulo_tesis", "replace": "title", "required": true},
+        {"left": "autor_tesis", "replace": "author", "required": false},
+        {"left": "fecha_defensa", "replace": "date", "required": false},
+        {"left": "tipo_tesis", "replace": "type", "required": false}
+      ],
+      "feedback": "Validación determinista: Sugerencia de mapear la columna 'issn' para publicaciones seriadas si está disponible en las cabeceras del CSV."
+    },
+    "reference_outputs": {
+      "expected_left_mappings": {
+        "id": "id",
+        "title": "titulo_tesis",
+        "author": "autor_tesis",
+        "date": "fecha_defensa",
+        "type": "tipo_tesis"
+      },
+      "must_contain_fields": ["id", "title", "author", "date", "type"],
+      "allowed_left_headers": ["id", "titulo_tesis", "autor_tesis", "fecha_defensa", "tipo_tesis"],
+      "forbidden_replaces": ["issn"]
+    },
+    "tags": ["negative", "unresolvable_trap"]
+  },
+  {
+    "id_caso": "recovery_05_aggressive_required_filter_fixed",
+    "descripcion": "Basado en Doaj.csv y crosswalk_config_unlp_doaj.json: el mapeo inicial usó 'doi' como 'id' con required=true en un CSV donde 'doi' está vacío en varias filas y existe 'id_doaj'. Tras el fallo por Filtrado Agresivo (0 filas de salida), debe usar 'id_doaj' para 'id' y mapear 'doi' a 'doi' con required=false.",
+    "inputs": {
+      "columns": ["title", "authors", "journal_title", "date", "type", "doi", "id_doaj"],
+      "sample_rows": [
+        {
+          "title": "La inmigración irlandesa en la frontera del Salado, Argentina.",
+          "authors": "Maria Eugenia Cruset",
+          "journal_title": "Anuario del Instituto de Historia Argentina",
+          "date": "2021-May",
+          "type": "Articulo",
+          "doi": "10.24215/2314257Xe139",
+          "id_doaj": "0006b44b82c34df8b49757a69c0b3430"
+        },
+        {
+          "title": "TEORÍAS DEL MONTAJE: CONTRIBUCIÓN Y VIGENCIA EN LA CONSTRUCCIÓN DEL ESPACIO Y TIEMPO CINEMATOGRÁFICO",
+          "authors": "Luís Fernando Morales Morante",
+          "journal_title": "Question",
+          "date": "2009-December",
+          "type": "Articulo",
+          "doi": "",
+          "id_doaj": "000851177c904416bf6aaa01f2d32431"
+        },
+        {
+          "title": "Factor de Descuento, Flujos Futuros y Deterioro de Activos Tangibles e Intangibles",
+          "authors": "Raúl A. Arrarte Mera",
+          "journal_title": "Proyecciones",
+          "date": "2016-December",
+          "type": "Articulo",
+          "doi": "",
+          "id_doaj": "0010d23e8f3b459f94e8f601daee5595"
+        }
+      ],
+      "prior_mappings": [
+        {"left": "doi", "replace": "id", "required": true},
+        {"left": "title", "replace": "title", "required": true},
+        {"left": "authors", "replace": "author", "required": true},
+        {"left": "date", "replace": "date", "required": true},
+        {"left": "type", "replace": "type", "required": true},
+        {"left": "journal_title", "replace": "citation", "required": false}
+      ],
+      "feedback": "Validación fallida. Faltan las siguientes columnas críticas en el resultado: id, title, author, date, type.\nMensaje detallado del sistema:\nERROR: No se produjeron filas de salida. Verificá que los 'left' coincidan con los nombres de columna del CSV y que los campos required tengan valores.\n\n⚠️ ANÁLISIS DE CAUSAS COMUNES ⚠️\n1. CONFUSIÓN VALOR-CABECERA: Usaste un valor de celda de las muestras en lugar del NOMBRE EXACTO de la cabecera en el campo 'left'.\n2. COLUMNA INEXISTENTE: Inventaste una columna o la escribiste mal. Verificá la lista de columnas proporcionada.\n3. FILTRADO AGRESIVO: Configuraste 'required': true en una columna que a veces está vacía (como 'doi'), provocando que toda la fila se elimine en la validación. Además, recordá que 'doi' NUNCA debe mapearse a 'id'; usá el identificador nativo ('id_doaj') para 'id' y mapeá 'doi' a 'doi' con 'required': false.\n\nINSTRUCCIÓN CRÍTICA: Analiza el error y coloca tu reflexión EXCLUSIVAMENTE en el parámetro 'thought' de la herramienta. Luego, pasa la lista COMPLETA de TODOS los mapeos corregidos en el parámetro 'mappings'."
+    },
+    "reference_outputs": {
+      "fixed_fields": ["id", "doi"],
+      "expected_left_mappings": {
+        "id": "id_doaj",
+        "title": "title",
+        "author": "authors",
+        "date": "date",
+        "type": "type",
+        "citation": "journal_title",
+        "doi": "doi"
+      },
+      "expected_non_required_fields": ["doi"],
+      "must_contain_fields": ["id", "title", "author", "date", "type", "doi"]
+    },
+    "tags": ["positive", "doaj", "recovery_aggressive_filter"]
+  }
+]

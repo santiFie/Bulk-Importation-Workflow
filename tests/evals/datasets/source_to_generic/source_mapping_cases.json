@@ -1,0 +1,798 @@
+[
+  {
+    "id_caso": "mapping_01_spanish_academic",
+    "descripcion": "CSV académico en español con cabeceras estándar (id_articulo, Título, Autores, Fecha_Publicación, Tipo_Documento, Resumen, Palabras_Clave, DOI, Revista).",
+    "inputs": {
+      "columns": [
+        "id_articulo",
+        "Título",
+        "Autores",
+        "Fecha_Publicación",
+        "Tipo_Documento",
+        "Resumen",
+        "Palabras_Clave",
+        "DOI",
+        "Revista"
+      ],
+      "sample_rows": [
+        {
+          "id_articulo": "art_101",
+          "Título": "La inmigración irlandesa en la frontera del Salado, Argentina.",
+          "Autores": "Cruset, María Eugenia || Pérez, Juan",
+          "Fecha_Publicación": "2021",
+          "Tipo_Documento": "Artículo",
+          "Resumen": "Este artículo analiza el impacto de la inmigración irlandesa en la frontera...",
+          "Palabras_Clave": "Historia Argentina || Inmigración",
+          "DOI": "10.24215/2314257Xe139",
+          "Revista": "Anuario del Instituto de Historia Argentina"
+        },
+        {
+          "id_articulo": "art_102",
+          "Título": "La Representación de las feminidades en La Rueda del Tiempo",
+          "Autores": "Gómez Fernández, Eva",
+          "Fecha_Publicación": "2026",
+          "Tipo_Documento": "Artículo",
+          "Resumen": "Estudio sobre la representación de género y narrativa audiovisual...",
+          "Palabras_Clave": "Género || Narrativa",
+          "DOI": "10.24215/16696581e996",
+          "Revista": "Question"
+        },
+        {
+          "id_articulo": "art_103",
+          "Título": "El pacto global para una migración segura, ordenada y regular",
+          "Autores": "Fernando-Gonzalo, Elsa || López, Ana",
+          "Fecha_Publicación": "2023",
+          "Tipo_Documento": "Artículo",
+          "Resumen": "Evaluación de debilidades y fortalezas de un instrumento de soft law...",
+          "Palabras_Clave": "Derecho Internacional || Migración",
+          "DOI": "10.24215/2618303Xe055",
+          "Revista": "Revista Electrónica de Derecho Internacional Contemporáneo"
+        }
+      ]
+    },
+    "reference_outputs": {
+      "expected_mappings": {
+        "id_articulo": "id",
+        "Título": "title",
+        "Autores": "author",
+        "Fecha_Publicación": "date",
+        "Tipo_Documento": "type",
+        "Resumen": "description",
+        "Palabras_Clave": "subject",
+        "DOI": "doi",
+        "Revista": "citation"
+      },
+      "critical_fields": [
+        "id",
+        "title",
+        "author",
+        "date",
+        "type"
+      ],
+      "forbidden_mappings": {
+        "DOI": "id"
+      }
+    },
+    "tags": [
+      "positive",
+      "academic",
+      "spanish"
+    ]
+  },
+  {
+    "id_caso": "mapping_02_scopus_standard",
+    "descripcion": "Export internacional en inglés estilo Scopus (EID, Title, Authors, Year, Document Type, Abstract, Author Keywords, DOI, Source title, ISSN).",
+    "inputs": {
+      "columns": [
+        "EID",
+        "Title",
+        "Authors",
+        "Year",
+        "Document Type",
+        "Abstract",
+        "Author Keywords",
+        "DOI",
+        "Source title",
+        "ISSN"
+      ],
+      "sample_rows": [
+        {
+          "EID": "2-s2.0-85061225300",
+          "Title": "Transcriptome-based identification and validation of reference genes for plant-bacteria interaction studies",
+          "Authors": "Pombo, M.A. || Ramos, R.N. || Rosli, H.G.",
+          "Year": "2019",
+          "Document Type": "Article",
+          "Abstract": "Reference gene validation in Nicotiana benthamiana under bacterial infection...",
+          "Author Keywords": "Transcriptomics || Plant Immunity",
+          "DOI": "10.1038/s41598-018-38247-2",
+          "Source title": "Scientific Reports",
+          "ISSN": "20452322"
+        },
+        {
+          "EID": "2-s2.0-85060525097",
+          "Title": "Gene target discovery with network analysis in Toxoplasma gondii",
+          "Authors": "Alonso, A.M. || Corvi, M.M. || Diambra, L.",
+          "Year": "2019",
+          "Document Type": "Article",
+          "Abstract": "We propose a network analysis approach for Toxoplasma gondii...",
+          "Author Keywords": "Network Analysis || Parasitology",
+          "DOI": "10.1038/s41598-018-36671-y",
+          "Source title": "Scientific Reports",
+          "ISSN": "20452322"
+        },
+        {
+          "EID": "2-s2.0-85060854859",
+          "Title": "Current use of vasopressors in septic shock",
+          "Authors": "Scheeren, T.W.L. || Bakker, J. || Dubin, A.",
+          "Year": "2019",
+          "Document Type": "Article",
+          "Abstract": "International survey on vasopressor management in septic shock...",
+          "Author Keywords": "Septic Shock || Vasopressors",
+          "DOI": "10.1186/s13613-019-0498-7",
+          "Source title": "Annals of Intensive Care",
+          "ISSN": "21105820"
+        }
+      ]
+    },
+    "reference_outputs": {
+      "expected_mappings": {
+        "EID": "id",
+        "Title": "title",
+        "Authors": "author",
+        "Year": "date",
+        "Document Type": "type",
+        "Abstract": "description",
+        "Author Keywords": "subject",
+        "DOI": "doi",
+        "Source title": "citation",
+        "ISSN": "issn"
+      },
+      "critical_fields": [
+        "id",
+        "title",
+        "author",
+        "date",
+        "type"
+      ],
+      "forbidden_mappings": {
+        "DOI": "id"
+      }
+    },
+    "tags": [
+      "positive",
+      "scopus",
+      "english"
+    ]
+  },
+  {
+    "id_caso": "mapping_03_noisy_internal_columns",
+    "descripcion": "CSV con metadatos reales mezclados con columnas de control interno del repositorio (sys_timestamp, ingest_status, reviewer_notes, download_count) que deben ignorarse.",
+    "inputs": {
+      "columns": [
+        "id_doc",
+        "Document_Title",
+        "Creator_Name",
+        "Publication_Year",
+        "Doc_Type",
+        "sys_timestamp",
+        "ingest_status",
+        "reviewer_notes",
+        "download_count"
+      ],
+      "sample_rows": [
+        {
+          "id_doc": "doc-901",
+          "Document_Title": "Sistemas de Información Geográfica",
+          "Creator_Name": "Álvarez, Roberto",
+          "Publication_Year": "2021",
+          "Doc_Type": "Informe",
+          "sys_timestamp": "2023-01-15T12:00:00Z",
+          "ingest_status": "IMPORTED",
+          "reviewer_notes": "Aprobado por comité",
+          "download_count": "452"
+        },
+        {
+          "id_doc": "doc-902",
+          "Document_Title": "Modelado 3D de Cuencas Hídricas",
+          "Creator_Name": "Gómez, Valeria",
+          "Publication_Year": "2020",
+          "Doc_Type": "Tesis",
+          "sys_timestamp": "2023-01-16T08:30:00Z",
+          "ingest_status": "PENDING_REVIEW",
+          "reviewer_notes": "Falta verificar licencia",
+          "download_count": "120"
+        },
+        {
+          "id_doc": "doc-903",
+          "Document_Title": "Teledetección Satelital",
+          "Creator_Name": "Martínez, Esteban",
+          "Publication_Year": "2022",
+          "Doc_Type": "Artículo",
+          "sys_timestamp": "2023-01-17T14:15:00Z",
+          "ingest_status": "IMPORTED",
+          "reviewer_notes": "OK sin observaciones",
+          "download_count": "890"
+        }
+      ]
+    },
+    "reference_outputs": {
+      "expected_mappings": {
+        "id_doc": "id",
+        "Document_Title": "title",
+        "Creator_Name": "author",
+        "Publication_Year": "date",
+        "Doc_Type": "type"
+      },
+      "critical_fields": [
+        "id",
+        "title",
+        "author",
+        "date",
+        "type"
+      ],
+      "forbidden_fields": [
+        "sys_timestamp",
+        "ingest_status",
+        "reviewer_notes",
+        "download_count"
+      ]
+    },
+    "tags": [
+      "edge_case",
+      "noisy_columns"
+    ]
+  },
+  {
+    "id_caso": "mapping_04_subtitle_and_dates",
+    "descripcion": "CSV con título principal, subtítulo explícito, fecha completa y tipo de documento.",
+    "inputs": {
+      "columns": [
+        "id",
+        "main_title",
+        "subtitle",
+        "authors",
+        "issued_date",
+        "document_type"
+      ],
+      "sample_rows": [
+        {
+          "id": "handle_10915_123",
+          "main_title": "Historia de la Ciencia en Argentina",
+          "subtitle": "Una perspectiva desde la Universidad de La Plata",
+          "authors": "Klimovsky, Gregorio",
+          "issued_date": "2019-11-20",
+          "document_type": "Libro"
+        },
+        {
+          "id": "handle_10915_124",
+          "main_title": "Microbiología Marina",
+          "subtitle": "Bacterias extremófilas en la Antártida",
+          "authors": "Bustos, Cecilia",
+          "issued_date": "2021-05-14",
+          "document_type": "Artículo de revista"
+        },
+        {
+          "id": "handle_10915_125",
+          "main_title": "Derecho Ambiental Internacional",
+          "subtitle": "Tratados y jurisprudencia comparada",
+          "authors": "Gutiérrez, Pablo",
+          "issued_date": "2020-09-01",
+          "document_type": "Capítulo de libro"
+        }
+      ]
+    },
+    "reference_outputs": {
+      "expected_mappings": {
+        "id": "id",
+        "main_title": "title",
+        "subtitle": "subtitle",
+        "authors": "author",
+        "issued_date": "date",
+        "document_type": "type"
+      },
+      "critical_fields": [
+        "id",
+        "title",
+        "author",
+        "date",
+        "type"
+      ]
+    },
+    "tags": [
+      "edge_case",
+      "extended_fields"
+    ]
+  },
+  {
+    "id_caso": "mapping_05_missing_critical_no_doi",
+    "descripcion": "CSV con información mínima donde faltan autores, fecha y tipo, y no hay columna DOI disponible. El agente debe abstenerse de mapear metadatos técnicos de archivo a campos bibliográficos.",
+    "inputs": {
+      "columns": [
+        "doc_id",
+        "title_text",
+        "file_size_kb",
+        "mime_type"
+      ],
+      "sample_rows": [
+        {
+          "doc_id": "item-001",
+          "title_text": "Reglamento Interno de Cátedra",
+          "file_size_kb": "120",
+          "mime_type": "application/pdf"
+        },
+        {
+          "doc_id": "item-002",
+          "title_text": "Guía de Trabajos Prácticos N° 2",
+          "file_size_kb": "450",
+          "mime_type": "application/pdf"
+        },
+        {
+          "doc_id": "item-003",
+          "title_text": "Cronograma Académico 2024",
+          "file_size_kb": "85",
+          "mime_type": "application/pdf"
+        }
+      ]
+    },
+    "reference_outputs": {
+      "expected_mappings": {
+        "doc_id": "id",
+        "title_text": "title"
+      },
+      "critical_fields": [
+        "id",
+        "title"
+      ],
+      "unmappable_fields": [
+        "author",
+        "date",
+        "type"
+      ],
+      "forbidden_fields": [
+        "file_size_kb",
+        "mime_type"
+      ]
+    },
+    "tags": [
+      "negative",
+      "missing_fields"
+    ]
+  },
+  {
+    "id_caso": "mapping_06_doi_as_id_trap",
+    "descripcion": "CSV que contiene tanto un identificador de registro como un DOI. Trampa clásica: el LLM jamás debe mapear DOI como id.",
+    "inputs": {
+      "columns": [
+        "record_id",
+        "paper_title",
+        "author_names",
+        "pub_date",
+        "content_type",
+        "doi"
+      ],
+      "sample_rows": [
+        {
+          "record_id": "rec_441",
+          "paper_title": "Kinases go where the function calls",
+          "author_names": "Said, M. || Mattiazzi, A. || Mundiña-Weilenmann, C.",
+          "pub_date": "2025",
+          "content_type": "Article",
+          "doi": "10.1093/cvr/cvaf197"
+        },
+        {
+          "record_id": "rec_442",
+          "paper_title": "Global Incidence of Pertussis After the COVID-19 Pandemic",
+          "author_names": "Gorringe, A. || Hozbor, D.",
+          "pub_date": "2025",
+          "content_type": "Article",
+          "doi": "10.1001/jamanetworkopen.2025.45963"
+        },
+        {
+          "record_id": "rec_443",
+          "paper_title": "Liver-expressed antimicrobial peptide 2 (LEAP2)",
+          "author_names": "Andreoli, M.F. || Perelló, M.",
+          "pub_date": "2025",
+          "content_type": "Article",
+          "doi": "10.1016/j.tem.2025.03.005"
+        }
+      ]
+    },
+    "reference_outputs": {
+      "expected_mappings": {
+        "record_id": "id",
+        "paper_title": "title",
+        "author_names": "author",
+        "pub_date": "date",
+        "content_type": "type",
+        "doi": "doi"
+      },
+      "critical_fields": [
+        "id",
+        "title",
+        "author",
+        "date",
+        "type"
+      ],
+      "forbidden_mappings": {
+        "doi": "id"
+      }
+    },
+    "tags": [
+      "negative",
+      "forbidden_trap"
+    ]
+  },
+  {
+    "id_caso": "mapping_07_springer_disambiguation",
+    "descripcion": "Export de SpringerLink (SearchResults.csv) con id inyectado. Evalúa desambiguación semántica entre 'Item Title' (título del artículo -> title) y 'Publication Title' (nombre de la revista -> citation).",
+    "inputs": {
+      "columns": [
+        "id",
+        "Item Title",
+        "Publication Title",
+        "Book Series Title",
+        "Journal Volume",
+        "Journal Issue",
+        "Item DOI",
+        "Authors",
+        "Publication Year",
+        "URL",
+        "Content Type"
+      ],
+      "sample_rows": [
+        {
+          "id": "1",
+          "Item Title": "Search for dimuon resonance in the 35 to 75 GeV mass range using 140 fb−1 of 13 TeV pp collisions with the ATLAS detector",
+          "Publication Title": "Journal of High Energy Physics",
+          "Book Series Title": "",
+          "Journal Volume": "",
+          "Journal Issue": "",
+          "Item DOI": "10.1007/JHEP06(2026)165",
+          "Authors": "G. AadE. AakvaagB. AbbottS. AbdelhameedK. AbelingN. J. Abicht",
+          "Publication Year": "2026",
+          "URL": "https://link.springer.com/article/10.1007/JHEP06(2026)165",
+          "Content Type": "Article"
+        },
+        {
+          "id": "2",
+          "Item Title": "Measurement of differential t-channel single top (anti)quark production cross-sections at 13 TeV with the ATLAS detector",
+          "Publication Title": "Journal of High Energy Physics",
+          "Book Series Title": "",
+          "Journal Volume": "",
+          "Journal Issue": "",
+          "Item DOI": "10.1007/JHEP05(2026)174",
+          "Authors": "G. AadE. AakvaagB. AbbottS. AbdelhameedK. AbelingN. J. Abicht",
+          "Publication Year": "2026",
+          "URL": "https://link.springer.com/article/10.1007/JHEP05(2026)174",
+          "Content Type": "Article"
+        },
+        {
+          "id": "3",
+          "Item Title": "Measurement of the W-boson angular coefficients and transverse momentum in pp collisions at 13 TeV with the ATLAS detector",
+          "Publication Title": "The European Physical Journal C",
+          "Book Series Title": "",
+          "Journal Volume": "",
+          "Journal Issue": "",
+          "Item DOI": "10.1140/epjc/s10052-025-15264-w",
+          "Authors": "G. AadE. AakvaagB. AbbottS. AbdelhameedK. AbelingN. J. Abicht",
+          "Publication Year": "2026",
+          "URL": "https://link.springer.com/article/10.1140/epjc/s10052-025-15264-w",
+          "Content Type": "Article"
+        }
+      ]
+    },
+    "reference_outputs": {
+      "expected_mappings": {
+        "id": "id",
+        "Item Title": "title",
+        "Publication Title": "citation",
+        "Item DOI": "doi",
+        "Authors": "author",
+        "Publication Year": "date",
+        "Content Type": "type"
+      },
+      "critical_fields": [
+        "id",
+        "title",
+        "author",
+        "date",
+        "type"
+      ],
+      "forbidden_mappings": {
+        "Publication Title": "title",
+        "Item DOI": "id"
+      }
+    },
+    "tags": [
+      "edge_case",
+      "springer",
+      "semantic_disambiguation"
+    ]
+  },
+  {
+    "id_caso": "mapping_08_memoria_composite_authors_pipe",
+    "descripcion": "Export de Memoria Académica FaHCE-UNLP (Memoria.csv) delimitado por pipe ('|'). Evalúa concatenación de múltiples roles de autoría ('Director+Codirector+Integrantes+Coordinadores' -> author).",
+    "inputs": {
+      "file_delimiter": "|",
+      "columns": [
+        "IDMA",
+        "URLPDF",
+        "URLREG",
+        "Título",
+        "Director",
+        "Codirector",
+        "Integrantes",
+        "Coordinadores",
+        "AñoEjecución",
+        "Tipodoc",
+        "Resumen",
+        "Palabrasclaves"
+      ],
+      "sample_rows": [
+        {
+          "IDMA": "px.1",
+          "URLPDF": "http://www.memoria.fahce.unlp.edu.ar/extension/px.1/px.1.pdf",
+          "URLREG": "http://www.memoria.fahce.unlp.edu.ar/library?a=d&c=extension&d=Jpx1",
+          "Título": "Gestión integral e integradora de los residuos : Diagnóstico e implementación en la FaHCE",
+          "Director": "Pi Puig, Ana Pilar",
+          "Codirector": "Fornessi, Román",
+          "Integrantes": "Lucidi, Leandro%Montenegro, Ana%Lucero, Gabriela",
+          "Coordinadores": "Goytea, Yésica%Breccia, Sofía",
+          "AñoEjecución": "2015",
+          "Tipodoc": "PROYECTO",
+          "Resumen": "El presente proyecto se propone modificar la actual disposición y gestión de los residuos...",
+          "Palabrasclaves": "Reciclaje%Ambiente%Educación"
+        },
+        {
+          "IDMA": "px.2",
+          "URLPDF": "http://www.memoria.fahce.unlp.edu.ar/extension/px.2/px.2.pdf",
+          "URLREG": "http://www.memoria.fahce.unlp.edu.ar/library?a=d&c=extension&d=Jpx2",
+          "Título": "Educación y acceso a derechos: Tendiendo puentes entre la escuela y la comunidad Qom",
+          "Director": "Oyhandy, Angela",
+          "Codirector": "Peláez, Agustina",
+          "Integrantes": "Balerdi, Soledad%Urtasun, Martín%Cafiero, Magdalena",
+          "Coordinadores": "Welschinger, Nicolás%Lucero, María Victoria",
+          "AñoEjecución": "2014",
+          "Tipodoc": "PROYECTO",
+          "Resumen": "El proyecto se propone favorecer el acceso efectivo a la educación concebida como derecho...",
+          "Palabrasclaves": "Educación%Derechos%Pueblos originarios"
+        },
+        {
+          "IDMA": "px.3",
+          "URLPDF": "http://www.memoria.fahce.unlp.edu.ar/extension/px.3/px.3.pdf",
+          "URLREG": "http://www.memoria.fahce.unlp.edu.ar/library?a=d&c=extension&d=Jpx3",
+          "Título": "Lectura y escritura en la Unidad 33: Madres, niños e instituciones educativas",
+          "Director": "Molinari, María Claudia",
+          "Codirector": "Bello, Adriana",
+          "Integrantes": "Philip, Silvina%Bardín, Claudia",
+          "Coordinadores": "Brena, Graciela",
+          "AñoEjecución": "2011",
+          "Tipodoc": "PROYECTO",
+          "Resumen": "La propuesta de trabajo corresponde a una segunda etapa del proyecto de extensión...",
+          "Palabrasclaves": "Unidades penitenciarias%Mujeres%Educación formal"
+        }
+      ]
+    },
+    "reference_outputs": {
+      "expected_mappings": {
+        "IDMA": "id",
+        "Título": "title",
+        "Director+Codirector+Integrantes+Coordinadores": "author",
+        "AñoEjecución": "date",
+        "Tipodoc": "type",
+        "Resumen": "description",
+        "Palabrasclaves": "subject"
+      },
+      "critical_fields": [
+        "id",
+        "title",
+        "author",
+        "date",
+        "type"
+      ],
+      "forbidden_fields": [
+        "URLPDF",
+        "URLREG"
+      ]
+    },
+    "tags": [
+      "edge_case",
+      "memoria_fahce",
+      "composite_columns",
+      "pipe_delimiter"
+    ]
+  },
+  {
+    "id_caso": "mapping_09_scopus_duplicate_empty_headers_trap",
+    "descripcion": "Export crudo de Scopus (Scopus.csv) que incluye cabeceras duplicadas en mayúsculas vacías ('TITLE', 'DOI'), 'author.s..id' (IDs de autores) y 'source' ('Scopus'). Debe elegir las columnas pobladas ('title', 'doi', 'eid', 'source.title').",
+    "inputs": {
+      "columns": [
+        "authors",
+        "author.s..id",
+        "title",
+        "year",
+        "source.title",
+        "doi",
+        "document.type",
+        "source",
+        "eid",
+        "TITLE",
+        "DOI"
+      ],
+      "sample_rows": [
+        {
+          "authors": "Pombo, M.A., Ramos, R.N., Zheng, Y., Fei, Z., Martin, G.B., Rosli, H.G.",
+          "author.s..id": "24598267600; 57205718576; 57188675723",
+          "title": "Transcriptome-based identification and validation of reference genes for plant-bacteria interaction studies",
+          "year": "2019",
+          "source.title": "Scientific Reports",
+          "doi": "10.1038/s41598-018-38247-2",
+          "document.type": "Article",
+          "source": "Scopus",
+          "eid": "2-s2.0-85061225300",
+          "TITLE": "",
+          "DOI": ""
+        },
+        {
+          "authors": "Alonso, A.M., Corvi, M.M., Diambra, L.",
+          "author.s..id": "56549479700; 6602769567; 55881299200",
+          "title": "Gene target discovery with network analysis in Toxoplasma gondii",
+          "year": "2019",
+          "source.title": "Scientific Reports",
+          "doi": "10.1038/s41598-018-36671-y",
+          "document.type": "Article",
+          "source": "Scopus",
+          "eid": "2-s2.0-85060525097",
+          "TITLE": "",
+          "DOI": ""
+        },
+        {
+          "authors": "Epele, M., García Canal, C., Sassot, R.",
+          "author.s..id": "55428651500; 6603564338; 6602767747",
+          "title": "Heavy quark mass effects in parton-to-kaon hadronization probabilities",
+          "year": "2019",
+          "source.title": "Physics Letters, Section B",
+          "doi": "10.1016/j.physletb.2018.11.069",
+          "document.type": "Article",
+          "source": "Scopus",
+          "eid": "2-s2.0-85060216331",
+          "TITLE": "",
+          "DOI": ""
+        }
+      ]
+    },
+    "reference_outputs": {
+      "expected_mappings": {
+        "eid": "id",
+        "title": "title",
+        "authors": "author",
+        "year": "date",
+        "document.type": "type",
+        "source.title": "citation",
+        "doi": "doi"
+      },
+      "critical_fields": [
+        "id",
+        "title",
+        "author",
+        "date",
+        "type"
+      ],
+      "forbidden_fields": [
+        "author.s..id",
+        "source",
+        "TITLE",
+        "DOI"
+      ],
+      "forbidden_mappings": {
+        "author.s..id": "id",
+        "doi": "id",
+        "DOI": "id"
+      }
+    },
+    "tags": [
+      "negative",
+      "scopus_raw",
+      "duplicate_headers_trap"
+    ]
+  },
+  {
+    "id_caso": "mapping_10_pubmed_citation_and_first_author_trap",
+    "descripcion": "Export de PubMed (Pubmed.csv) con 'Authors' vs 'First Author', 'Citation' vs 'Journal/Book', 'Publication Year' vs 'Create Date' y múltiples IDs ('PMID', 'PMCID', 'NIHMS ID', 'DOI'). Debe mapear 'Citation' a citation y 'Authors' a author.",
+    "inputs": {
+      "columns": [
+        "PMID",
+        "Title",
+        "Authors",
+        "Citation",
+        "First Author",
+        "Journal/Book",
+        "Publication Year",
+        "Create Date",
+        "Publication Type",
+        "PMCID",
+        "NIHMS ID",
+        "DOI"
+      ],
+      "sample_rows": [
+        {
+          "PMID": "41118147",
+          "Title": "Kinases go where the function calls",
+          "Authors": "Said M, Mattiazzi A, Mundiña-Weilenmann C.",
+          "Citation": "Cardiovasc Res. 2025 Nov 22;121(14):2116-2117. doi: 10.1093/cvr/cvaf197.",
+          "First Author": "Said M",
+          "Journal/Book": "Cardiovasc Res",
+          "Publication Year": "2025",
+          "Create Date": "2025/10/21",
+          "Publication Type": "Journal Article",
+          "PMCID": "",
+          "NIHMS ID": "",
+          "DOI": "10.1093/cvr/cvaf197"
+        },
+        {
+          "PMID": "40966355",
+          "Title": "1206 genomes reveal origin and movement of Aedes aegypti driving increased dengue risk",
+          "Authors": "Crawford JE, Balcazar D, Redmond S, Rose NH.",
+          "Citation": "Science. 2025 Sep 18;389(6766):eads3732. doi: 10.1126/science.ads3732.",
+          "First Author": "Crawford JE",
+          "Journal/Book": "Science",
+          "Publication Year": "2025",
+          "Create Date": "2025/09/18",
+          "Publication Type": "Journal Article",
+          "PMCID": "PMC12952217",
+          "NIHMS ID": "NIHMS2144453",
+          "DOI": "10.1126/science.ads3732"
+        },
+        {
+          "PMID": "41324955",
+          "Title": "Global Incidence of Pertussis After the COVID-19 Pandemic",
+          "Authors": "Gorringe A, Cavell B, Beard F, Hozbor D, Edwards K.",
+          "Citation": "JAMA Netw Open. 2025 Dec 1;8(12):e2545963. doi: 10.1001/jamanetworkopen.2025.45963.",
+          "First Author": "Gorringe A",
+          "Journal/Book": "JAMA Netw Open",
+          "Publication Year": "2025",
+          "Create Date": "2025/12/01",
+          "Publication Type": "Journal Article",
+          "PMCID": "",
+          "NIHMS ID": "",
+          "DOI": "10.1001/jamanetworkopen.2025.45963"
+        }
+      ]
+    },
+    "reference_outputs": {
+      "expected_mappings": {
+        "PMID": "id",
+        "Title": "title",
+        "Authors": "author",
+        "Citation": "citation",
+        "Publication Year": "date",
+        "Publication Type": "type",
+        "DOI": "doi"
+      },
+      "critical_fields": [
+        "id",
+        "title",
+        "author",
+        "date",
+        "type"
+      ],
+      "forbidden_fields": [
+        "First Author",
+        "Create Date",
+        "PMCID",
+        "NIHMS ID"
+      ],
+      "forbidden_mappings": {
+        "First Author": "author",
+        "Journal/Book": "citation",
+        "Create Date": "date",
+        "DOI": "id"
+      }
+    },
+    "tags": [
+      "edge_case",
+      "pubmed",
+      "semantic_disambiguation"
+    ]
+  }
+]

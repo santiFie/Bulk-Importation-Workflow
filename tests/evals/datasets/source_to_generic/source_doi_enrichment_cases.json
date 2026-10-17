@@ -1,0 +1,460 @@
+[
+  {
+    "id_caso": "enrich_01_missing_type_date",
+    "descripcion": "CSV con id, title, authors y doi. Faltan type y date. Debe invocar enrich_source_columns_from_doi antes de save_column_mappings y mapear las columnas inferidas.",
+    "inputs": {
+      "columns": [
+        "id",
+        "title",
+        "authors",
+        "doi"
+      ],
+      "sample_rows": [
+        {
+          "id": "101",
+          "title": "Transcriptome-based identification and validation of reference genes for plant-bacteria interaction studies using Nicotiana benthamiana",
+          "authors": "Pombo, M.A. || Ramos, R.N. || Rosli, H.G.",
+          "doi": "10.1038/s41598-018-38247-2"
+        },
+        {
+          "id": "102",
+          "title": "Gene target discovery with network analysis in Toxoplasma gondii",
+          "authors": "Alonso, A.M. || Corvi, M.M. || Diambra, L.",
+          "doi": "10.1038/s41598-018-36671-y"
+        },
+        {
+          "id": "103",
+          "title": "Current use of vasopressors in septic shock",
+          "authors": "Scheeren, T.W.L. || Bakker, J. || Dubin, A.",
+          "doi": "10.1186/s13613-019-0498-7"
+        }
+      ]
+    },
+    "reference_outputs": {
+      "expected_tools": [
+        "enrich_source_columns_from_doi",
+        "save_column_mappings"
+      ],
+      "forbidden_tools": [],
+      "expected_doi_column": "doi",
+      "expected_target_fields": [
+        "type",
+        "date"
+      ],
+      "expected_inferred_mappings": {
+        "inferred_type": "type",
+        "inferred_date": "date"
+      },
+      "expected_mappings": {
+        "id": "id",
+        "title": "title",
+        "authors": "author",
+        "doi": "doi",
+        "inferred_type": "type",
+        "inferred_date": "date"
+      }
+    },
+    "tags": [
+      "positive",
+      "crossref_enrichment"
+    ]
+  },
+  {
+    "id_caso": "enrich_02_missing_author",
+    "descripcion": "CSV con id, title, publication_year, doc_type y doi con DOIs reales registrados en Crossref. Falta autor. Debe consultar Crossref para inferir el autor faltante.",
+    "inputs": {
+      "columns": [
+        "id",
+        "title",
+        "publication_year",
+        "doc_type",
+        "doi"
+      ],
+      "sample_rows": [
+        {
+          "id": "201",
+          "title": "Kinases go where the function calls",
+          "publication_year": "2025",
+          "doc_type": "article",
+          "doi": "10.1093/cvr/cvaf197"
+        },
+        {
+          "id": "202",
+          "title": "1206 genomes reveal origin and movement of Aedes aegypti driving increased dengue risk",
+          "publication_year": "2025",
+          "doc_type": "article",
+          "doi": "10.1126/science.ads3732"
+        },
+        {
+          "id": "203",
+          "title": "Global Incidence of Pertussis After the COVID-19 Pandemic",
+          "publication_year": "2025",
+          "doc_type": "article",
+          "doi": "10.1001/jamanetworkopen.2025.45963"
+        }
+      ]
+    },
+    "reference_outputs": {
+      "expected_tools": [
+        "enrich_source_columns_from_doi",
+        "save_column_mappings"
+      ],
+      "forbidden_tools": [],
+      "expected_doi_column": "doi",
+      "expected_target_fields": [
+        "author"
+      ],
+      "expected_inferred_mappings": {
+        "inferred_author": "author"
+      },
+      "expected_mappings": {
+        "id": "id",
+        "title": "title",
+        "publication_year": "date",
+        "doc_type": "type",
+        "doi": "doi",
+        "inferred_author": "author"
+      }
+    },
+    "tags": [
+      "positive",
+      "author_recovery"
+    ]
+  },
+  {
+    "id_caso": "enrich_03_already_complete_no_enrichment",
+    "descripcion": "CSV con metadatos troncales ya completos (id, title, authors, year, type, doi). La herramienta de enriquecimiento está PROHIBIDA.",
+    "inputs": {
+      "columns": [
+        "id",
+        "title",
+        "authors",
+        "year",
+        "type",
+        "doi"
+      ],
+      "sample_rows": [
+        {
+          "id": "rec_1",
+          "title": "La inmigración irlandesa en la frontera del Salado, Argentina.",
+          "authors": "Cruset, Maria Eugenia",
+          "year": "2021",
+          "type": "Articulo",
+          "doi": "10.24215/2314257Xe139"
+        },
+        {
+          "id": "rec_2",
+          "title": "La Representación de las feminidades en La Rueda del Tiempo",
+          "authors": "Gómez Fernández, Eva",
+          "year": "2026",
+          "type": "Articulo",
+          "doi": "10.24215/16696581e996"
+        },
+        {
+          "id": "rec_3",
+          "title": "El pacto global para una migración segura, ordenada y regular",
+          "authors": "Fernando-Gonzalo, Elsa",
+          "year": "2023",
+          "type": "Articulo",
+          "doi": "10.24215/2618303Xe055"
+        }
+      ]
+    },
+    "reference_outputs": {
+      "expected_tools": [
+        "save_column_mappings"
+      ],
+      "forbidden_tools": [
+        "enrich_source_columns_from_doi"
+      ],
+      "expected_mappings": {
+        "id": "id",
+        "title": "title",
+        "authors": "author",
+        "year": "date",
+        "type": "type",
+        "doi": "doi"
+      }
+    },
+    "tags": [
+      "negative",
+      "forbidden_tool"
+    ]
+  },
+  {
+    "id_caso": "enrich_04_missing_fields_no_doi",
+    "descripcion": "CSV con metadatos faltantes pero que carece de columna DOI. El agente no debe intentar invocar la herramienta de Crossref.",
+    "inputs": {
+      "columns": [
+        "item_id",
+        "document_name",
+        "abstract_text"
+      ],
+      "sample_rows": [
+        {
+          "item_id": "legacy-1",
+          "document_name": "Acta de Reunión de Consejo",
+          "abstract_text": "Resumen de la sesión..."
+        },
+        {
+          "item_id": "legacy-2",
+          "document_name": "Memoria Anual 2021",
+          "abstract_text": "Presentación de actividades..."
+        },
+        {
+          "item_id": "legacy-3",
+          "document_name": "Balance Contable 2022",
+          "abstract_text": "Informe financiero..."
+        }
+      ]
+    },
+    "reference_outputs": {
+      "expected_tools": [
+        "save_column_mappings"
+      ],
+      "forbidden_tools": [
+        "enrich_source_columns_from_doi"
+      ],
+      "expected_mappings": {
+        "item_id": "id",
+        "document_name": "title",
+        "abstract_text": "description"
+      }
+    },
+    "tags": [
+      "negative",
+      "missing_doi_column"
+    ]
+  },
+  {
+    "id_caso": "enrich_05_nonstandard_doi_header",
+    "descripcion": "CSV al que le falta fecha y tipo pero tiene columna DOI nombrada Digital_Object_Identifier con DOIs reales de Crossref. El agente debe usar ese nombre exacto como argumento doi_column.",
+    "inputs": {
+      "columns": [
+        "paper_id",
+        "title",
+        "authors",
+        "Digital_Object_Identifier"
+      ],
+      "sample_rows": [
+        {
+          "paper_id": "p_01",
+          "title": "Editorial: Emerging applications of targeted and non-targeted metabolomics to physiology and pathophysiology",
+          "authors": "Dowling, G.M. || Aliani, M.",
+          "Digital_Object_Identifier": "10.3389/fphys.2025.1686757"
+        },
+        {
+          "paper_id": "p_02",
+          "title": "Editorial: Molecular and cellular mechanisms of bone remodeling",
+          "authors": "Kumar, S. || McCarthy, A.D. || Sedlinsky, C.",
+          "Digital_Object_Identifier": "10.3389/fendo.2026.1898761"
+        },
+        {
+          "paper_id": "p_03",
+          "title": "Editorial: Recent advances in spore forming pathogenic bacteria",
+          "authors": "Pérez, P.F. || Nielsen-LeRoux, C.",
+          "Digital_Object_Identifier": "10.3389/fcimb.2026.1858596"
+        }
+      ]
+    },
+    "reference_outputs": {
+      "expected_tools": [
+        "enrich_source_columns_from_doi",
+        "save_column_mappings"
+      ],
+      "forbidden_tools": [],
+      "expected_doi_column": "Digital_Object_Identifier",
+      "expected_target_fields": [
+        "type",
+        "date"
+      ],
+      "expected_inferred_mappings": {
+        "inferred_type": "type",
+        "inferred_date": "date"
+      },
+      "expected_mappings": {
+        "paper_id": "id",
+        "title": "title",
+        "authors": "author",
+        "Digital_Object_Identifier": "doi",
+        "inferred_type": "type",
+        "inferred_date": "date"
+      }
+    },
+    "tags": [
+      "edge_case",
+      "header_alias"
+    ]
+  },
+  {
+    "id_caso": "enrich_06_unpaywall_missing_title_and_author",
+    "descripcion": "Export de Unpaywall (Unpaywall.csv) que posee id, doi, genre (type), journal_name (citation), journal_issns (issn) y published_date (date), pero CARECE de columnas para title y author. Debe inferir title y author vía Crossref.",
+    "inputs": {
+      "columns": [
+        "id",
+        "doi",
+        "doi_url",
+        "is_oa",
+        "oa_status",
+        "genre",
+        "journal_name",
+        "journal_issns",
+        "published_date"
+      ],
+      "sample_rows": [
+        {
+          "id": "1",
+          "doi": "10.1099/jgv.0.002077",
+          "doi_url": "https://doi.org/10.1099/jgv.0.002077",
+          "is_oa": "True",
+          "oa_status": "hybrid",
+          "genre": "journal-article",
+          "journal_name": "Journal of General Virology",
+          "journal_issns": "0022-1317,1465-2099",
+          "published_date": "2025-06-13"
+        },
+        {
+          "id": "2",
+          "doi": "10.1001/jamanetworkopen.2025.45963",
+          "doi_url": "https://doi.org/10.1001/jamanetworkopen.2025.45963",
+          "is_oa": "True",
+          "oa_status": "gold",
+          "genre": "journal-article",
+          "journal_name": "JAMA Network Open",
+          "journal_issns": "2574-3805",
+          "published_date": "2025-12-01"
+        },
+        {
+          "id": "3",
+          "doi": "10.1126/science.ads3732",
+          "doi_url": "https://doi.org/10.1126/science.ads3732",
+          "is_oa": "True",
+          "oa_status": "green",
+          "genre": "journal-article",
+          "journal_name": "Science",
+          "journal_issns": "0036-8075,1095-9203",
+          "published_date": "2025-09-18"
+        }
+      ]
+    },
+    "reference_outputs": {
+      "expected_tools": [
+        "enrich_source_columns_from_doi",
+        "save_column_mappings"
+      ],
+      "forbidden_tools": [],
+      "expected_doi_column": "doi",
+      "expected_target_fields": [
+        "title",
+        "author"
+      ],
+      "expected_inferred_mappings": {
+        "inferred_title": "title",
+        "inferred_author": "author"
+      },
+      "expected_mappings": {
+        "id": "id",
+        "doi": "doi",
+        "genre": "type",
+        "inferred_citation": "citation",
+        "journal_issns": "issn",
+        "published_date": "date",
+        "inferred_title": "title",
+        "inferred_author": "author"
+      }
+    },
+    "tags": [
+      "positive",
+      "unpaywall",
+      "missing_title_and_author"
+    ]
+  },
+  {
+    "id_caso": "enrich_07_pubmed_real_missing_type",
+    "descripcion": "Export real de PubMed (Pubmed.csv) con PMID, Title, Authors, Citation, First Author, Journal/Book, Publication Year, Create Date, PMCID, NIHMS ID y DOI. Falta únicamente la columna crítica 'type', que debe inferirse vía Crossref.",
+    "inputs": {
+      "columns": [
+        "PMID",
+        "Title",
+        "Authors",
+        "Citation",
+        "First Author",
+        "Journal/Book",
+        "Publication Year",
+        "Create Date",
+        "PMCID",
+        "NIHMS ID",
+        "DOI"
+      ],
+      "sample_rows": [
+        {
+          "PMID": "41118147",
+          "Title": "Kinases go where the function calls",
+          "Authors": "Said M, Mattiazzi A, Mundiña-Weilenmann C.",
+          "Citation": "Cardiovasc Res. 2025 Nov 22;121(14):2116-2117. doi: 10.1093/cvr/cvaf197.",
+          "First Author": "Said M",
+          "Journal/Book": "Cardiovasc Res",
+          "Publication Year": "2025",
+          "Create Date": "2025/10/21",
+          "PMCID": "",
+          "NIHMS ID": "",
+          "DOI": "10.1093/cvr/cvaf197"
+        },
+        {
+          "PMID": "40966355",
+          "Title": "1206 genomes reveal origin and movement of Aedes aegypti driving increased dengue risk",
+          "Authors": "Crawford JE, Balcazar D, Redmond S, Rose NH.",
+          "Citation": "Science. 2025 Sep 18;389(6766):eads3732. doi: 10.1126/science.ads3732.",
+          "First Author": "Crawford JE",
+          "Journal/Book": "Science",
+          "Publication Year": "2025",
+          "Create Date": "2025/09/18",
+          "PMCID": "PMC12952217",
+          "NIHMS ID": "NIHMS2144453",
+          "DOI": "10.1126/science.ads3732"
+        },
+        {
+          "PMID": "41324955",
+          "Title": "Global Incidence of Pertussis After the COVID-19 Pandemic",
+          "Authors": "Gorringe A, Cavell B, Beard F, Hozbor D, Edwards K.",
+          "Citation": "JAMA Netw Open. 2025 Dec 1;8(12):e2545963. doi: 10.1001/jamanetworkopen.2025.45963.",
+          "First Author": "Gorringe A",
+          "Journal/Book": "JAMA Netw Open",
+          "Publication Year": "2025",
+          "Create Date": "2025/12/01",
+          "PMCID": "",
+          "NIHMS ID": "",
+          "DOI": "10.1001/jamanetworkopen.2025.45963"
+        }
+      ]
+    },
+    "reference_outputs": {
+      "expected_tools": [
+        "enrich_source_columns_from_doi",
+        "save_column_mappings"
+      ],
+      "forbidden_tools": [],
+      "expected_doi_column": "DOI",
+      "expected_target_fields": [
+        "type"
+      ],
+      "expected_inferred_mappings": {
+        "inferred_type": "type"
+      },
+      "expected_mappings": {
+        "PMID": "id",
+        "Title": "title",
+        "Authors": "author",
+        "Citation": "citation",
+        "Publication Year": "date",
+        "DOI": "doi",
+        "inferred_type": "type"
+      }
+    },
+    "tags": [
+      "positive",
+      "pubmed",
+      "single_field_enrichment"
+    ]
+  }
+]

@@ -49,10 +49,10 @@ Evalúa la toma de decisiones, la preservación de información válida y la cor
 
 - **`test_curator_over_correction.py` (Pytest + LangSmith):**
   - **Objetivo:** Garantizar que el agente **no sobrecorrija** ni introduzca alucinaciones cuando se le presentan metadatos limpios y válidos (tasa de sobrecorrección $\approx 0\%$).
-  - **Dataset:** [`curator_clean_baseline.json`](../datasets/curator/curator_clean_baseline.json) (15 casos).
+  - **Dataset:** [`curator_clean_baseline.json`](../datasets/README.md#curator_clean_baselinejson-15-casos) (15 casos).
 - **`test_curator_decisions.py` (Pytest + LangSmith):**
   - **Objetivo:** Verificar el ruteo de decisiones (reparar campo afectado, abstenerse o escalar a HITL), conservación exacta de campos no afectados y control de herramientas requeridas vs. prohibidas.
-  - **Dataset:** [`curator_decision_cases.json`](../datasets/curator/curator_decision_cases.json) (8 casos).
+  - **Dataset:** [`curator_decision_cases.json`](../datasets/README.md#curator_decision_casesjson-8-casos) (8 casos).
 - **`evaluate_curator_decisions.py` (LangSmith Nativo):**
   - **Objetivo:** Benchmark cuantitativo global mediante `aevaluate` para comparar la precisión de decisiones del agente ante diferentes temperaturas o modelos de lenguaje.
 
@@ -61,16 +61,16 @@ Evalúa la interpretación semántica de encabezados tabulares desconocidos y su
 
 - **`test_source_doi_enrichment_trajectory.py` (Pytest + LangSmith):**
   - **Objetivo:** Evaluar la trayectoria y uso de herramientas (`doi_lookup` en Crossref / OpenAlex) para enriquecer o desambiguar metadatos incompletos.
-  - **Dataset:** [`source_doi_enrichment_cases.json`](../datasets/source_to_generic/source_doi_enrichment_cases.json) (7 casos).
+  - **Dataset:** [`source_doi_enrichment_cases.json`](../datasets/README.md#source_doi_enrichment_casesjson-7-casos) (7 casos).
 - **`test_source_feedback_recovery.py` (Pytest + LangSmith):**
   - **Objetivo:** Evaluar la resiliencia y autorreparación del agente ante mensajes de error o feedback de validación (e.g., columnas obligatorias omitidas).
-  - **Dataset:** [`source_feedback_recovery_cases.json`](../datasets/source_to_generic/source_feedback_recovery_cases.json) (5 casos).
+  - **Dataset:** [`source_feedback_recovery_cases.json`](../datasets/README.md#source_feedback_recovery_casesjson-5-casos) (5 casos).
 - **`test_source_regex_react.py` (Pytest + LangSmith):**
   - **Objetivo:** Evaluar el razonamiento ReAct para formular y aplicar expresiones regulares de extracción ante columnas compuestas (e.g., fecha, volumen y número amalgamados).
-  - **Dataset:** [`source_regex_react_cases.json`](../datasets/source_to_generic/source_regex_react_cases.json) (6 casos).
+  - **Dataset:** [`source_regex_react_cases.json`](../datasets/README.md#source_regex_react_casesjson-6-casos) (6 casos).
 - **`evaluate_source_mapping.py` (LangSmith Nativo):**
   - **Objetivo:** Medir sistemáticamente la precisión global de mapeo campo a campo (`field_mapping_accuracy`) y confianza sobre fuentes heterogéneas.
-  - **Dataset:** [`source_mapping_cases.json`](../datasets/source_to_generic/source_mapping_cases.json) (10 casos).
+  - **Dataset:** [`source_mapping_cases.json`](../datasets/README.md#source_mapping_casesjson-10-casos) (10 casos).
 
 ### 3. `target_crosswalk/` — Agente Crosswalk Genérico a Destino
 Evalúa la proyección del esquema canónico a las especificaciones formales de esquemas institucionales:
@@ -80,7 +80,7 @@ Evalúa la proyección del esquema canónico a las especificaciones formales de 
 - **`test_target_crosswalk_user_repair.py` (Pytest + LangSmith):**
   - **Objetivo:** Evaluar la capacidad del agente para validar, reparar y reconciliar configuraciones de destino imperfectas provistas por el usuario (`user-provided target config repair`).
 - **`evaluate_target_crosswalk_mapping.py` (LangSmith Nativo):**
-  - **Objetivo:** Benchmark de mapeo exhaustivo con `aevaluate` sobre el dataset [`target_crosswalk_cases.json`](../datasets/target_crosswalk/target_crosswalk_cases.json) (7 casos).
+  - **Objetivo:** Benchmark de mapeo exhaustivo con `aevaluate` sobre el dataset [`target_crosswalk_cases.json`](../datasets/README.md#target_crosswalk_casesjson-7-casos) (7 casos).
 
 ---
 

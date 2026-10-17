@@ -1,0 +1,648 @@
+[
+  {
+    "id_caso": "case_format_01_pure_generic",
+    "descripcion": "CSV reconciliado normalizado proveniente de ingesta de PDFs (MinIO). Las columnas canónicas son cubiertas en Nivel 1 y la columna 'id' (nombre de archivo PDF) es mapeada a 'files' por el LLM.",
+    "inputs": {
+      "source_name": "pdf_minio",
+      "columns": [
+        "id",
+        "title",
+        "author",
+        "date",
+        "type",
+        "doi",
+        "issn",
+        "citation"
+      ],
+      "sample_rows": [
+        {
+          "id": "39-jaiio-ast-04.pdf-PDFA.pdf",
+          "title": "La Transformada Discreta de Karhunen Loève es la base de un método de compresión de imágenes",
+          "author": "Delrieux, Claudio || Silvetti, Andrea",
+          "date": "2010",
+          "type": "articulo",
+          "doi": "",
+          "issn": "1850-2806",
+          "citation": "39 JAIIO - AST 2010 - ISSN: 1850-2806"
+        },
+        {
+          "id": "39-jaiio-ast-06.pdf-PDFA.pdf",
+          "title": "Estimacion de texturas",
+          "author": "Gonzalez, Maria || Perez, Juan",
+          "date": "2010",
+          "type": "objeto de conferencia",
+          "doi": "",
+          "issn": "1850-2806",
+          "citation": "39 JAIIO - AST 2010"
+        }
+      ],
+      "source_crosswalk_config": null,
+      "user_target_config": null
+    },
+    "reference_outputs": {
+      "expected_mappings": {
+        "title": "dc.title[es]",
+        "author": "sedici.creator.person[es]",
+        "date": "dc.date.issued",
+        "type": "dc.type",
+        "issn": "sedici.identifier.issn",
+        "citation": "sedici.relation.journalTitle[es]",
+        "id": "files"
+      },
+      "forbidden_mappings": {},
+      "critical_fields": [
+        "dc.title[es]",
+        "sedici.creator.person[es]",
+        "dc.date.issued"
+      ],
+      "expected_tools": [
+        "save_column_mappings"
+      ],
+      "forbidden_tools": []
+    },
+    "tags": [
+      "format",
+      "generic",
+      "deterministic_level1"
+    ]
+  },
+  {
+    "id_caso": "case_format_02_heterogeneous_pubmed",
+    "descripcion": "CSV reconciliado de PubMed con columnas remanentes (PMID, PMCID, NIHMS ID, inferred_type). El LLM mapea identificadores a sedici.identifier.other, subtype a sedici.subtype[es], y se abstiene de First Author y Create Date.",
+    "inputs": {
+      "source_name": "pubmed",
+      "columns": [
+        "PMID",
+        "Title",
+        "Authors",
+        "First Author",
+        "Journal/Book",
+        "Publication Year",
+        "Create Date",
+        "PMCID",
+        "NIHMS ID",
+        "DOI",
+        "inferred_type"
+      ],
+      "sample_rows": [
+        {
+          "PMID": "41118147",
+          "Title": "Kinases go where the function calls",
+          "Authors": "Said M, Mattiazzi A, Mundiña-Weilenmann C.",
+          "First Author": "Said M",
+          "Journal/Book": "Cardiovasc Res",
+          "Publication Year": "2025",
+          "Create Date": "2025/10/21",
+          "PMCID": "",
+          "NIHMS ID": "",
+          "DOI": "10.1093/cvr/cvaf197",
+          "inferred_type": "journal-article"
+        },
+        {
+          "PMID": "40966355",
+          "Title": "1206 genomes reveal origin and movement of Aedes aegypti driving increased dengue risk",
+          "Authors": "Crawford JE, Balcazar D, Redmond S",
+          "First Author": "Crawford JE",
+          "Journal/Book": "Science",
+          "Publication Year": "2025",
+          "Create Date": "2025/09/18",
+          "PMCID": "PMC12952217",
+          "NIHMS ID": "NIHMS2144453",
+          "DOI": "10.1126/science.ads3732",
+          "inferred_type": "journal-article"
+        }
+      ],
+      "source_crosswalk_config": [
+        [
+          {
+            "left": "Title",
+            "replace": "title",
+            "required": true
+          },
+          {
+            "left": "Authors",
+            "replace": "author",
+            "required": false
+          },
+          {
+            "left": "Publication Year",
+            "replace": "date",
+            "required": false
+          },
+          {
+            "left": "Journal/Book",
+            "replace": "citation",
+            "required": false
+          },
+          {
+            "left": "DOI",
+            "replace": "doi",
+            "required": false
+          }
+        ],
+        {
+          "replace_separator": "||",
+          "file_delimiter": ","
+        }
+      ],
+      "user_target_config": null
+    },
+    "reference_outputs": {
+      "expected_mappings": {
+        "Title": "dc.title[es]",
+        "Authors": "sedici.creator.person[es]",
+        "Publication Year": "dc.date.issued",
+        "Journal/Book": "sedici.relation.journalTitle[es]",
+        "DOI": "sedici.identifier.doi",
+        "PMID": "sedici.identifier.other",
+        "inferred_type": "sedici.subtype[es]"
+      },
+      "forbidden_mappings": {
+        "First Author": "sedici.creator.person[es]"
+      },
+      "critical_fields": [
+        "dc.title[es]",
+        "sedici.creator.person[es]",
+        "dc.date.issued",
+        "sedici.identifier.doi"
+      ],
+      "expected_tools": [
+        "save_column_mappings"
+      ],
+      "forbidden_tools": []
+    },
+    "tags": [
+      "format",
+      "heterogeneous",
+      "remnants",
+      "llm_level2"
+    ]
+  },
+  {
+    "id_caso": "case_format_03_hybrid_enriched",
+    "descripcion": "CSV reconciliado post-enriquecimiento con columnas originales de la fuente más columnas inyectadas 'doi' e 'issn'. El LLM mapea remanentes Volume e Issue hacia sedici.relation.journalVolumeAndIssue.",
+    "inputs": {
+      "source_name": "scopus",
+      "columns": [
+        "Item Title",
+        "Creators",
+        "Year",
+        "Source_Title",
+        "Volume",
+        "Issue",
+        "doi",
+        "issn"
+      ],
+      "sample_rows": [
+        {
+          "Item Title": "Deep learning for acoustic sensing",
+          "Creators": "Alvarez, Lucas || Rossi, Pablo",
+          "Year": "2024",
+          "Source_Title": "Applied Acoustics",
+          "Volume": "218",
+          "Issue": "2",
+          "doi": "10.1016/j.apacoust.2024.109876",
+          "issn": "0003-682X"
+        },
+        {
+          "Item Title": "Microplastics in freshwater ecosystems",
+          "Creators": "Gomez, Clara || Blanco, Martin",
+          "Year": "2023",
+          "Source_Title": "Environmental Pollution",
+          "Volume": "315",
+          "Issue": "1",
+          "doi": "10.1016/j.envpol.2023.119999",
+          "issn": "0269-7491"
+        }
+      ],
+      "source_crosswalk_config": [
+        [
+          {
+            "left": "Item Title",
+            "replace": "title",
+            "required": true
+          },
+          {
+            "left": "Creators",
+            "replace": "author",
+            "required": false
+          },
+          {
+            "left": "Year",
+            "replace": "date",
+            "required": false
+          },
+          {
+            "left": "Source_Title",
+            "replace": "citation",
+            "required": false
+          }
+        ],
+        {
+          "replace_separator": "||",
+          "file_delimiter": ","
+        }
+      ],
+      "user_target_config": null
+    },
+    "reference_outputs": {
+      "expected_mappings": {
+        "Item Title": "dc.title[es]",
+        "Creators": "sedici.creator.person[es]",
+        "Year": "dc.date.issued",
+        "Source_Title": "sedici.relation.journalTitle[es]",
+        "doi": "sedici.identifier.doi",
+        "issn": "sedici.identifier.issn",
+        "Volume": "sedici.relation.journalVolumeAndIssue",
+        "Issue": "sedici.relation.journalVolumeAndIssue"
+      },
+      "forbidden_mappings": {},
+      "critical_fields": [
+        "dc.title[es]",
+        "sedici.creator.person[es]",
+        "dc.date.issued",
+        "sedici.identifier.doi"
+      ],
+      "expected_tools": [
+        "save_column_mappings"
+      ],
+      "forbidden_tools": []
+    },
+    "tags": [
+      "format",
+      "hybrid_enriched",
+      "remnants",
+      "llm_level2"
+    ]
+  },
+  {
+    "id_caso": "case_format_04_noisy_adversarial",
+    "descripcion": "CSV reconciliado con columnas troncales y columnas ruidosas internas de control (Internal_Batch_ID, Crawler_Status, DB_Sync_Flag). El LLM y guardrail deben abstenerse y descartar campos no bibliográficos.",
+    "inputs": {
+      "source_name": "adversarial_source",
+      "columns": [
+        "Title",
+        "Authors",
+        "Year",
+        "DOI",
+        "Internal_Batch_ID",
+        "Crawler_Status",
+        "DB_Sync_Flag"
+      ],
+      "sample_rows": [
+        {
+          "Title": "Quantum computing algorithms for combinatorial optimization",
+          "Authors": "Smith, J. || Taylor, R.",
+          "Year": "2023",
+          "DOI": "10.1103/PhysRevA.99.012345",
+          "Internal_Batch_ID": "BATCH_20261017_01",
+          "Crawler_Status": "FETCH_SUCCESS",
+          "DB_Sync_Flag": "SYNCED_OK"
+        },
+        {
+          "Title": "Topological insulators and exotic superconductors review",
+          "Authors": "Wang, L. || Zhao, K.",
+          "Year": "2024",
+          "DOI": "10.1103/PhysRevB.99.054321",
+          "Internal_Batch_ID": "BATCH_20261017_02",
+          "Crawler_Status": "FETCH_SUCCESS",
+          "DB_Sync_Flag": "SYNCED_OK"
+        }
+      ],
+      "source_crosswalk_config": [
+        [
+          {
+            "left": "Title",
+            "replace": "title",
+            "required": true
+          },
+          {
+            "left": "Authors",
+            "replace": "author",
+            "required": false
+          },
+          {
+            "left": "Year",
+            "replace": "date",
+            "required": false
+          },
+          {
+            "left": "DOI",
+            "replace": "doi",
+            "required": false
+          }
+        ],
+        {
+          "replace_separator": "||",
+          "file_delimiter": ","
+        }
+      ],
+      "user_target_config": null
+    },
+    "reference_outputs": {
+      "expected_mappings": {
+        "Title": "dc.title[es]",
+        "Authors": "sedici.creator.person[es]",
+        "Year": "dc.date.issued",
+        "DOI": "sedici.identifier.doi"
+      },
+      "forbidden_mappings": {
+        "Internal_Batch_ID": "sedici.identifier.other",
+        "Crawler_Status": "dc.type",
+        "DB_Sync_Flag": "dc.description.abstract"
+      },
+      "forbidden_columns_mapped": [
+        "Internal_Batch_ID",
+        "Crawler_Status",
+        "DB_Sync_Flag"
+      ],
+      "critical_fields": [
+        "dc.title[es]",
+        "sedici.creator.person[es]",
+        "dc.date.issued"
+      ],
+      "expected_tools": [
+        "save_column_mappings"
+      ],
+      "forbidden_tools": []
+    },
+    "tags": [
+      "format",
+      "adversarial",
+      "abstention",
+      "llm_level2"
+    ]
+  },
+  {
+    "id_caso": "case_repair_01_missing_column_renamed",
+    "descripcion": "Autorreparación: El usuario proveyó un mapeo con 'Authors' que no existe en el CSV reconciliado (donde se llama 'Author_Names'). El LLM real debe identificar 'Author_Names' a partir de las muestras y preservar los mapeos válidos.",
+    "inputs": {
+      "source_name": "repair_rename",
+      "columns": [
+        "Title",
+        "Author_Names",
+        "Publication_Date",
+        "DOI_Identifier"
+      ],
+      "sample_rows": [
+        {
+          "Title": "Neuroplasticity after ischemic stroke in adults",
+          "Author_Names": "Fernandez, Lucia || Rossi, Daniel",
+          "Publication_Date": "2024",
+          "DOI_Identifier": "10.1016/j.neulet.2024.137890"
+        },
+        {
+          "Title": "Cognitive rehabilitation protocols in elderly patients",
+          "Author_Names": "Lopez, Mariano || Castro, Sofia",
+          "Publication_Date": "2025",
+          "DOI_Identifier": "10.1016/j.neulet.2025.138000"
+        }
+      ],
+      "user_target_config": [
+        [
+          {
+            "left": "Title",
+            "replace": "dc.title[es]",
+            "required": true
+          },
+          {
+            "left": "Authors",
+            "replace": "sedici.creator.person[es]",
+            "required": false
+          },
+          {
+            "left": "Publication_Date",
+            "replace": "dc.date.issued",
+            "required": false
+          },
+          {
+            "left": "DOI_Identifier",
+            "replace": "sedici.identifier.doi",
+            "required": false
+          }
+        ],
+        {
+          "replace_separator": "||",
+          "file_delimiter": ","
+        }
+      ]
+    },
+    "reference_outputs": {
+      "expected_mappings": {
+        "Title": "dc.title[es]",
+        "Author_Names": "sedici.creator.person[es]",
+        "Publication_Date": "dc.date.issued",
+        "DOI_Identifier": "sedici.identifier.doi"
+      },
+      "forbidden_mappings": {
+        "Authors": "sedici.creator.person[es]"
+      },
+      "repaired_columns": [
+        "Author_Names"
+      ],
+      "preserved_columns": [
+        "Title",
+        "Publication_Date",
+        "DOI_Identifier"
+      ],
+      "critical_fields": [
+        "dc.title[es]",
+        "sedici.creator.person[es]",
+        "dc.date.issued",
+        "sedici.identifier.doi"
+      ],
+      "expected_tools": [
+        "save_column_mappings"
+      ]
+    },
+    "tags": [
+      "repair",
+      "user_config",
+      "column_rename",
+      "llm_repair"
+    ]
+  },
+  {
+    "id_caso": "case_repair_02_invalid_target_field",
+    "descripcion": "Autorreparación: El usuario definió 'Journal' -> 'dc.journal' (metadato inexistente en SEDICI). El LLM real debe consultar el catálogo oficial y corregirlo a 'sedici.relation.journalTitle[es]'.",
+    "inputs": {
+      "source_name": "repair_target",
+      "columns": [
+        "Title",
+        "Authors",
+        "Journal",
+        "Date"
+      ],
+      "sample_rows": [
+        {
+          "Title": "Machine learning for marine sediment analysis",
+          "Authors": "Diaz, Martin || Gomez, Ana",
+          "Journal": "Journal of Sedimentary Research",
+          "Date": "2024"
+        },
+        {
+          "Title": "Fluvial geomorphology and gravel bed rivers in Patagonia",
+          "Authors": "Perez, Juan",
+          "Journal": "Geomorphology",
+          "Date": "2023"
+        }
+      ],
+      "user_target_config": [
+        [
+          {
+            "left": "Title",
+            "replace": "dc.title[es]",
+            "required": true
+          },
+          {
+            "left": "Authors",
+            "replace": "sedici.creator.person[es]",
+            "required": false
+          },
+          {
+            "left": "Journal",
+            "replace": "dc.journal",
+            "required": false
+          },
+          {
+            "left": "Date",
+            "replace": "dc.date.issued",
+            "required": false
+          }
+        ],
+        {
+          "replace_separator": "||",
+          "file_delimiter": ","
+        }
+      ]
+    },
+    "reference_outputs": {
+      "expected_mappings": {
+        "Title": "dc.title[es]",
+        "Authors": "sedici.creator.person[es]",
+        "Journal": "sedici.relation.journalTitle[es]",
+        "Date": "dc.date.issued"
+      },
+      "forbidden_mappings": {
+        "Journal": "dc.journal"
+      },
+      "repaired_columns": [
+        "Journal"
+      ],
+      "preserved_columns": [
+        "Title",
+        "Authors",
+        "Date"
+      ],
+      "critical_fields": [
+        "dc.title[es]",
+        "sedici.creator.person[es]",
+        "sedici.relation.journalTitle[es]"
+      ],
+      "expected_tools": [
+        "save_column_mappings"
+      ]
+    },
+    "tags": [
+      "repair",
+      "user_config",
+      "invalid_target",
+      "llm_repair"
+    ]
+  },
+  {
+    "id_caso": "case_repair_03_superfluous_dropped_column",
+    "descripcion": "Autorreparación: El usuario incluyó un mapeo para 'Old_Internal_ID' que fue eliminado durante la deduplicación y no existe en el CSV. El LLM debe omitir ese mapeo sin alucinar y conservar los válidos.",
+    "inputs": {
+      "source_name": "repair_superfluous",
+      "columns": [
+        "Article_Title",
+        "Author_List",
+        "Issued_Year",
+        "DOI"
+      ],
+      "sample_rows": [
+        {
+          "Article_Title": "Renewable energy transitions in developing countries",
+          "Author_List": "Sosa, Maria || Blanco, Carlos",
+          "Issued_Year": "2024",
+          "DOI": "10.1016/j.renene.2024.120500"
+        },
+        {
+          "Article_Title": "Wind turbine blade fatigue assessment using sensor networks",
+          "Author_List": "Vazquez, Hector",
+          "Issued_Year": "2025",
+          "DOI": "10.1016/j.renene.2025.121000"
+        }
+      ],
+      "user_target_config": [
+        [
+          {
+            "left": "Article_Title",
+            "replace": "dc.title[es]",
+            "required": true
+          },
+          {
+            "left": "Author_List",
+            "replace": "sedici.creator.person[es]",
+            "required": false
+          },
+          {
+            "left": "Issued_Year",
+            "replace": "dc.date.issued",
+            "required": false
+          },
+          {
+            "left": "DOI",
+            "replace": "sedici.identifier.doi",
+            "required": false
+          },
+          {
+            "left": "PMCID",
+            "replace": "sedici.identifier.other",
+            "required": false
+          }
+        ],
+        {
+          "replace_separator": "||",
+          "file_delimiter": ","
+        }
+      ]
+    },
+    "reference_outputs": {
+      "expected_mappings": {
+        "Article_Title": "dc.title[es]",
+        "Author_List": "sedici.creator.person[es]",
+        "Issued_Year": "dc.date.issued",
+        "DOI": "sedici.identifier.doi"
+      },
+      "forbidden_mappings": {
+        "PMCID": "sedici.identifier.other"
+      },
+      "omitted_columns": [
+        "PMCID"
+      ],
+      "preserved_columns": [
+        "Article_Title",
+        "Author_List",
+        "Issued_Year",
+        "DOI"
+      ],
+      "critical_fields": [
+        "dc.title[es]",
+        "sedici.creator.person[es]",
+        "dc.date.issued",
+        "sedici.identifier.doi"
+      ],
+      "expected_tools": [
+        "save_column_mappings"
+      ]
+    },
+    "tags": [
+      "repair",
+      "user_config",
+      "superfluous_dropped",
+      "llm_repair"
+    ]
+  }
+]
