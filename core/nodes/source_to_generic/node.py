@@ -27,6 +27,7 @@ from core.utils.get_local_model import FallbackLLM
 from core.utils.prompt_loader import load_agent_prompt
 from core.nodes.crosswalk_base.models import CrosswalkColumnMapping
 from core.nodes.crosswalk_base.base import BaseCrosswalkGenerator
+from core.nodes.crosswalk_base.helpers import build_mapping_entry
 from core.nodes.source_to_generic.helpers import (
     GENERIC_COLUMNS,
     _read_csv_head,
@@ -77,7 +78,7 @@ def _build_fallback_mappings(head_rows: list[dict]) -> list[dict]:
     if not head_rows:
         return []
     return [
-        {"left": col, "replace": col, "default": "", "required": False, "filter": "trim"}
+        build_mapping_entry(left=col, replace=col)
         for col in head_rows[0].keys()
     ]
 

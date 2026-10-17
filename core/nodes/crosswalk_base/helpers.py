@@ -39,6 +39,23 @@ def save_crosswalk_config_json(
     return output_path
 
 
+def build_mapping_entry(
+    left: str,
+    replace: str,
+    default: str = "",
+    required: bool = False,
+    filter_rule: str = "trim",
+) -> dict[str, Any]:
+    """Crea una regla de mapeo con la estructura requerida por CrosswalkClient."""
+    return {
+        "left": left,
+        "replace": replace,
+        "default": default,
+        "required": required,
+        "filter": filter_rule,
+    }
+
+
 def read_csv_headers(csv_path: str) -> list[str]:
     """
     Lee las cabeceras de un archivo CSV usando Sniffer o fallback estándar.
@@ -143,12 +160,14 @@ def validate_column_mappings_base(
             )
             continue
 
-        validated.append({
-            "left": left,
-            "replace": replace,
-            "required": bool(m.get("required", False)),
-            "default": m.get("default", ""),
-            "filter": m.get("filter", "trim"),
-        })
+        validated.append(
+            build_mapping_entry(
+                left=left,
+                replace=replace,
+                default=m.get("default", ""),
+                required=bool(m.get("required", False)),
+                filter_rule=m.get("filter", "trim"),
+            )
+        )
 
     return validated
