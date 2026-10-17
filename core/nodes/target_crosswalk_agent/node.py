@@ -17,8 +17,8 @@ from langsmith import traceable
 from core.utils.prompt_loader import load_agent_prompt
 from core.nodes.crosswalk_base.models import CrosswalkColumnMapping
 from core.nodes.crosswalk_base.base import BaseCrosswalkGenerator
+from core.nodes.crosswalk_base.helpers import read_crosswalk_config
 from core.nodes.target_crosswalk_agent.helpers import (
-    _read_source_crosswalk_config,
     format_sedici_catalog_for_prompt,
     identify_remnant_columns,
     load_sedici_catalog,
@@ -146,7 +146,7 @@ class TargetSediciCrosswalkGenerator(BaseCrosswalkGenerator):
         context: dict[str, Any],
     ) -> dict[str, Any]:
         source_cfg = context.get("source_crosswalk_config")
-        _, source_opts = _read_source_crosswalk_config(source_cfg)
+        _, source_opts = read_crosswalk_config(source_cfg)
         return {
             "original_separator": source_opts.get("original_separator", "||"),
             "replace_separator": source_opts.get("replace_separator", "||"),
