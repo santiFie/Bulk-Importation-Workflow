@@ -23,11 +23,11 @@ La suite unitaria abarca los siguientes dominios arquitectónicos:
 - **Estructura y Topología de Grafos (`test_graph_structure.py`):** Validación de la compilación de `StateGraph`, presencia de nodos obligatorios y consistencia de las aristas.
 - **Transformaciones de Metadatos (`test_source_to_generic.py`, `test_target_crosswalk_agent.py`):** Mapeo de columnas fuente al esquema canónico y al formato SEDICI mediante funciones locales y heurísticas.
 - **Componentes Especializados (Subdirectorios):**
-  - **[clients/](clients/README.md):** Manejo de resiliencia HTTP, parsing de respuestas, manejo de JWT y expiración de tokens.
-  - **[nodes/](nodes/README.md):** Aislamiento de cada uno de los 13+ nodos LangGraph mediante inyección de mocks sobre el estado `State`.
-  - **[tools/](tools/README.md):** Motores locales de crosswalk y transformaciones CSV (`CsvHandler`, `Crosswalk`).
+  - **[clients/](clients/README.md):** Manejo de resiliencia HTTP, parsing de respuestas, manejo de JWT y pruebas aisladas de clientes de deduplicación y crosswalk (`test_crosswalk_client.py`, `test_deduplicator_client.py`).
+  - **[nodes/](nodes/README.md):** Aislamiento de cada uno de los 13+ nodos LangGraph mediante inyección de mocks, validación de invariantes del paquete SAF (`test_saf_invariants.py`) y comportamiento de `test_target_crosswalk_agent.py`.
+  - **[tools/](tools/README.md):** Motores locales de crosswalk y transformaciones CSV (`CsvHandler`, `Crosswalk`, deduplicador).
   - **[utils/](utils/README.md):** Text fixers deterministas, detectores heurísticos de anomalías OCR y validación temprana Fail-Fast de CSVs.
-  - **[agent/](agent/README.md):** Agente reactivo de recuperación de errores, despacho de estrategias polimórficas y transacciones atómicas `CsvTransaction`.
+  - **[agent/](agent/README.md):** Agente reactivo de recuperación de errores, transacciones atómicas `CsvTransaction`, arnés de pruebas del curador (`test_metadata_curator_harness.py`) y evaluación de estrategias de curación sin LLM real.
   - **[enrichers/](enrichers/README.md):** Clientes de consulta a APIs bibliográficas con payloads emulados (Crossref, OpenAlex, OpenLibrary).
   - **[memory/](memory/README.md):** Almacenamiento y recuperación jerárquica de episodios de error (CBR - Case-Based Reasoning).
 

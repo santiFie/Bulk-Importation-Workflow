@@ -41,15 +41,15 @@ flowchart LR
 ```
 
 ### Componentes y Subdirectorios:
-- **[subgraphs/](subgraphs/README.md):** Verificación de la compilación y ejecución E2E de cada subgrafo individual (`IngestSubgraph`, `CrosswalkDedupSubgraph`, `ExportSubgraph`).
-- **[nodes/](nodes/README.md):** Validación de nodos individuales que dependen de servicios de infraestructura (MinIO S3, OCR, MCP).
-- **[checkpointer_and_threads/](checkpointer_and_threads/README.md):** Persistencia de estado en LangGraph, Time-Travel, puntos de interrupción (`interrupt`) y reanudación idempotente (`resume`).
-- **[e2e/](e2e/README.md):** Pruebas de extremo a extremo que ejecutan el pipeline completo ensamblado desde los datos crudos hasta el depósito final en DSpace.
+- **[subgraphs/](subgraphs/README.md):** Verificación de la compilación y ejecución de cada subgrafo individual (`IngestSubgraph`, `CrosswalkDedupSubgraph`, `ExportSubgraph`).
+- **[nodes/](nodes/README.md):** Validación de nodos individuales que dependen de servicios de infraestructura real (MinIO S3, OCR con Tesseract, FastMCP extractor).
+- **[checkpointer_and_threads/](checkpointer_and_threads/README.md):** Persistencia de estado en LangGraph, Time-Travel, puntos de interrupción (`interrupt`) y reanudación idempotente (`resume`) para flujos HITL.
+- **[e2e/](e2e/README.md):** Pruebas de extremo a extremo que ejecutan el pipeline completo ensamblado:
+  - `test_metadata_curator_e2e.py`: Integración completa del agente curador con PDFs reales, almacenamiento MinIO y extracción OCR.
+  - `test_pipeline_evaluation.py`: Ejecución de punta a punta hasta la generación del paquete SAF (*Simple Archive Format*).
 
 ### Suites Adicionales en la Raíz de `tests/integration/`:
-- `test_metadata_curator_agent.py`: Suite de 3 niveles del Agente Curador (Sintético, Dataset Eval con LangSmith, y E2E con MinIO y Tesseract OCR).
-- `test_graph_steps.py`: Verificación secuencial del grafo legacy (en proceso de transición hacia subgrafos).
-- `test_pipeline_evaluation.py` y `test_source_config_generator.py`: Benchmarks cuantitativos y trazabilidad en LangSmith.
+- `test_source_config_generator.py`: Verificación de generación de configuraciones de fuente con APIs auxiliares.
 
 ---
 

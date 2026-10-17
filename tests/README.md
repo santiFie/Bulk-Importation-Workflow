@@ -30,29 +30,30 @@ graph TD
         I4[e2e: Pipeline Completo e Importación DSpace]
     end
 
-    subgraph Capa 3: Evaluación Agéntica y Regresión
+    subgraph Capa 3: Evaluación Agéntica y Semántica (LangSmith)
         E[tests/evals/]
-        E1[datasets: Golden Datasets y Ground Truth]
-        E2[single_agent: Precisión y Rechazo de Alucinaciones]
+        E1[datasets: Golden Datasets Declarativos]
+        E2[agents: Curator, Source to Generic, Target Crosswalk]
         E3[regression: Detección de Drift y Recuperación LLM]
-        E4[metrics: Jueces LLM y Métricas Cuantitativas]
+        E4[metrics: Jueces LLM y Evaluadores de Contrato]
     end
 
     U --> I --> E
 ```
 
 ### Capas del Sistema:
-1. **Capa 1: Tests Unitarios (`tests/unit/`)**
-   - **Enfoque:** Determinismo matemático, aislamiento absoluto (sin red, sin contenedores, sin LLM real).
+1. **Capa 1: Tests Unitarios (`tests/unit/`) — Determinismo Matemático y Rapidez**
+   - **Enfoque:** Determinismo absoluto, aislamiento riguroso (100% offline, sin red, sin Docker, sin LLM real).
    - **Velocidad:** Tiempo total de ejecución < 10 segundos.
-   - **Garantía:** Corrección de lógica de negocio pura, validaciones estructurales de esquemas, manipulación de CSVs, transformaciones regex y contratos de clases.
-2. **Capa 2: Tests de Integración (`tests/integration/`)**
-   - **Enfoque:** Validación de contratos e interoperabilidad entre subsistemas con servicios reales o emulados en Docker (MinIO, microservicio de Crosswalk/Deduplicación, DSpace 7+ Sandbox).
+   - **Garantía:** Corrección de lógica de negocio pura, validaciones tempranas de esquemas (Fail-Fast), transformaciones CSV locales, regex y contratos de clases mediante mocks.
+2. **Capa 2: Tests de Integración (`tests/integration/`) — Herramientas y Servicios Reales**
+   - **Enfoque:** Validación de contratos e interoperabilidad física entre subsistemas utilizando servicios reales en contenedores Docker (MinIO para S3, Tesseract OCR, FastMCP metadata extractor, microservicio de Crosswalk/Deduplicación y DSpace 7+ Sandbox).
    - **Velocidad:** Tiempo total ~1 a 3 minutos.
-   - **Garantía:** Correcta compilación y ejecución de subgrafos de LangGraph, persistencia de hilos con checkpointers, pausa y reanudación ante interrupciones (HITL), y generación válida del paquete SAF (*Simple Archive Format*).
-3. **Capa 3: Evaluaciones Agénticas (`tests/evals/`)**
-   - **Enfoque:** Medición empírica y probabilística de la calidad de inferencia de modelos LLM (Llama-3, DeepSeek, etc.) sobre prompts de crosswalk, curación y autoreparación.
-   - **Aislamiento de CI:** Aislados del pipeline regular de CI/CD para evitar costos de tokens y fragilidad estocástica. Se ejecutan bajo demanda o en pipelines nocturnos.
+   - **Garantía:** Compilación y ejecución de subgrafos LangGraph, persistencia de estado con checkpointers SQLite, pausa y reanudación ante interrupciones (HITL con time-travel) y generación conforme del paquete SAF (*Simple Archive Format*).
+3. **Capa 3: Evaluaciones Agénticas (`tests/evals/`) — LLMs Reales y Observabilidad LangSmith**
+   - **Enfoque:** Medición empírica, probabilística y semántica de modelos LLM reales (Llama-3, DeepSeek, etc.) sin mocks, con observabilidad exhaustiva en LangSmith.
+   - **Heurísticas Metodológicas (`agent-eval-creator`):** Arquitectura dual (Pytest+LangSmith para aserciones duras/métricas heterogéneas vs. LangSmith nativo `aevaluate` para benchmarking homogéneo), regla de no re-ejecutar sin cambios, exhaustividad de contratos e inspección de trayectoria de tools.
+   - **Aislamiento de CI:** Aislados del pipeline regular de CI/CD para evitar costos de tokens y fragilidad estocástica. Se ejecutan bajo demanda o en benchmarks de tesis.
 
 ---
 
@@ -70,18 +71,18 @@ tests/
 │   ├── agent/README.md                       ← Agente de recuperación reactiva y transacciones
 │   ├── enrichers/README.md                   ← Clientes de enriquecimiento (Crossref, OpenAlex, OpenLib)
 │   └── memory/README.md                      ← Memoria episódica (CBR) y búsqueda vectorial
-├── integration/                              ← Tests de integración con servicios y microservicios
+├── integration/                              ← Tests de integración con servicios y herramientas reales
 │   ├── README.md                             ← Topología de integración y requisitos Docker
 │   ├── subgraphs/README.md                   ← Integración de subgrafos (Ingest, CrosswalkDedup, Export)
 │   ├── nodes/README.md                       ← Nodos con MinIO, MCP y Tesseract OCR
 │   ├── checkpointer_and_threads/README.md    ← Persistencia, time-travel e interrupciones HITL
 │   └── e2e/README.md                         ← Suites completas de extremo a extremo
-├── evals/                                    ← Evaluación agéntica cuantitativa y probabilística
-│   ├── README.md                             ← Marco de evaluación, métricas y gestión de costos
-│   ├── datasets/README.md                    ← Datasets versionados y Ground Truth
-│   ├── single_agent/README.md                ← Benchmarks individuales y control de alucinaciones
+├── evals/                                    ← Evaluación agéntica con LLMs reales y LangSmith
+│   ├── README.md                             ← Marco de evaluación, heurísticas y gestión de costos
+│   ├── datasets/README.md                    ← Golden Datasets declarativos y casos estructurados
+│   ├── agents/README.md                      ← Suites duales (Curator, Source-to-Generic, Target-Crosswalk)
 │   ├── regression/README.md                  ← Detección de schema drift y memoria LLM
-│   └── metrics/README.md                     ← Evaluadores heurísticos y jueces LLM
+│   └── metrics/README.md                     ← Evaluadores de contrato y jueces LLM
 ├── fixtures/README.md                        ← Mocks compartidos, sintéticos y conftest.py
 ├── data/README.md                            ← Datasets estáticos de prueba categorizados por subgrafo
 └── studio/README.md                          ← Scripts manuales interactivos para LangGraph Studio
