@@ -1,0 +1,206 @@
+[
+  {
+    "id_caso": "anomalia_ocr_descubre_titulo_y_enricher_recupera_autor",
+    "descripcion": "Título y autor corruptos por ruido en el registro inicial; el agente recurre a re_extract_with_ocr sobre el PDF, obtiene el título limpio pero el autor no figura en el documento, por lo que procede a consultar OpenAlex mediante validate_with_enrichers para recuperar el autor oficial. Se evalúa la reparación de ambos campos.",
+    "input_fila": {
+      "id": "sample_ocr_paper_sin_autor.pdf",
+      "title": "###???___TITULO_CORRUPTO___!!!",
+      "author": "###???___AUTOR_CORRUPTO___!!!",
+      "date": "",
+      "type": "Articulo",
+      "_curation": {
+        "anomalias": {
+          "title": ["RUIDO_CARACTERES"],
+          "author": ["RUIDO_CARACTERES"]
+        },
+        "score": 0.95
+      },
+      "_corrections_applied": []
+    },
+    "campo_afectado": "title",
+    "campo_intacto": "type",
+    "valor_intacto_esperado": "Articulo",
+    "espera_reparacion": true,
+    "espera_curation_needed": false,
+    "expected_tools": ["re_extract_with_ocr", "validate_with_enrichers"],
+    "forbidden_tools": []
+  },
+  {
+    "id_caso": "anomalia_ocr_recupera_titulo_y_autor_completos_fin",
+    "descripcion": "Título y autor corruptos con ruido en registro con PDF real completo de JAIIO 03; el agente descarta consultar APIs con texto basura, ejecuta re_extract_with_ocr y obtiene tanto el título como los autores limpios del documento real. Al no haber más datos por corregir, finaliza sin llamar a enrichers.",
+    "input_fila": {
+      "id": "39-jaiio-ast-03.pdf-PDFA.pdf",
+      "title": "###???___TITULO_CORRUPTO___!!!",
+      "author": "###???___AUTOR_CORRUPTO___!!!",
+      "date": "",
+      "type": "Articulo",
+      "_curation": {
+        "anomalias": {
+          "title": ["RUIDO_CARACTERES"],
+          "author": ["RUIDO_CARACTERES"]
+        },
+        "score": 0.95
+      },
+      "_corrections_applied": []
+    },
+    "campo_afectado": "title",
+    "campo_intacto": "type",
+    "valor_intacto_esperado": "Articulo",
+    "espera_reparacion": true,
+    "espera_curation_needed": false,
+    "expected_tools": ["re_extract_with_ocr"],
+    "forbidden_tools": ["validate_with_enrichers"]
+  },
+  {
+    "id_caso": "anomalia_titulo_disperso_resuelto_directo_openalex_fin",
+    "descripcion": "Título con caracteres dispersos recuperable directamente por el LLM y sin DOI; el agente reconstituye el título, consulta OpenAlex vía validate_with_enrichers(by_title), confirma el título canónico oficial y finaliza sin ejecutar OCR.",
+    "input_fila": {
+      "id": "item_sin_archivo_03.pdf",
+      "title": "D e e p   i m p u t a t i o n   o f   m i s s i n g   v a l u e s   i n   t i m e   s e r i e s   h e a l t h   d a t a",
+      "author": "Kazijevs, Maksims; Samad, Md Delwar",
+      "date": "2023",
+      "type": "Articulo",
+      "_curation": {
+        "anomalias": {
+          "title": ["CHARS_DISPERSOS"]
+        },
+        "score": 0.85
+      },
+      "_corrections_applied": []
+    },
+    "campo_afectado": "title",
+    "campo_intacto": "author",
+    "valor_intacto_esperado": "Kazijevs, Maksims; Samad, Md Delwar",
+    "espera_reparacion": true,
+    "espera_curation_needed": false,
+    "expected_tools": ["validate_with_enrichers"],
+    "forbidden_tools": ["re_extract_with_ocr"]
+  },
+  {
+    "id_caso": "anomalia_recuperable_ocr_pdf_real",
+    "descripcion": "Título con caracteres dispersos recuperable pero no indexado en OpenAlex; el agente intenta búsqueda por título en la API, y al no coincidir, recurre a re_extract_with_ocr sobre el PDF real de JAIIO 06 para reparar el título desde la fuente primaria.",
+    "input_fila": {
+      "id": "39-jaiio-ast-06.pdf-PDFA.pdf",
+      "title": "E s t i m a c i o n   d e   l a   c o m p l e j i d a d   l o c a l   e n   i m a g e n e s   d e   t e x t u r a s",
+      "author": "Mailing, Agustin; Crivelli, Tomás; Cernuschi-Frías, Bruno",
+      "date": "2010",
+      "type": "Articulo",
+      "_curation": {
+        "anomalias": {
+          "title": ["CHARS_DISPERSOS"]
+        },
+        "score": 0.85
+      },
+      "_corrections_applied": []
+    },
+    "campo_afectado": "title",
+    "campo_intacto": "author",
+    "valor_intacto_esperado": "Mailing, Agustin; Crivelli, Tomás; Cernuschi-Frías, Bruno",
+    "espera_reparacion": true,
+    "espera_curation_needed": false,
+    "expected_tools": ["validate_with_enrichers", "re_extract_with_ocr"],
+    "forbidden_tools": []
+  },
+  {
+    "id_caso": "anomalia_titulo_disperso_falla_openalex_falla_ocr_cuarentena",
+    "descripcion": "Título con caracteres dispersos aparentemente inteligible pero inexistente en OpenAlex; el agente consulta validate_with_enrichers y no encuentra coincidencia, luego recurre a re_extract_with_ocr pero el contenido del PDF también está corrupto/ilegible. Siguiendo el principio de cero alucinación, el agente no valida el título sin fuentes verificadas y lo marca para revisión humana.",
+    "input_fila": {
+      "id": "sample_ocr_corrupto.pdf",
+      "title": "A n a l i s i s   e x p e r i m e n t a l   i n e x i s t e n t e   e n   b a s e s",
+      "author": "Perez, Juan",
+      "date": "2022",
+      "type": "Articulo",
+      "_curation": {
+        "anomalias": {
+          "title": ["CHARS_DISPERSOS"]
+        },
+        "score": 0.85
+      },
+      "_corrections_applied": []
+    },
+    "campo_afectado": "title",
+    "campo_intacto": "author",
+    "valor_intacto_esperado": "Perez, Juan",
+    "espera_reparacion": false,
+    "espera_curation_needed": true,
+    "expected_tools": ["validate_with_enrichers", "re_extract_with_ocr"],
+    "forbidden_tools": []
+  },
+  {
+    "id_caso": "anomalia_recuperable_doi_real_crossref",
+    "descripcion": "Registro con título disperso y DOI real oficial; el agente debe validar/completar vía Crossref con validate_with_enrichers.",
+    "input_fila": {
+      "id": "item_doi_real_03.pdf",
+      "title": "D e e p   i m p u t a t i o n   o f   m i s s i n g   v a l u e s",
+      "author": "Kazijevs, Maksims; Samad, Md Delwar",
+      "doi": "10.1016/j.jbi.2023.104440",
+      "date": "2023",
+      "type": "Articulo",
+      "_curation": {
+        "anomalias": {
+          "title": ["CHARS_DISPERSOS"]
+        },
+        "score": 0.85
+      },
+      "_corrections_applied": []
+    },
+    "campo_afectado": "title",
+    "campo_intacto": "doi",
+    "valor_intacto_esperado": "10.1016/j.jbi.2023.104440",
+    "espera_reparacion": true,
+    "espera_curation_needed": false,
+    "expected_tools": ["validate_with_enrichers"],
+    "forbidden_tools": []
+  },
+  {
+    "id_caso": "anomalia_irrecuperable_doi_inexistente_abstencion",
+    "descripcion": "Registro con título corrupto y DOI inexistente (404); el agente debe consultar Crossref, no inventar y abstenerse a cuarentena.",
+    "input_fila": {
+      "id": "item_doi_404_04.pdf",
+      "title": "Documento con título irreconocible ###@@@",
+      "author": "Autor Desconocido",
+      "doi": "10.9999/nonexistent.doi.404",
+      "date": "2021",
+      "type": "Articulo",
+      "_curation": {
+        "anomalias": {
+          "title": ["RUIDO_CARACTERES"]
+        },
+        "score": 0.90
+      },
+      "_corrections_applied": []
+    },
+    "campo_afectado": "title",
+    "campo_intacto": "date",
+    "valor_intacto_esperado": "2021",
+    "espera_reparacion": false,
+    "espera_curation_needed": true,
+    "expected_tools": ["validate_with_enrichers"],
+    "forbidden_tools": []
+  },
+  {
+    "id_caso": "anomalia_irrecuperable_sin_archivo_cero_tools",
+    "descripcion": "Registro tabular/CSV sin archivo PDF ni identificadores; el agente se abstiene inmediatamente con cero llamadas a herramientas.",
+    "input_fila": {
+      "id": "item_csv_registro_05",
+      "title": "###???___!!!",
+      "author": "Fernandez, Lucia",
+      "date": "2019",
+      "type": "Tesis",
+      "_curation": {
+        "anomalias": {
+          "title": ["RUIDO_CARACTERES"]
+        },
+        "score": 0.95
+      },
+      "_corrections_applied": []
+    },
+    "campo_afectado": "title",
+    "campo_intacto": "author",
+    "valor_intacto_esperado": "Fernandez, Lucia",
+    "espera_reparacion": false,
+    "espera_curation_needed": true,
+    "expected_tools": [],
+    "forbidden_tools": ["re_extract_with_ocr", "validate_with_enrichers"]
+  }
+]

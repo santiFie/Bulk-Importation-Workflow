@@ -1,0 +1,305 @@
+[
+  {
+    "id": "golden_case_01_journal_article_doi",
+    "case_type": "article_doi",
+    "description": "Artículo científico estándar en revista indexada con DOI oficial y metadatos completos",
+    "metadata": {
+      "title": "Deep imputation of missing values in time series health data: A review with benchmarking",
+      "author": "Kazijevs, Maksims; Samad, Md Delwar",
+      "date": "2023",
+      "type": "Articulo",
+      "doi": "10.1016/j.jbi.2023.104440",
+      "issn": "1532-0464",
+      "isbn": "",
+      "citation": "Journal of Biomedical Informatics, Vol. 145, 104440",
+      "description": "This paper presents an evaluation of transformer-based architectures for semantic indexing in academic repositories.",
+      "rights": "Creative Commons Atribución 4.0 Internacional (CC BY 4.0)",
+      "rightsurl": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    "expected_category": "article",
+    "has_persistent_identifier": true
+  },
+  {
+    "id": "golden_case_02_spanish_accents_and_special_chars",
+    "case_type": "author_special_chars",
+    "description": "Artículo en español con acentos ortográficos y caracteres especiales (ñ, tildes) publicado en revista UNLP",
+    "metadata": {
+      "title": "Analítica del aprendizaje interdisciplinar con modalidad d-learning en contexto de COVID-19",
+      "author": "Salica, Marcelo A.",
+      "date": "2022-06",
+      "type": "Articulo",
+      "doi": "10.24215/18509959.31.e1",
+      "issn": "1850-9959",
+      "isbn": "",
+      "citation": "Revista Iberoamericana de Tecnología en Educación y Educación en Tecnología, No. 31, pp. 12-25",
+      "description": "Estudio descriptivo y cuantitativo sobre la integración de tecnologías educativas en carreras de informática e ingeniería.",
+      "rights": "Atribución-NoComercial-CompartirIgual 4.0 Internacional",
+      "rightsurl": "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+    },
+    "expected_category": "article",
+    "has_persistent_identifier": true
+  },
+  {
+    "id": "golden_case_03_academic_book_isbn",
+    "case_type": "book_isbn",
+    "description": "Libro de texto universitario con ISBN-10 e ISBN-13 válidos, editorial institucional y materias",
+    "metadata": {
+      "title": "Fundamentos de Estructuras de Datos y Algoritmos Distribuidos",
+      "author": "Cormen, Thomas; Rivest, Ronald; Stein, Clifford",
+      "date": "2021",
+      "type": "Libro",
+      "doi": "",
+      "issn": "",
+      "isbn": "978-950-34-1234-5",
+      "citation": "Editorial de la Universidad Nacional de La Plata (EDULP), La Plata, Argentina",
+      "description": "Manual introductorio y avanzado para el diseño, implementación y optimización de estructuras de datos en entornos distribuidos.",
+      "rights": "Todos los derechos reservados. EDULP",
+      "rightsurl": ""
+    },
+    "expected_category": "book",
+    "has_persistent_identifier": true
+  },
+  {
+    "id": "golden_case_04_book_chapter_proceedings",
+    "case_type": "book_chapter",
+    "description": "Capítulo de libro en compilación académica con editores, rango de páginas e ISBN",
+    "metadata": {
+      "title": "Modelado de Calidad en Sistemas de Software Abierto: Perspectivas y Desafíos",
+      "author": "Fernández, Lucía; Romero, Pablo",
+      "date": "2020",
+      "type": "Libro",
+      "doi": "10.1007/978-3-030-58923-3_8",
+      "issn": "",
+      "isbn": "978-3-030-58922-6",
+      "citation": "En: Avances en Ingeniería de Software (pp. 145-168). Springer, Cham.",
+      "description": "Discusión sobre métricas de calidad de código fuente en repositorios públicos y proyectos de software libre.",
+      "rights": "Acceso Restringido / Permiso Editorial Springer",
+      "rightsurl": ""
+    },
+    "expected_category": "book",
+    "has_persistent_identifier": true
+  },
+  {
+    "id": "golden_case_05_conference_paper_no_id",
+    "case_type": "conference_no_id",
+    "description": "Acta de congreso sin identificador persistente (sin DOI ni ISBN), típico caso de importación institucional histórica",
+    "metadata": {
+      "title": "Aplicación de agentes inteligentes en la gestión de catálogos bibliográficos",
+      "author": "Martínez, Carlos; Benítez, Valeria",
+      "date": "2018",
+      "type": "Documento de conferencia",
+      "doi": "",
+      "issn": "",
+      "isbn": "",
+      "citation": "Actas del Congreso Nacional de Informática y Repositorios Digitales (CONIRD 2018), La Plata",
+      "description": "Propuesta de arquitectura basada en agentes de software para automatizar la extracción de metadatos desde actas de jornadas científicas.",
+      "rights": "Creative Commons Atribución-NoComercial 4.0",
+      "rightsurl": "https://creativecommons.org/licenses/by-nc/4.0/"
+    },
+    "expected_category": "conference",
+    "has_persistent_identifier": false
+  },
+  {
+    "id": "golden_case_06_institutional_thesis",
+    "case_type": "thesis_degree",
+    "description": "Tesis doctoral o de grado con director, departamento académico y handle institucional SEDICI",
+    "metadata": {
+      "title": "Algoritmos genéticos adaptativos para optimización de consultas en bases de datos federadas",
+      "author": "Díaz, Marcos Alejandro",
+      "date": "2024-03-15",
+      "type": "Tesis",
+      "doi": "",
+      "issn": "",
+      "isbn": "",
+      "citation": "Tesis de Doctor en Ciencias Informáticas. Facultad de Informática, Universidad Nacional de La Plata",
+      "description": "Tesis doctoral enfocada en el diseño de heurísticas evolutivas aplicadas a la optimización de planes de ejecución distribuidos.",
+      "rights": "SEDICI - Repositorio Institucional UNLP",
+      "rightsurl": "http://sedici.unlp.edu.ar/licencias"
+    },
+    "expected_category": "thesis",
+    "has_persistent_identifier": false
+  },
+  {
+    "id": "golden_case_07_technical_report_punctuation",
+    "case_type": "technical_report",
+    "description": "Informe técnico institucional con signos de puntuación complejos, subtítulos con dos puntos y guiones",
+    "metadata": {
+      "title": "Informe Técnico N° 45: Estado del Arte, Desafíos y Oportunidades en Repositorios OAI-PMH (2020-2024)",
+      "author": "Comisión Asesora de Bibliotecas UNLP",
+      "date": "2024",
+      "type": "Articulo",
+      "doi": "",
+      "issn": "",
+      "isbn": "",
+      "citation": "Publicaciones Técnicas de la Secretaría de Ciencia y Técnica, UNLP",
+      "description": "Diagnóstico integral sobre interoperabilidad y adopción de directrices OpenAIRE en los repositorios digitales de Argentina.",
+      "rights": "Dominio Público",
+      "rightsurl": "https://creativecommons.org/publicdomain/zero/1.0/"
+    },
+    "expected_category": "article",
+    "has_persistent_identifier": false
+  },
+  {
+    "id": "golden_case_08_multilingual_abstracts",
+    "case_type": "multilingual_article",
+    "description": "Artículo con resúmenes bilingües (español e inglés) y palabras clave en ambos idiomas",
+    "metadata": {
+      "title": "Extracción automática de palabras clave en corpus biomédicos mediante modelos pre-entrenados",
+      "author": "López, Silvina; Rossi, Martín",
+      "date": "2023-11",
+      "type": "Articulo",
+      "doi": "10.1016/j.artmed.2023.102665",
+      "issn": "0933-3657",
+      "isbn": "",
+      "citation": "Artificial Intelligence in Medicine, Vol. 145, 102665",
+      "description": "Resumen: Se evalúan modelos BioBERT para etiquetado semántico. Abstract: We assess BioBERT architectures for semantic sequence tagging.",
+      "rights": "CC BY-NC 4.0",
+      "rightsurl": "https://creativecommons.org/licenses/by-nc/4.0/"
+    },
+    "expected_category": "article",
+    "has_persistent_identifier": true
+  },
+  {
+    "id": "golden_case_09_international_author_names",
+    "case_type": "author_international",
+    "description": "Autores con caracteres internacionales como diéresis alemana, apóstrofes italianos y caracteres escandinavos",
+    "metadata": {
+      "title": "Scalable Vector Search Benchmarks on Modern Cloud Architectures",
+      "author": "Müller, Hans; D'Angelo, Roberto; Jørgensen, Søren",
+      "date": "2023",
+      "type": "Articulo",
+      "doi": "10.1145/3544548.3581234",
+      "issn": "0001-0782",
+      "isbn": "",
+      "citation": "Communications of the ACM, Vol. 66, No. 8, pp. 78-86",
+      "description": "Empirical comparison of HNSW, IVF-PQ and graph-based vector indexes for nearest neighbor search across billions of embeddings.",
+      "rights": "ACM Open Access",
+      "rightsurl": "https://www.acm.org/publications/openaccess"
+    },
+    "expected_category": "article",
+    "has_persistent_identifier": true
+  },
+  {
+    "id": "golden_case_10_date_formats_and_precision",
+    "case_type": "date_precision",
+    "description": "Registro con fecha completa ISO 8601 (YYYY-MM-DD) y citas formateadas",
+    "metadata": {
+      "title": "Vigilancia epidemiológica y modelado matemático durante pandemias respiratorias",
+      "author": "Castro, Federico; Giménez, Paula",
+      "date": "2021-09-28",
+      "type": "Articulo",
+      "doi": "10.1371/journal.pone.0256789",
+      "issn": "1932-6203",
+      "isbn": "",
+      "citation": "PLoS ONE 16(9): e0256789",
+      "description": "Modelos compartimentales SEIR ajustados con datos de movilidad urbana en el Área Metropolitana de Buenos Aires.",
+      "rights": "Creative Commons CC0 1.0 Universal",
+      "rightsurl": "https://creativecommons.org/publicdomain/zero/1.0/"
+    },
+    "expected_category": "article",
+    "has_persistent_identifier": true
+  },
+  {
+    "id": "golden_case_11_open_access_dataset_record",
+    "case_type": "dataset_record",
+    "description": "Conjunto de datos de investigación (Dataset) con identificador DOI y metadatos de repositorio",
+    "metadata": {
+      "title": "Dataset de series temporales agroclimáticas de la cuenca del Río Salado (2010-2022)",
+      "author": "Instituto de Clima y Agua; Vázquez, Marcelo",
+      "date": "2022",
+      "type": "Conjunto de datos",
+      "doi": "10.5281/zenodo.7123456",
+      "issn": "",
+      "isbn": "",
+      "citation": "Zenodo, CERN, Ginebra, Suiza",
+      "description": "Registros meteorológicos diarios de precipitación, temperatura y radiación solar calibrados mediante estaciones automáticas.",
+      "rights": "Creative Commons Public Domain Dedication (CC0 1.0)",
+      "rightsurl": "https://creativecommons.org/publicdomain/zero/1.0/"
+    },
+    "expected_category": "dataset",
+    "has_persistent_identifier": true
+  },
+  {
+    "id": "golden_case_12_duplicate_pair_canonical",
+    "case_type": "duplicate_benchmark_pair",
+    "description": "Primer registro de un par idéntico utilizado para evaluar precisión y recall de deduplicación",
+    "metadata": {
+      "title": "Análisis comparativo de algoritmos de ruteo en redes de sensores inalámbricos",
+      "author": "González, Mariano; Bianchi, Esteban",
+      "date": "2019",
+      "type": "Articulo",
+      "doi": "10.1109/LNET.2019.2901234",
+      "issn": "2162-2337",
+      "isbn": "",
+      "citation": "IEEE Wireless Communications Letters, Vol. 8, No. 3, pp. 600-603",
+      "description": "Evaluación de eficiencia energética y tasa de entrega de paquetes bajo topologías dinámicas en WSN.",
+      "rights": "IEEE Copyright",
+      "rightsurl": ""
+    },
+    "expected_category": "article",
+    "has_persistent_identifier": true,
+    "dedup_cluster_id": "cluster_pair_01"
+  },
+  {
+    "id": "golden_case_13_duplicate_pair_fuzzy_variant",
+    "case_type": "duplicate_benchmark_pair",
+    "description": "Segundo registro del par idéntico: variante con leve discrepancia de formato, mayúsculas y sin DOI para deduplicación difusa",
+    "metadata": {
+      "title": "ANALISIS COMPARATIVO DE ALGORITMOS DE RUTEO EN REDES DE SENSORES INALAMBRICOS.",
+      "author": "GONZALEZ, M.; BIANCHI, E.",
+      "date": "2019",
+      "type": "Articulo",
+      "doi": "",
+      "issn": "2162-2337",
+      "isbn": "",
+      "citation": "IEEE Wireless Communications Letters 2019",
+      "description": "Evaluacion de eficiencia energetica y tasa de entrega de paquetes bajo topologias dinamicas en WSN",
+      "rights": "IEEE",
+      "rightsurl": ""
+    },
+    "expected_category": "article",
+    "has_persistent_identifier": false,
+    "dedup_cluster_id": "cluster_pair_01"
+  },
+  {
+    "id": "golden_case_14_hard_negative_same_author_diff_title",
+    "case_type": "dedup_hard_negative",
+    "description": "Caso negativo difícil: mismo autor, mismo año y misma revista, pero títulos de artículos sustancialmente distintos que NO deben fusionarse",
+    "metadata": {
+      "title": "Monitoreo acústico pasivo de fauna marina en el Mar Argentino mediante boyas autónomas",
+      "author": "González, Mariano; Bianchi, Esteban",
+      "date": "2019",
+      "type": "Articulo",
+      "doi": "10.1016/j.ocecoaman.2019.104899",
+      "issn": "0964-5691",
+      "isbn": "",
+      "citation": "Ocean & Coastal Management, Vol. 181, 104899",
+      "description": "Desarrollo de boyas superficiales de bajo costo para detección de cetáceos mediante hidrófonos calibrados.",
+      "rights": "Elsevier Open Access",
+      "rightsurl": "https://www.elsevier.com/open-access"
+    },
+    "expected_category": "article",
+    "has_persistent_identifier": true,
+    "dedup_cluster_id": "distinct_cluster_02"
+  },
+  {
+    "id": "golden_case_15_legacy_unlp_working_paper",
+    "case_type": "working_paper",
+    "description": "Documento de trabajo institucional sin ISBN/DOI con múltiples descriptores temáticos y resumen en prosa",
+    "metadata": {
+      "title": "Crecimiento económico y volatilidad cambiaria en economías periféricas: Lecciones para el cono sur",
+      "author": "Stiglitz, Joseph E.; Guzmán, Martín",
+      "date": "2017",
+      "type": "Articulo",
+      "doi": "",
+      "issn": "",
+      "isbn": "",
+      "citation": "Documentos de Trabajo del CEDLAS, No. 215. Universidad Nacional de La Plata",
+      "description": "Modelado macroeconómico sobre las restricciones estructurales al balance de pagos y sus efectos en la distribución del ingreso.",
+      "rights": "Atribución 4.0 Internacional (CC BY 4.0)",
+      "rightsurl": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    "expected_category": "article",
+    "has_persistent_identifier": false
+  }
+]

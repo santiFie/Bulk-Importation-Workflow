@@ -1,0 +1,155 @@
+[
+  {
+    "id_caso": "regex_01_camelcase_authors",
+    "descripcion": "Valores de autor concatenados pegando la última minúscula de un autor con la mayúscula inicial del siguiente (estilo SearchResults.csv de Springer). Requiere un lookaround zero-width assertion.",
+    "inputs": {
+      "column": "author",
+      "sample_values": [
+        "S. AbdelhameedK. AbelingN. J. Abicht",
+        "M. GarciaJ. PerezR. Gomez",
+        "S. MillerT. BrownK. Davis",
+        "A. EinsteinN. BohrW. Heisenberg",
+        "C. SaganR. FeynmanJ. Wheeler"
+      ]
+    },
+    "reference_outputs": {
+      "expected_pattern_characteristics": "lookaround_zero_width",
+      "canonical_pattern": "(?<=[a-z])(?=[A-Z])",
+      "min_split_efficiency": 0.8,
+      "expected_tokens_per_sample": [
+        ["S. Abdelhameed", "K. Abeling", "N. J. Abicht"],
+        ["M. Garcia", "J. Perez", "R. Gomez"],
+        ["S. Miller", "T. Brown", "K. Davis"],
+        ["A. Einstein", "N. Bohr", "W. Heisenberg"],
+        ["C. Sagan", "R. Feynman", "J. Wheeler"]
+      ]
+    },
+    "tags": ["positive", "camelcase", "springer"]
+  },
+  {
+    "id_caso": "regex_02_dot_space_capital",
+    "descripcion": "Autores separados por punto, espacio y mayúscula inicial del siguiente autor (ej. 'Perez J. Gomez M.').",
+    "inputs": {
+      "column": "author",
+      "sample_values": [
+        "Perez J. Gomez M. Rodriguez F.",
+        "Garcia A. Fernandez B. Lopez C.",
+        "Smith T. Jones R. Taylor S.",
+        "Williams K. Brown L.",
+        "Martinez D. Castro E. Morales N."
+      ]
+    },
+    "reference_outputs": {
+      "expected_pattern_characteristics": "dot_space_lookahead",
+      "canonical_pattern": "\\.\\s+(?=[A-Z])",
+      "min_split_efficiency": 0.8,
+      "expected_tokens_per_sample": [
+        ["Perez J", "Gomez M", "Rodriguez F"],
+        ["Garcia A", "Fernandez B", "Lopez C"],
+        ["Smith T", "Jones R", "Taylor S"],
+        ["Williams K", "Brown L"],
+        ["Martinez D", "Castro E", "Morales N"]
+      ]
+    },
+    "tags": ["positive", "dot_space"]
+  },
+  {
+    "id_caso": "regex_03_custom_delimiter_slashes",
+    "descripcion": "Delimitador inusual con doble barra inclinada y espacios (' // ') que requiere escape o tratamiento de espacios flexibles.",
+    "inputs": {
+      "column": "author",
+      "sample_values": [
+        "Gomez, J. // Perez, M. // Silva, A.",
+        "Rossi, C. // Bianchi, R.",
+        "Castro, E. // Diaz, F. // Vega, M.",
+        "Alvarez, R. // Romero, P.",
+        "Torres, D. // Navarro, S. // Mendez, K."
+      ]
+    },
+    "reference_outputs": {
+      "expected_pattern_characteristics": "literal_slashes_escaped",
+      "min_split_efficiency": 0.8,
+      "expected_tokens_per_sample": [
+        ["Gomez, J", "Perez, M", "Silva, A"],
+        ["Rossi, C", "Bianchi, R"],
+        ["Castro, E", "Diaz, F", "Vega, M"],
+        ["Alvarez, R", "Romero, P"],
+        ["Torres, D", "Navarro, S", "Mendez, K"]
+      ]
+    },
+    "tags": ["edge_case", "multichar_literal"]
+  },
+  {
+    "id_caso": "regex_04_single_value_no_split",
+    "descripcion": "Celdas con un único autor con nombre y apellido compuestos. No debe partirse el nombre del autor ni inventar una división espuria.",
+    "inputs": {
+      "column": "author",
+      "sample_values": [
+        "Gomez, Juan Carlos",
+        "Perez, Maria Elena",
+        "Rodriguez, Esteban Daniel",
+        "Fernandez, Ana Laura",
+        "Lopez, Carlos Alberto"
+      ]
+    },
+    "reference_outputs": {
+      "expected_action": "no_split_or_sin_patron",
+      "max_spurious_split_efficiency": 0.0
+    },
+    "tags": ["negative", "single_value"]
+  },
+  {
+    "id_caso": "regex_05_percent_delimiter_memoria",
+    "descripcion": "Autores separados por el carácter '%' (estilo Memoria.csv de FaHCE-UNLP), ausente en los candidatos literales de Fase 2a.",
+    "inputs": {
+      "column": "author",
+      "sample_values": [
+        "Lucidi, Leandro%Montenegro, Ana%Lucero, Gabriela%Goytea, Yésica",
+        "Welschinger, Nicolás%Lucero, María Victoria%Malagrina, Julieta",
+        "Brena, Graciela%Philip, Silvina%Anthonioz-Blanc, Leticia",
+        "Philip, Silvina%Bardín, Claudia",
+        "Otegui, María Inés%Mangini, Melisa Noralí%De Cortazar, Cecilia"
+      ]
+    },
+    "reference_outputs": {
+      "expected_pattern_characteristics": "percent_delimiter",
+      "canonical_pattern": "%",
+      "min_split_efficiency": 0.8,
+      "expected_tokens_per_sample": [
+        ["Lucidi, Leandro", "Montenegro, Ana", "Lucero, Gabriela", "Goytea, Yésica"],
+        ["Welschinger, Nicolás", "Lucero, María Victoria", "Malagrina, Julieta"],
+        ["Brena, Graciela", "Philip, Silvina", "Anthonioz-Blanc, Leticia"],
+        ["Philip, Silvina", "Bardín, Claudia"],
+        ["Otegui, María Inés", "Mangini, Melisa Noralí", "De Cortazar, Cecilia"]
+      ]
+    },
+    "tags": ["positive", "memoria_fahce", "percent_delimiter"]
+  },
+  {
+    "id_caso": "regex_06_scopus_lastname_initials_comma",
+    "descripcion": "Autores en formato Scopus ('Apellido, I., Apellido, I.') donde la coma separa tanto el apellido de las iniciales como un autor del siguiente. Requiere dividir únicamente tras un punto seguido de coma y espacio.",
+    "inputs": {
+      "column": "author",
+      "sample_values": [
+        "Pombo, M.A., Ramos, R.N., Zheng, Y., Rosli, H.G.",
+        "Alonso, A.M., Corvi, M.M., Diambra, L.",
+        "Casalins, L., Brugni, N., Ortiz, G., Ojeda, V.",
+        "Epele, M., García Canal, C., Sassot, R.",
+        "Scheeren, T.W.L., Bakker, J., De Backer, D."
+      ]
+    },
+    "reference_outputs": {
+      "expected_pattern_characteristics": "dot_comma_lookaround",
+      "canonical_pattern": "(?<=\\.),\\s*(?=[A-Z])",
+      "min_split_efficiency": 0.8,
+      "expected_tokens_per_sample": [
+        ["Pombo, M.A", "Ramos, R.N", "Zheng, Y", "Rosli, H.G"],
+        ["Alonso, A.M", "Corvi, M.M", "Diambra, L"],
+        ["Casalins, L", "Brugni, N", "Ortiz, G", "Ojeda, V"],
+        ["Epele, M", "García Canal, C", "Sassot, R"],
+        ["Scheeren, T.W.L", "Bakker, J", "De Backer, D"]
+      ]
+    },
+    "tags": ["edge_case", "scopus_authors", "comma_ambiguity"]
+  }
+]

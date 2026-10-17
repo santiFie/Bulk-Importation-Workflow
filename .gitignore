@@ -12,5 +12,7 @@ AGENTS.md
 .vscode/
 *.csv
 *.json
+!tests/evals/datasets/**/*.json
+!tests/evals/datasets/*.json
 *.bin
 site/
