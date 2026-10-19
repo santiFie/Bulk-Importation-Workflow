@@ -222,7 +222,11 @@ def eval_expected_mappings_accuracy(run: Run, example: Example) -> dict[str, Any
 
     # 3. Verificar forbidden_mappings
     for forb_left, forb_replace in forbidden_mappings.items():
-        if exact_left_to_replace.get(forb_left) == forb_replace:
+        norm_forb_left = _normalize_left(forb_left)
+        actual_rep = exact_left_to_replace.get(norm_forb_left)
+        if actual_rep is None:
+            actual_rep = lower_left_to_replace.get(norm_forb_left.lower())
+        if actual_rep == forb_replace:
             errors.append(
                 f"Mapeo prohibido detectado: '{forb_left}' -> '{forb_replace}'."
             )

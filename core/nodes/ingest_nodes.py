@@ -164,10 +164,16 @@ async def pdf_ingest_node(state: State) -> dict[str, Any]:
             api_resp.raise_for_status()
             metadata = api_resp.json()["data"]
             
+            creator_val = metadata.get("creator", [])
+            creator_list = [creator_val] if isinstance(creator_val, str) else list(creator_val)
+            director_val = metadata.get("director", [])
+            director_list = [director_val] if isinstance(director_val, str) else list(director_val)
+
             mapped_metadata = {
                 "id": pdf_path,
                 "title": metadata.get("title", ""),
-                "author": "|".join(metadata.get("creator", []) + metadata.get("director", [])),
+                "author": "|".join(creator_list),
+                "director": "|".join(director_list),
                 "description": metadata.get("abstract", ""),
                 "date": metadata.get("date", ""),
                 "type": metadata.get("type", ""),

@@ -108,3 +108,38 @@ class TestSourceToGenericGenerator:
         assert len(validated) == 2
         replaces = {m["replace"] for m in validated}
         assert replaces == {"title", "author"}
+
+    def test_build_prompt_prohibits_director_codirector_in_author(self):
+        """Verifica que el prompt del agente explicite que Director y Codirector no van en author."""
+        gen = SourceToGenericCrosswalkGenerator()
+        context = {
+            "csv_head_text": "Columnas: IDMA, Título, Director, Codirector, Integrantes",
+        }
+        prompt = gen.build_prompt(context, remaining_columns=["IDMA", "Título", "Director", "Codirector", "Integrantes"])
+
+        # Invariante: El prompt debe instruir no agrupar directores/codirectores en author
+        assert "Director" in prompt
+        assert "Codirector" in prompt
+        assert "NUNCA agrupes ni incluyas columnas de roles específicos como directores o codirectores" in prompt
+        assert "sedici.contributor.director" in prompt
+
+    def test_memoria_case_separated_roles_generic_validation(self):
+        """Verifica que las columnas no genéricas como Director/Codirector queden fuera del formato genérico."""
+        gen = SourceToGenericCrosswalkGenerator()
+        context = {
+            "columns": ["IDMA", "Título", "Director", "Codirector", "Integrantes"],
+            "head_rows": [{"IDMA": "px.1", "Título": "T", "Director": "D", "Codirector": "C", "Integrantes": "I"}],
+        }
+        # Mapeos propuestos correctamente: solo Integrantes a author
+        raw_correct = [
+            {"left": "IDMA", "replace": "id"},
+            {"left": "Título", "replace": "title"},
+            {"left": "Integrantes", "replace": "author"},
+        ]
+        validated = gen.validate_mappings(raw_correct, context)
+        assert len(validated) == 3
+        replaces = {m["replace"] for m in validated}
+        assert replaces == {"id", "title", "author"}
+        assert "Director" not in {m["left"] for m in validated}
+        assert "Codirector" not in {m["left"] for m in validated}
+

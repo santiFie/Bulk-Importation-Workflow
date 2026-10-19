@@ -159,3 +159,57 @@ class TestPdfIngestNode:
             assert "node_errors" in result
             assert "PDFIngest_errors" in result["node_errors"]
             assert "MinIO connection reset" in result["node_errors"]["PDFIngest_errors"]
+
+    @pytest.mark.asyncio
+    async def test_pdf_ingest_separates_creator_and_director(self, tmp_path):
+        """Verifica que director y creator no se mezclen en author y se guarden separados."""
+        state = {
+            "workspace_dir": str(tmp_path),
+            "minio_bucket": "importacion",
+            "minio_prefix": "tesis/",
+        }
+
+        mock_obj = MagicMock(object_name="tesis/tesis1.pdf")
+        mock_resp = MagicMock()
+        mock_resp.read.return_value = b"%PDF fake"
+
+        metadata_payload = {
+            "data": {
+                "title": "Tesis sobre IA",
+                "creator": ["Alumno, Juan"],
+                "director": ["Profesor, Carlos", "Dra, Maria"],
+                "abstract": "Resumen tesis",
+                "date": "2024",
+                "type": "Tesis",
+                "subject": "Informatica",
+                "issn": "",
+                "isbn": "",
+                "doi": "",
+                "originPlaceInfo": "UNLP",
+                "rights": "",
+                "rightsurl": "",
+            }
+        }
+
+        with patch("core.nodes.ingest_nodes.Minio") as mock_minio_cls, \
+             patch("core.nodes.ingest_nodes.httpx.post") as mock_httpx_post:
+
+            mock_minio = MagicMock()
+            mock_minio.bucket_exists.return_value = True
+            mock_minio.list_objects.return_value = [mock_obj]
+            mock_minio.get_object.return_value = mock_resp
+            mock_minio_cls.return_value = mock_minio
+
+            mock_api_resp = MagicMock()
+            mock_api_resp.raise_for_status.return_value = None
+            mock_api_resp.json.return_value = metadata_payload
+            mock_httpx_post.return_value = mock_api_resp
+
+            result = await pdf_ingest_node(state)
+            df = pd.read_csv(result["source_csv_path"])
+
+            assert len(df) == 1
+            assert df.iloc[0]["author"] == "Alumno, Juan"
+            assert df.iloc[0]["director"] == "Profesor, Carlos|Dra, Maria"
+            assert "Profesor, Carlos" not in df.iloc[0]["author"]
+
