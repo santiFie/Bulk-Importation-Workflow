@@ -511,7 +511,7 @@
   },
   {
     "id_caso": "mapping_08_memoria_composite_authors_pipe",
-    "descripcion": "Export de Memoria Académica FaHCE-UNLP (Memoria.csv) delimitado por pipe ('|'). Evalúa concatenación de múltiples roles de autoría ('Director+Codirector+Integrantes+Coordinadores' -> author).",
+    "descripcion": "Export de Memoria Académica FaHCE-UNLP (Memoria.csv) delimitado por pipe ('|'). Evalúa que las columnas de roles específicos ('Director', 'Codirector') NO se agreguen al campo 'author' (deben permanecer sin mapear para la exportación a SEDICI) y que 'author' mapee a 'Integrantes'.",
     "inputs": {
       "file_delimiter": "|",
       "columns": [
@@ -577,7 +577,7 @@
       "expected_mappings": {
         "IDMA": "id",
         "Título": "title",
-        "Director+Codirector+Integrantes+Coordinadores": "author",
+        "Integrantes": "author",
         "AñoEjecución": "date",
         "Tipodoc": "type",
         "Resumen": "description",
@@ -593,12 +593,18 @@
       "forbidden_fields": [
         "URLPDF",
         "URLREG"
-      ]
+      ],
+      "forbidden_mappings": {
+        "Director": "author",
+        "Codirector": "author",
+        "Director+Codirector+Integrantes+Coordinadores": "author",
+        "Director+Codirector+Integrantes": "author"
+      }
     },
     "tags": [
       "edge_case",
       "memoria_fahce",
-      "composite_columns",
+      "role_separation",
       "pipe_delimiter"
     ]
   },
