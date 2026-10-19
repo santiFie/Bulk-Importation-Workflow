@@ -63,6 +63,7 @@ def build_recovery_system_prompt(episodes_text: str) -> str:
     return load_agent_prompt("dedup_recovery_agent", episodes_text=episodes_text)
 
 
+@traceable(name="DedupRecoveryAgent", run_type="chain")
 def invoke_recovery_agent(
     error_msg: str,
     source_name: str,
