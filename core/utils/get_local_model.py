@@ -300,10 +300,14 @@ class FallbackLLM:
 
     def invoke(self, input: Any, config: Any = None, **kwargs: Any) -> Any:
         """Invoca el LLM con fallback en cascada (sync)."""
+        if config is not None:
+            kwargs["config"] = config
         return self._intentar("_invoke_provider", input, **kwargs)
 
     async def ainvoke(self, input: Any, config: Any = None, **kwargs: Any) -> Any:
         """Invoca el LLM con fallback en cascada (async)."""
+        if config is not None:
+            kwargs["config"] = config
         return await self._intentar_async("_ainvoke_provider", input, **kwargs)
 
 
@@ -330,8 +334,9 @@ class FallbackStructuredOutput:
         for prov in self._wrappers:
             try:
                 fn = getattr(prov, metodo)
+                ctx = contextvars.copy_context()
                 with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                    futuro = pool.submit(fn, input, **kwargs)
+                    futuro = pool.submit(ctx.run, fn, input, **kwargs)
                     respuesta = futuro.result(timeout=self._fallback._timeout)
                 return respuesta
             except (concurrent.futures.TimeoutError, TimeoutError) as exc:
@@ -366,9 +371,13 @@ class FallbackStructuredOutput:
         ) from ultimo_error
 
     def invoke(self, input: Any, config: Any = None, **kwargs: Any) -> Any:
+        if config is not None:
+            kwargs["config"] = config
         return self._intentar("_invoke_provider", input, **kwargs)
 
     async def ainvoke(self, input: Any, config: Any = None, **kwargs: Any) -> Any:
+        if config is not None:
+            kwargs["config"] = config
         return await self._intentar_async("_ainvoke_provider", input, **kwargs)
 
 
