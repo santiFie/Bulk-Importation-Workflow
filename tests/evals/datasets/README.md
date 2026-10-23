@@ -55,8 +55,10 @@ tests/evals/datasets/
 │   ├── source_doi_enrichment_cases.json  (7 casos)  ← Trayectoria de tools (DOI Crossref/OpenAlex)
 │   ├── source_feedback_recovery_cases.json (5 casos) ← Resiliencia y autorreparación ante feedback
 │   └── source_regex_react_cases.json     (6 casos)  ← Inferencia y aplicación de Regex con ReAct
-└── target_crosswalk/
-    └── target_crosswalk_cases.json       (7 casos)  ← Mapeo a SEDICI/DSpace y reparación de usuario
+├── target_crosswalk/
+│   └── target_crosswalk_cases.json       (7 casos)  ← Mapeo a SEDICI/DSpace y reparación de usuario
+└── dedup_recovery/
+    └── dedup_recovery_cases.json         (8 casos)  ← Recuperación reactiva, CBR y calibración HITL
 ```
 
 ---
@@ -119,6 +121,19 @@ tests/evals/datasets/
   2. Mapeo a esquema estándar DSpace (`dc.*`).
   3. Generación dinámica de esquema ante vocabularios no documentados.
   4. Detección y reparación de configuración desactualizada provista por el operador humano (`user-provided config repair`), corrigiendo tipos o calificadores obsoletos sin alterar las claves correctas.
+
+---
+
+### 4. `dedup_recovery/` — Agente de Recuperación Reactiva
+
+#### 📄 `dedup_recovery_cases.json` (8 casos)
+- **Objetivo Central:** Evaluar el diagnóstico de errores de deduplicación, la transferencia desde la **Memoria Episódica (CBR)**, la ejecución transaccional sobre CSVs reales y el escalamiento conservador a **HITL (`manual_review`)**.
+- **Aspectos Evaluados:**
+  1. Deducción autónoma Zero-Shot para meses en inglés y español (`case_01`, `case_02`).
+  2. Transferencia positiva desde episodios relevantes para `value_mapping` y `regex_extraction` (`case_03`, `case_04`).
+  3. Inmunidad ante episodios distractores y discriminación en recuperación mixta `top_k=2` (`case_05`, `case_06`).
+  4. Identificación de columnas afectadas distintas de `date` (`author`) mediante escaneo del CSV (`case_07`).
+  5. Abstención y escalamiento HITL ante rangos plurianuales ambiguos (`case_08`).
 
 ---
 

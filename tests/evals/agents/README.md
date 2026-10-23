@@ -11,6 +11,7 @@ El directorio `tests/evals/agents/` alberga las suites de evaluación semántica
 1. **`MetadataCuratorAgent` (`curator/`):** Curación semántica de metadatos bibliográficos extraídos de PDFs mediante OCR, eliminando artefactos y resolviendo inconsistencias.
 2. **`SourceToGenericCrosswalkAgent` (`source_to_generic/`):** Inferencia conceptual del mapeo entre columnas heterogéneas de entrada (e.g., Springer, SciELO, UNLP) y el esquema canónico intermedio del pipeline.
 3. **`TargetCrosswalkAgent` (`target_crosswalk/`):** Transformación desde el esquema intermedio hacia los esquemas destino institucionales (SEDICI y DSpace), generación dinámica y autorreparación de configuraciones erróneas provistas por el usuario.
+4. **`DedupRecoveryAgent` (`dedup_recovery/`):** Diagnóstico y autorreparación reactiva de errores de deduplicación asistida por Memoria Episódica (CBR), validación transaccional sobre CSV y calibración de escalamiento humano (HITL).
 
 A diferencia de las pruebas unitarias que utilizan mocks, aquí **se evalúan modelos LLM reales (sin mocks)**, observando el razonamiento, la trayectoria de herramientas y la calidad de la salida con trazabilidad total en **LangSmith**.
 
@@ -82,6 +83,15 @@ Evalúa la proyección del esquema canónico a las especificaciones formales de 
 - **`evaluate_target_crosswalk_mapping.py` (LangSmith Nativo):**
   - **Objetivo:** Benchmark de mapeo exhaustivo con `aevaluate` sobre el dataset [`target_crosswalk_cases.json`](../datasets/README.md#target_crosswalk_casesjson-7-casos) (7 casos).
 
+### 4. `dedup_recovery/` — Agente de Recuperación Reactiva (CBR + HITL)
+Evalúa la resolución autónoma de incidentes de deduplicación, el impacto de la Memoria Episódica y el escalamiento conservador ante ambigüedad:
+
+- **`test_dedup_recovery_decisions.py` (Pytest + LangSmith):**
+  - **Objetivo:** Evaluar con aserciones duras y métricas condicionales (`eval_strategy_params_validity`, `eval_episodic_memory_effect`, `eval_csv_repair_execution`) la validez de parámetros (`mapping_rules`, `regex_pattern`), la transferencia/discriminación de episodios en memoria y la reparación física del CSV bajo `CsvTransaction`.
+  - **Dataset:** [`dedup_recovery_cases.json`](../datasets/README.md#dedup_recovery_casesjson-8-casos) (8 casos).
+- **`evaluate_dedup_recovery.py` (LangSmith Nativo):**
+  - **Objetivo:** Benchmark homogéneo con `aevaluate` empleando exclusivamente `DEDUP_RECOVERY_EVALUATORS` (100% de cobertura en todas las filas sin celdas `"No Feedback"`).
+
 ---
 
 ## 🚀 Cómo Ejecutar las Evaluaciones
@@ -99,8 +109,9 @@ Evalúa la proyección del esquema canónico a las especificaciones formales de 
 # 1. Ejecutar todas las evaluaciones agénticas Pytest
 pytest tests/evals/agents/ -v
 
-# 2. Ejecutar un agente específico (ej. curador)
+# 2. Ejecutar un agente específico (ej. curador o recuperación reactiva)
 pytest tests/evals/agents/curator/ -v
+pytest tests/evals/agents/dedup_recovery/ -v
 
 # 3. Ejecutar solo pruebas de over-correction del curador
 pytest tests/evals/agents/curator/test_curator_over_correction.py -v
@@ -119,6 +130,9 @@ pytest tests/evals/agents/source_to_generic/test_source_doi_enrichment_trajector
 
 # 3. Ejecutar benchmark de crosswalk a destino y reparación de usuario
 .venv/bin/python tests/evals/agents/target_crosswalk/evaluate_target_crosswalk_mapping.py
+
+# 4. Ejecutar benchmark homogéneo del agente de recuperación reactiva
+.venv/bin/python tests/evals/agents/dedup_recovery/evaluate_dedup_recovery.py
 ```
 
 ---
@@ -132,3 +146,4 @@ pytest tests/evals/agents/source_to_generic/test_source_doi_enrichment_trajector
 | **Source to Generic (Mapping)** | Llama-3.1-8B-Instant / 70B | ~45 - 90 seg | ~$0.04 | LangSmith Dataset Experiment |
 | **Source to Generic (DOI/Regex)** | Llama-3-70B | ~1 - 2 min | ~$0.05 | LangSmith Run / Pytest report |
 | **Target Crosswalk (Repair)** | Llama-3-70B | ~1 - 2 min | ~$0.05 | LangSmith Run / Pytest report |
+| **Dedup Recovery (CBR & HITL)** | Llama-3.3-70B / 8B | ~30 - 60 seg | ~$0.03 | LangSmith Dataset / Pytest report |

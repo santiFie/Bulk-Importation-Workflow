@@ -30,9 +30,8 @@ flowchart TD
 ```
 
 - **[datasets/](datasets/README.md):** Conjuntos de datos declarativos estandarizados (`id_caso`, `inputs`, `reference_outputs`, `tags`), casos de sobrecorrección (*over-correction*), casos frontera y anomalías reales de extracción.
-- **[agents/](agents/README.md):** Suites de evaluación sobre agentes individuales (`curator/`, `source_to_generic/`, `target_crosswalk/`) implementando la arquitectura dual.
+- **[agents/](agents/README.md):** Suites de evaluación sobre agentes individuales (`curator/`, `source_to_generic/`, `target_crosswalk/`, `dedup_recovery/`) implementando la arquitectura dual.
 - **[metrics/](metrics/README.md):** Evaluadores deterministas, heurísticos y funciones evaluadoras para LangSmith (`(run, example) -> dict`) que califican la conformidad con los contratos de cada agente.
-- **[regression/](regression/README.md):** Pruebas de detección de drift semántico ante prompts modificados (`test_crosswalk_drift.py`) y evaluación del agente reactivo de deduplicación con memoria episódica (`test_dedup_recovery_llm_eval.py`).
 
 ---
 
@@ -111,12 +110,7 @@ pytest tests/evals/ -m eval -v
 
 # 2. Ejecutar suite de un agente particular
 pytest tests/evals/agents/curator/ -v
-
-# 3. Ejecutar pruebas de regresión y memoria LLM
-pytest tests/evals/regression/test_dedup_recovery_llm_eval.py -s -v
-
-# 4. Ejecutar pruebas de detección de schema drift
-pytest tests/evals/regression/test_crosswalk_drift.py -v
+pytest tests/evals/agents/dedup_recovery/ -v
 ```
 
 ### Comandos de LangSmith Nativo (`aevaluate`):
@@ -125,6 +119,7 @@ pytest tests/evals/regression/test_crosswalk_drift.py -v
 .venv/bin/python tests/evals/agents/curator/evaluate_curator_decisions.py
 .venv/bin/python tests/evals/agents/source_to_generic/evaluate_source_mapping.py
 .venv/bin/python tests/evals/agents/target_crosswalk/evaluate_target_crosswalk_mapping.py
+.venv/bin/python tests/evals/agents/dedup_recovery/evaluate_dedup_recovery.py
 ```
 
 ---
@@ -133,8 +128,7 @@ pytest tests/evals/regression/test_crosswalk_drift.py -v
 
 | Evaluación | Modelo Típico | Duración | Costo Aprox. | Cuándo Ejecutar |
 |:---|:---|:---:|:---:|:---|
-| **Detección de Drift** | Llama-3.3-70B / DeepSeek-V3 | ~30 seg | ~$0.01 | Semanal o ante cambio de prompt |
 | **Curador (Over-correction & Decisions)** | Llama-3-70B | ~2 - 3 min | ~$0.10 | Al modificar prompts o lógica OCR |
 | **Crosswalk Fuente a Genérico** | Llama-3.1-8B / 70B | ~1 - 2 min | ~$0.05 | Al actualizar mapeos o herramientas DOI |
 | **Crosswalk Genérico a Destino** | Llama-3-70B | ~1 - 2 min | ~$0.05 | Al agregar esquemas o lógica de reparación |
-| **Recuperación Reactiva (CBR + LLM)** | Llama-3.1-8B-Instant | ~45 seg | ~$0.02 | Al modificar prompts o estrategias de error |
+| **Recuperación Reactiva (CBR + LLM)** | Llama-3.3-70B / 8B | ~45 seg | ~$0.03 | Al modificar prompts o estrategias de error |

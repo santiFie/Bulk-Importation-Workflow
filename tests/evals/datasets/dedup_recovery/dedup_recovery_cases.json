@@ -1,0 +1,436 @@
+[
+  {
+    "id_caso": "case_01_zeroshot_date_english",
+    "descripcion": "Evaluación Zero-Shot (sin memoria episódica): deducir autónomamente la normalización de mes en texto en inglés ('1999, June') sobre un CSV real.",
+    "inputs": {
+      "source_name": "unlp_doaj",
+      "error_msg": "ValueError: Error al comparar fechas: 1999, June — invalid literal for int() with base 10: 'June'",
+      "columns": ["id", "title", "author", "date", "type"],
+      "sample_rows": [
+        {
+          "id": "101",
+          "title": "Distributed Systems in Cloud Environments",
+          "author": "Smith, John",
+          "date": "1999, June",
+          "type": "Articulo"
+        },
+        {
+          "id": "102",
+          "title": "Parallel Computing Architectures",
+          "author": "Doe, Jane",
+          "date": "2020-05",
+          "type": "Articulo"
+        }
+      ],
+      "memory_mode": "none",
+      "episodes": []
+    },
+    "reference_outputs": {
+      "expected_strategies": ["date_normalization", "value_mapping"],
+      "expected_target_column": "date",
+      "expected_confidence": ["high"],
+      "expected_ambiguous": false,
+      "expected_auto_repairable": true,
+      "expected_hitl": false,
+      "expected_cleaned_values": {
+        "101": ["1999-06", "1999, 06"]
+      }
+    },
+    "tags": ["zero_shot", "date", "english_month", "autonomous_resolution"]
+  },
+  {
+    "id_caso": "case_02_zeroshot_date_spanish",
+    "descripcion": "Evaluación Zero-Shot (sin memoria episódica): deducir autónomamente la normalización de mes en español ('2004, Julio') en un repositorio hispanohablante.",
+    "inputs": {
+      "source_name": "sedici_unlp",
+      "error_msg": "ValueError: Error al comparar fechas: 2004, Julio — invalid literal for int() with base 10: 'Julio'",
+      "columns": ["id", "title", "author", "date", "type"],
+      "sample_rows": [
+        {
+          "id": "201",
+          "title": "Arquitectura de Redes Locales en Universidades",
+          "author": "Gómez, Carlos",
+          "date": "2004, Julio",
+          "type": "Articulo"
+        },
+        {
+          "id": "202",
+          "title": "Sistemas Operativos Modernos",
+          "author": "Pérez, Ana",
+          "date": "2019",
+          "type": "Libro"
+        }
+      ],
+      "memory_mode": "none",
+      "episodes": []
+    },
+    "reference_outputs": {
+      "expected_strategies": ["date_normalization", "value_mapping"],
+      "expected_target_column": "date",
+      "expected_confidence": ["high"],
+      "expected_ambiguous": false,
+      "expected_auto_repairable": true,
+      "expected_hitl": false,
+      "expected_cleaned_values": {
+        "201": ["2004-07", "2004, 07"]
+      }
+    },
+    "tags": ["zero_shot", "date", "spanish_month", "autonomous_resolution"]
+  },
+  {
+    "id_caso": "case_03_cbr_positive_transfer_value_mapping",
+    "descripcion": "Transferencia positiva desde Memoria Episódica: mapear edición estacional ('2021, Autumn') adoptando la estrategia 'value_mapping' prescrita por el episodio previo.",
+    "inputs": {
+      "source_name": "scielo_ar",
+      "error_msg": "ValueError: Error al comparar fechas: 2021, Autumn — invalid literal for int() with base 10: 'Autumn'",
+      "columns": ["id", "title", "author", "date", "type"],
+      "sample_rows": [
+        {
+          "id": "301",
+          "title": "Biodiversidad Pampeana",
+          "author": "Fernández, Lucía",
+          "date": "2021, Autumn",
+          "type": "Articulo"
+        },
+        {
+          "id": "302",
+          "title": "Ecología Agrícola",
+          "author": "Sosa, Martín",
+          "date": "2020-11",
+          "type": "Articulo"
+        }
+      ],
+      "memory_mode": "relevant",
+      "episodes": [
+        {
+          "id": "ep_seasonal_date_mapping",
+          "similarity_score": 0.94,
+          "metadata": {
+            "tool": "deduplicator",
+            "source_name": "scielo_ar",
+            "error_class": "ValueError",
+            "affected_column": "date",
+            "resolved_by": "autonomous"
+          },
+          "embedding_content": "Error al comparar fechas: 2019, Autumn — invalid literal for int() with base 10: 'Autumn'",
+          "payload": {
+            "error_summary": "Columna date con estación del año en inglés ('Autumn') que requiere mapeo directo de valor.",
+            "culprit_sample": "2019, Autumn",
+            "transformation_strategy": "value_mapping",
+            "solution_applied": {
+              "Autumn": "09",
+              "2021, Autumn": "2021-09"
+            },
+            "reasoning": "Para publicaciones estacionales con 'Autumn', se utiliza obligatoriamente la estrategia 'value_mapping' reemplazando 'Autumn' por '09'."
+          }
+        }
+      ]
+    },
+    "reference_outputs": {
+      "expected_strategies": ["value_mapping"],
+      "expected_target_column": "date",
+      "expected_confidence": ["high"],
+      "expected_ambiguous": false,
+      "expected_auto_repairable": true,
+      "expected_hitl": false,
+      "expected_mapping_keys": ["Autumn", "2021, Autumn"],
+      "expected_mapping_target_substrings": ["09"],
+      "expected_cleaned_values": {
+        "301": ["2021-09", "2021, 09"]
+      }
+    },
+    "tags": ["cbr_positive_transfer", "value_mapping", "date", "autonomous_resolution"]
+  },
+  {
+    "id_caso": "case_04_cbr_positive_transfer_regex",
+    "descripcion": "Transferencia positiva desde Memoria Episódica: extraer el año de 4 dígitos mediante 'regex_extraction' ante celdas de fecha contaminadas con volumen ('Vol. 14 (2018)').",
+    "inputs": {
+      "source_name": "scopus",
+      "error_msg": "ValueError: Error al comparar fechas: Vol. 14 (2018) — invalid literal for int() with base 10: 'Vol. 14 (2018)'",
+      "columns": ["id", "title", "author", "date", "type"],
+      "sample_rows": [
+        {
+          "id": "401",
+          "title": "Machine Learning in Clinical Diagnostics",
+          "author": "Lee, K.",
+          "date": "Vol. 14 (2018)",
+          "type": "Articulo"
+        },
+        {
+          "id": "402",
+          "title": "Deep Neural Networks for Imaging",
+          "author": "Kim, S.",
+          "date": "Vol. 15 (2019)",
+          "type": "Articulo"
+        }
+      ],
+      "memory_mode": "relevant",
+      "episodes": [
+        {
+          "id": "ep_volume_year_regex",
+          "similarity_score": 0.95,
+          "metadata": {
+            "tool": "deduplicator",
+            "source_name": "scopus",
+            "error_class": "ValueError",
+            "affected_column": "date",
+            "resolved_by": "autonomous"
+          },
+          "embedding_content": "Error al comparar fechas: Vol. 10 (2016) — invalid literal for int() with base 10: 'Vol. 10 (2016)'",
+          "payload": {
+            "error_summary": "Columna date contaminada con número de volumen y año entre paréntesis.",
+            "culprit_sample": "Vol. 10 (2016)",
+            "transformation_strategy": "regex_extraction",
+            "solution_applied": {
+              "pattern": "\\b(19\\d\\d|20\\d\\d)\\b",
+              "group": 1
+            },
+            "reasoning": "Se emplea la estrategia 'regex_extraction' con el patrón '\\b(19\\d\\d|20\\d\\d)\\b' y grupo 1 para extraer únicamente el año de 4 dígitos."
+          }
+        }
+      ]
+    },
+    "reference_outputs": {
+      "expected_strategies": ["regex_extraction"],
+      "expected_target_column": "date",
+      "expected_confidence": ["high"],
+      "expected_ambiguous": false,
+      "expected_auto_repairable": true,
+      "expected_hitl": false,
+      "expected_regex_samples": {
+        "Vol. 14 (2018)": "2018",
+        "Vol. 15 (2019)": "2019"
+      },
+      "expected_cleaned_values": {
+        "401": ["2018"],
+        "402": ["2019"]
+      }
+    },
+    "tags": ["cbr_positive_transfer", "regex_extraction", "date", "autonomous_resolution"]
+  },
+  {
+    "id_caso": "case_05_cbr_distractor_immunity",
+    "descripcion": "Inmunidad ante Memoria Distractora: ignorar un episodio irrelevante de mojibake en 'author' cuando el fallo actual ocurre al parsear '2015, October' en la columna 'date'.",
+    "inputs": {
+      "source_name": "unlp_doaj",
+      "error_msg": "ValueError: Error al comparar fechas: 2015, October — invalid literal for int() with base 10: 'October'",
+      "columns": ["id", "title", "author", "date", "type"],
+      "sample_rows": [
+        {
+          "id": "501",
+          "title": "Algoritmos Evolutivos Multiobjetivo",
+          "author": "Martínez, Luis",
+          "date": "2015, October",
+          "type": "Articulo"
+        }
+      ],
+      "memory_mode": "distractor",
+      "episodes": [
+        {
+          "id": "ep_author_encoding_distractor",
+          "similarity_score": 0.48,
+          "metadata": {
+            "tool": "deduplicator",
+            "source_name": "scopus",
+            "error_class": "UnicodeDecodeError",
+            "affected_column": "author",
+            "resolved_by": "hitl"
+          },
+          "embedding_content": "Error de decodificación en autores: Caracteres corruptos UTF-8",
+          "payload": {
+            "error_summary": "Caracteres especiales corruptos en columna author.",
+            "culprit_sample": "PÃ©rez",
+            "transformation_strategy": "value_mapping",
+            "solution_applied": {
+              "PÃ©rez": "Pérez"
+            },
+            "reasoning": "Reemplazo de artefactos mojibake en nombres de autores."
+          }
+        }
+      ]
+    },
+    "reference_outputs": {
+      "expected_strategies": ["date_normalization", "value_mapping"],
+      "expected_target_column": "date",
+      "expected_confidence": ["high"],
+      "expected_ambiguous": false,
+      "expected_auto_repairable": true,
+      "expected_hitl": false,
+      "forbidden_columns": ["author"],
+      "forbidden_mapping_keys": ["PÃ©rez"],
+      "expected_cleaned_values": {
+        "501": ["2015-10", "2015, 10"]
+      }
+    },
+    "tags": ["cbr_distractor_immunity", "date", "autonomous_resolution"]
+  },
+  {
+    "id_caso": "case_06_cbr_mixed_episodes_top2",
+    "descripcion": "Discriminación con top_k=2 episodios mixtos: seleccionar la estrategia del episodio relevante de fecha ('November' -> '11') y descartar el episodio distractor de 'author'.",
+    "inputs": {
+      "source_name": "springer",
+      "error_msg": "ValueError: Error al comparar fechas: 2017, November — invalid literal for int() with base 10: 'November'",
+      "columns": ["id", "title", "author", "date", "type"],
+      "sample_rows": [
+        {
+          "id": "601",
+          "title": "Quantum Cryptography Protocols",
+          "author": "Weber, Hans",
+          "date": "2017, November",
+          "type": "Articulo"
+        }
+      ],
+      "memory_mode": "mixed",
+      "episodes": [
+        {
+          "id": "ep_author_encoding_distractor",
+          "similarity_score": 0.51,
+          "metadata": {
+            "tool": "deduplicator",
+            "source_name": "scopus",
+            "error_class": "UnicodeDecodeError",
+            "affected_column": "author",
+            "resolved_by": "hitl"
+          },
+          "embedding_content": "Error de decodificación en autores: Caracteres corruptos UTF-8",
+          "payload": {
+            "error_summary": "Caracteres especiales corruptos en columna author.",
+            "culprit_sample": "PÃ©rez",
+            "transformation_strategy": "value_mapping",
+            "solution_applied": {
+              "PÃ©rez": "Pérez"
+            },
+            "reasoning": "Reemplazo de artefactos mojibake en nombres de autores."
+          }
+        },
+        {
+          "id": "ep_date_english_november",
+          "similarity_score": 0.91,
+          "metadata": {
+            "tool": "deduplicator",
+            "source_name": "springer",
+            "error_class": "ValueError",
+            "affected_column": "date",
+            "resolved_by": "autonomous"
+          },
+          "embedding_content": "Error al comparar fechas: 2016, November — invalid literal for int() with base 10: 'November'",
+          "payload": {
+            "error_summary": "Mes en texto en inglés ('November') dentro de la columna date.",
+            "culprit_sample": "2016, November",
+            "transformation_strategy": "value_mapping",
+            "solution_applied": {
+              "November": "11"
+            },
+            "reasoning": "Mapeo del nombre del mes en inglés a su representación numérica de dos dígitos."
+          }
+        }
+      ]
+    },
+    "reference_outputs": {
+      "expected_strategies": ["value_mapping", "date_normalization"],
+      "expected_target_column": "date",
+      "expected_confidence": ["high"],
+      "expected_ambiguous": false,
+      "expected_auto_repairable": true,
+      "expected_hitl": false,
+      "forbidden_columns": ["author"],
+      "forbidden_mapping_keys": ["PÃ©rez"],
+      "expected_cleaned_values": {
+        "601": ["2017-11", "2017, 11"]
+      }
+    },
+    "tags": ["cbr_mixed_top2", "date", "autonomous_resolution"]
+  },
+  {
+    "id_caso": "case_07_non_date_column_author_repair",
+    "descripcion": "Detección y reparación en columna distinta de 'date': identificar mediante escaneo del CSV que el token corrupto ('GÃ³mez, RaÃºl') pertenece a la columna 'author' y repararlo con 'value_mapping'.",
+    "inputs": {
+      "source_name": "scopus",
+      "error_msg": "ValueError: Fallo al normalizar token 'GÃ³mez, RaÃºl' por codificación corrupta UTF-8 en comparador",
+      "columns": ["id", "title", "author", "date", "type"],
+      "sample_rows": [
+        {
+          "id": "701",
+          "title": "Redes Neuronales Profundas",
+          "author": "GÃ³mez, RaÃºl",
+          "date": "2022",
+          "type": "Articulo"
+        },
+        {
+          "id": "702",
+          "title": "Visión Artificial Aplicada",
+          "author": "López, María",
+          "date": "2021",
+          "type": "Articulo"
+        }
+      ],
+      "memory_mode": "relevant",
+      "episodes": [
+        {
+          "id": "ep_author_mojibake_fix",
+          "similarity_score": 0.93,
+          "metadata": {
+            "tool": "deduplicator",
+            "source_name": "scopus",
+            "error_class": "ValueError",
+            "affected_column": "author",
+            "resolved_by": "autonomous"
+          },
+          "embedding_content": "Fallo al normalizar token 'PÃ©rez, JosÃ©' por codificación corrupta UTF-8 en comparador",
+          "payload": {
+            "error_summary": "Artefactos mojibake UTF-8 en nombres de autores dentro de la columna author.",
+            "culprit_sample": "PÃ©rez, JosÃ©",
+            "transformation_strategy": "value_mapping",
+            "solution_applied": {
+              "GÃ³mez, RaÃºl": "Gómez, Raúl"
+            },
+            "reasoning": "Cuando la columna 'author' presenta secuencias mojibake UTF-8 claras, se aplica 'value_mapping' sobre target_column='author' con confidence='high'."
+          }
+        }
+      ]
+    },
+    "reference_outputs": {
+      "expected_strategies": ["value_mapping"],
+      "expected_target_column": "author",
+      "expected_confidence": ["high"],
+      "expected_ambiguous": false,
+      "expected_auto_repairable": true,
+      "expected_hitl": false,
+      "expected_mapping_keys": ["GÃ³mez, RaÃºl", "GÃ³mez", "Ã³"],
+      "expected_mapping_target_substrings": ["Gómez", "ó"],
+      "expected_cleaned_values": {
+        "701": ["Gómez, Raúl"]
+      }
+    },
+    "tags": ["non_date_column", "author", "value_mapping", "cbr_positive_transfer"]
+  },
+  {
+    "id_caso": "case_08_ambiguous_year_range_hitl",
+    "descripcion": "Calibración ante ambigüedad intrínseca: reconocer que un rango plurianual ('1999-2005') no puede reducirse arbitrariamente sin pérdida de información y escalar a HITL ('manual_review').",
+    "inputs": {
+      "source_name": "crossref",
+      "error_msg": "ValueError: Error al normalizar fecha: valor '1999-2005' no corresponde a un único año de publicación.",
+      "columns": ["id", "title", "author", "date", "type"],
+      "sample_rows": [
+        {
+          "id": "801",
+          "title": "Estudio Longitudinal de Flora Patagónica",
+          "author": "Ruiz, Mariana",
+          "date": "1999-2005",
+          "type": "Articulo"
+        }
+      ],
+      "memory_mode": "none",
+      "episodes": []
+    },
+    "reference_outputs": {
+      "expected_strategies": ["manual_review"],
+      "expected_target_column": "date",
+      "expected_confidence": ["low", "medium"],
+      "expected_ambiguous": true,
+      "expected_auto_repairable": false,
+      "expected_hitl": true
+    },
+    "tags": ["ambiguity_calibration", "hitl_escalation", "manual_review"]
+  }
+]

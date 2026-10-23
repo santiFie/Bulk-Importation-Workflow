@@ -116,6 +116,11 @@ class Config:
     CROSSWALK_VALIDATOR_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free"
     METADATA_EXTRACTOR_MODEL = "openai/gpt-oss-120b"
     METADATA_CURATOR_MODEL = "openai/gpt-oss-20b"  # Modelo para el agente curador de metadatos PDF
+    DEDUP_RECOVERY_MODEL_OPENROUTER = "openai/gpt-oss-20b"
+    DEDUP_RECOVERY_MODEL = "openai/gpt-oss-20b"
+    DEDUP_RECOVERY_MODEL_NVIDIA = "nvidia/nemotron-3-super-120b-a12b"
+
+
     CURATION_ANOMALY_THRESHOLD: float = 0.3         # Score mínimo para enviar una fila al agente curador
     CURATION_MAX_CONCURRENCY: int = int(os.getenv("CURATION_MAX_CONCURRENCY", "5")) # Concurrencia máxima para procesar filas sospechosas
     

@@ -5,7 +5,7 @@ Modelos de dominio y resultados tipados para la Recuperación de Errores de Dedu
 from __future__ import annotations
 
 from typing import Any, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class StrategyResult(BaseModel):
@@ -48,6 +48,8 @@ class ValidationResult(BaseModel):
 
 class RecoveryDecision(BaseModel):
     """Estructura de decisión emitida por el agente de recuperación."""
+
+    model_config = ConfigDict(title="recoveryDecision")
 
     diagnosis: str = Field(description="Explicación clara del error y su causa raíz.")
     confidence: Literal["high", "medium", "low"] = Field(

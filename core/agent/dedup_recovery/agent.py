@@ -89,8 +89,8 @@ def invoke_recovery_agent(
 
     if llm is None:
         model_factory = FallbackLLM(
-            groq_model=config.CROSSWALK_MODEL,
-            openrouter_model=config.CROSSWALK_MODEL,
+            groq_model=config.DEDUP_RECOVERY_MODEL,
+            openrouter_model=config.DEDUP_RECOVERY_MODEL_OPENROUTER,
         )
         resolved_llm = model_factory.resolve()
     else:

@@ -52,7 +52,7 @@ def get_local_model_with_tools(tools):
 
 # Modelos por defecto por proveedor cuando no se especifica ninguno.
 DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b"
-DEFAULT_NVIDIA_MODEL = "nvidia/nemotron-3-super-120b-a12b"
+DEFAULT_NVIDIA_MODEL = "nvidia/nemotron-3.5-lightning-30b-a3b"
 DEFAULT_OPENROUTER_MODEL = "openai/gpt-oss-20b"
 
 
